@@ -6,6 +6,8 @@ import {
     errorResponse,
     formatUserResponse,
 } from "../utils/response.js";
+import { generateOTP } from "../utils/otp.js";
+import { sendOTPEmail } from "../utils/email.js";
 
 /**
  * @desc    Register new user
@@ -36,15 +38,34 @@ const register = async (req, res) => {
             phone,
             role,
             address: address || {},
+            isVerified: false,
         });
+
+        // Generate OTP for email verification
+        const otp = generateOTP(6);
+
+        // Set OTP using the model method
+        await user.setOTP(otp, "REGISTRATION", 10);
+
+        // Send OTP email
+        try {
+            await sendOTPEmail(email, otp, name, "REGISTRATION");
+        } catch (emailError) {
+            console.error("Email sending failed:", emailError);
+            // Continue registration even if email fails
+        }
 
         generateTokenAndSetCookie(res, user);
 
         return successResponse(
             res,
             201,
-            "User registered successfully",
-            formatUserResponse(user)
+            "User registered successfully. Please check your email for OTP verification.",
+            {
+                user: formatUserResponse(user),
+                message:
+                    "OTP sent to your email. Please verify within 10 minutes.",
+            }
         );
     } catch (error) {
         console.error("Register error:", error);

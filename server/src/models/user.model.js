@@ -18,6 +18,24 @@ const addressSchema = new Schema(
     { _id: false }
 );
 
+const otpSchema = new Schema(
+    {
+        code: { type: String },
+        purpose: {
+            type: String,
+            enum: ["REGISTRATION", "PASSWORD_RESET", "EMAIL_CHANGE"],
+        },
+        expiresAt: { type: Date },
+        attempts: {
+            type: Number,
+            default: 0,
+            max: 5,
+        },
+        createdAt: { type: Date, default: Date.now },
+    },
+    { _id: false }
+);
+
 // Verification Schema (Nested for Worker)
 const verificationSchema = new Schema(
     {
@@ -134,6 +152,10 @@ const userSchema = new Schema(
             required: true,
         },
         address: addressSchema,
+        otp: {
+            type: otpSchema,
+            default: undefined,
+        },
         isVerified: { type: Boolean, default: false },
 
         // Role-specific nested profiles
@@ -160,6 +182,46 @@ const userSchema = new Schema(
 userSchema.index({ phone: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ "address.city": 1, "address.area": 1 });
+
+// Method to check if OTP is expired
+userSchema.methods.isOTPExpired = function () {
+    if (!this.otp || !this.otp.expiresAt) {
+        return true;
+    }
+    return Date.now() > this.otp.expiresAt.getTime();
+};
+
+// Method to increment OTP attempts
+userSchema.methods.incrementOTPAttempts = async function () {
+    if (!this.otp) {
+        return 0;
+    }
+    this.otp.attempts += 1;
+    await this.save();
+    return this.otp.attempts;
+};
+
+// Method to clear OTP
+userSchema.methods.clearOTP = async function () {
+    this.otp = undefined;
+    await this.save();
+};
+
+// Method to set OTP
+userSchema.methods.setOTP = async function (
+    code,
+    purpose = "REGISTRATION",
+    expiryMinutes = 10
+) {
+    this.otp = {
+        code,
+        purpose,
+        expiresAt: new Date(Date.now() + expiryMinutes * 60 * 1000),
+        attempts: 0,
+        createdAt: new Date(),
+    };
+    await this.save();
+};
 
 // Pre-save hook to ensure only relevant profile exists
 userSchema.pre("save", function (next) {

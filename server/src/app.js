@@ -5,6 +5,7 @@ import { config } from "dotenv";
 
 config();
 import authRoutes from "./routes/auth.route.js";
+import otpRoutes from "./routes/otp.routes.js";
 
 const app = express();
 
@@ -40,6 +41,7 @@ connect(process.env.MONGODB_URI)
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/otp", otpRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {
