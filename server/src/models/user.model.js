@@ -48,6 +48,11 @@ const verificationSchema = new Schema(
             enum: ["PENDING", "APPROVED", "REJECTED"],
             default: "PENDING",
         },
+        serviceAgentId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
         selfieUrl: { type: String },
         addharDocUrl: { type: String },
         policeVerificationDocUrl: { type: String },
@@ -55,6 +60,7 @@ const verificationSchema = new Schema(
         isSelfieVerified: { type: Boolean, default: false },
         isAddharDocVerified: { type: Boolean, default: false },
         isPoliceVerificationDocVerified: { type: Boolean, default: false },
+        verifiedAt: { type: Date },
     },
     { _id: false }
 );
