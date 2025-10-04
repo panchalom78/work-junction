@@ -2,7 +2,6 @@ import { verifyToken } from "../utils/jwt.js";
 import { errorResponse } from "../utils/response.js";
 import User from "../models/user.model.js";
 
-const { findById } = User;
 /**
  * Protect routes - verify JWT token from cookie
  */
@@ -16,7 +15,7 @@ const protect = async (req, res, next) => {
 
         const decoded = verifyToken(token);
 
-        const user = await findById(decoded.id).select("-password");
+        const user = await User.findById(decoded.id).select("-password");
 
         if (!user) {
             return errorResponse(res, 401, "User not found");
@@ -25,6 +24,8 @@ const protect = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
+        console.log(error);
+
         return errorResponse(res, 401, "Not authorized, token failed");
     }
 };
