@@ -6,6 +6,8 @@ import OTPVerificationPage from "../pages/otpVerifaction";
 import WorkerVerificationPage from "../pages/workerVerificationPage";
 import WorkerDashboard from "../pages/workerDashboard";
 import WorkJunctionLanding from "../pages/WorkJunctionLanding";
+import CustomerDashboard from "../pages/customer";
+
 
 
 const Routers = () => {
@@ -19,7 +21,7 @@ const Routers = () => {
                     <Route path="/otpVerifaction" element={<OTPVerificationPage />} />
                     <Route path="/verification" element={<WorkerVerificationPage />} />
                     <Route path="/workerDashboard" element={<WorkerDashboard />} />
-
+                    <Route path= "/customerDashboard" element={<CustomerDashboard/>}></Route>
                 </Routes>
             </Router>
         </div>
