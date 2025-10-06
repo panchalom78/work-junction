@@ -1,0 +1,217 @@
+/* Import Tailwind CSS */
+@import "tailwindcss";
+
+/* Define custom CSS variables (root) */
+:root {
+  /* 🎨 Core Color Palette - Updated to match provided image */
+    --primary-color: linear-gradient(to right, #2563EB, #7C3AED); /* Blue-600 to Purple-600 */
+   --primary-hover: #5B1890;        /* Optional darker hover */
+    --primary-light: #E9D5FF;        /* Light purple background */
+   --primary-gradient: linear-gradient(to right, #2563EB, #7C3AED);
+  
+  --secondary-color: #10B981;      /* Green from positive stats */
+  --secondary-hover: #059669;
+  --secondary-light: #D1FAE5;
+  
+  --danger-color: #EF4444;         /* Red from negative stats */
+  --danger-hover: #DC2626;
+  --danger-light: #FEE2E2;
+  
+  --info-color: #3B82F6;           /* Blue from chart and buttons */
+  --info-hover: #2563EB;
+  --info-light: #DBEAFE;
+
+  /* 🌑 Neutral Colors */
+  --text-color: #1E293B;           /* Dark text from image */
+  --text-muted: #64748B;           /* Muted text */
+  --text-light: #94A3B8;
+  
+  --border-color: #E2E8F0;
+  --border-hover: #CBD5E1;
+  
+  --bg-light: #F8FAFC;             /* Light background */
+  --bg-white: #FFFFFF;
+  --bg-dark: #0F172A;
+
+  /* 🎭 Surface Colors */
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F1F5F9;
+  --surface-tertiary: #E2E8F0;
+  --surface-dark: #1E293B;
+
+  /* 📝 Typography - Matching image fonts */
+  --font-primary: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', monospace;
+  
+  /* Font sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 0.9375rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  
+  /* Font weights */
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* 🌟 Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.02);
+
+  /* 🔹 Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* ⚡ Transitions */
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ✨ Global Reset & Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  color: var(--text-color);
+  background-color: var(--bg-light);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* 🎯 Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-color);
+  line-height: 1.25;
+  margin: 0 0 1rem 0;
+}
+
+h1 { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); }
+h2 { font-size: var(--font-size-3xl); }
+h3 { font-size: var(--font-size-2xl); }
+h4 { font-size: var(--font-size-xl); }
+
+/* 📊 Dashboard Header */
+.dashboard-header {
+  @apply bg-surface-primary p-8 rounded-xl shadow-sm mb-6 border border-border-color;
+}
+
+.dashboard-title {
+  @apply text-3xl font-bold text-text-color mb-1;
+}
+
+.dashboard-subtitle {
+  @apply text-lg text-text-muted font-regular;
+}
+
+/* 🎫 Stats Cards */
+.stats-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8;
+}
+
+.stat-card {
+  @apply bg-surface-primary p-7 rounded-xl shadow-sm border border-border-color transition-all duration-300 hover:shadow-md hover:-translate-y-2;
+}
+
+.stat-value {
+  @apply text-4xl font-bold text-text-color mb-2;
+}
+
+.stat-label {
+  @apply text-sm text-text-muted font-medium uppercase tracking-wide;
+}
+
+.stat-change.positive {
+  @apply text-secondary-color bg-secondary-light;
+}
+
+.stat-change.negative {
+  @apply text-danger-color bg-danger-light;
+}
+
+/* 📈 Chart Container */
+.chart-container {
+  @apply bg-surface-primary p-8 rounded-xl shadow-sm border border-border-color;
+}
+
+.chart-header {
+  @apply flex justify-between items-center mb-8;
+}
+
+.chart-title {
+  @apply text-xl font-semibold text-text-color;
+}
+
+.chart-period {
+  @apply flex gap-2 bg-surface-secondary p-1 rounded-md;
+}
+
+.period-btn {
+  @apply px-4 py-2 border-none bg-transparent rounded-sm text-sm text-text-muted cursor-pointer;
+}
+
+.period-btn.active {
+  @apply text-primary-color bg-surface-secondary;
+}
+
+/* 🎯 Percentage Display */
+.percentage-display {
+  @apply text-center p-8;
+}
+
+.percentage-value {
+  @apply text-5xl font-bold text-info-color mb-2;
+}
+
+.percentage-label {
+  @apply text-lg text-text-muted font-medium;
+}
+
+/* 📅 Months Grid */
+.months-grid {
+  @apply grid grid-cols-12 gap-3 mt-8 pt-8 border-t border-border-color;
+}
+
+.month-label {
+  @apply text-center text-xs text-text-muted font-medium;
+}
+
+/* ✅ Buttons */
+.btn {
+  @apply px-6 py-3 border-none rounded-md font-medium text-sm cursor-pointer transition-all duration-300;
+}
+
+.btn-primary {
+  @apply bg-primary-gradient text-white font-semibold;
+}
+
+.btn-primary:hover {
+  @apply bg-gradient-to-r from-purple-700 to-purple-900;
+}
+
+/* 📱 Responsive Design */
+@media (max-width: 768px) {
+  .stats-grid {
+    @apply grid-cols-1;
+  }
+  .chart-header {
+    @apply flex-col gap-4;
+  }
+  .percentage-value {
+    @apply text-4xl;
+  }
+}
