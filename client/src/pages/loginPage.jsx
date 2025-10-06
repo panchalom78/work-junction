@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import lottie from 'lottie-web';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from 'react-icons/fi';
-import workManagementAnim from '../../public/workmanagemnt.json';
+import workManagementAnim from '../public/workmanagemnt.json';
 const LoginPage = () => {
   const [formData, setFormData] = useState({ 
     email: '', 

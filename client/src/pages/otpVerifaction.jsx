@@ -11,7 +11,7 @@ import {
 } from 'react-icons/fi';
 
 // ✅ Import your Lottie animation
-import otpVerificationAnim from '../../public/tool.json';
+import otpVerificationAnim from '../public/tool.json';
 
 const OTPVerificationPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);

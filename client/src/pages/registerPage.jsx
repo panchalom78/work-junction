@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import lottie from 'lottie-web';
 import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiCheck, FiTool, FiUsers, FiHome, FiSettings, FiArrowLeft } from 'react-icons/fi';
 
-import workerAnim from '../../public/register.json';
+import workerAnim from '../public/register.json';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({

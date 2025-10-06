@@ -24,8 +24,8 @@ import {
 } from 'lucide-react';
 
 // Mock Lottie data - replace with actual animation data
-import workerConnectAnim from '../../public/Plumbers.json';
-import featuresAnim from '../../public/worker.json';
+import workerConnectAnim from '../public/Plumbers.json';
+import featuresAnim from '../public/worker.json';
 
 const FeatureCard = ({ icon: Icon, title, description, color = "blue" }) => {
   const colors = {
