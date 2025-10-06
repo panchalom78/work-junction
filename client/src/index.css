@@ -3,33 +3,33 @@
 
 /* Define custom CSS variables (root) */
 :root {
-  /* 🎨 Core Color Palette - Updated to match provided image */
-    --primary-color: linear-gradient(to right, #2563EB, #7C3AED); /* Blue-600 to Purple-600 */
-   --primary-hover: #5B1890;        /* Optional darker hover */
-    --primary-light: #E9D5FF;        /* Light purple background */
-   --primary-gradient: linear-gradient(to right, #2563EB, #7C3AED);
+  /* 🎨 Core Color Palette */
+  --primary-color: linear-gradient(to right, #2563EB, #7C3AED);
+  --primary-hover: #5B1890;
+  --primary-light: #E9D5FF;
+  --primary-gradient: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
   
-  --secondary-color: #10B981;      /* Green from positive stats */
+  --secondary-color: #10B981;
   --secondary-hover: #059669;
   --secondary-light: #D1FAE5;
   
-  --danger-color: #EF4444;         /* Red from negative stats */
+  --danger-color: #EF4444;
   --danger-hover: #DC2626;
   --danger-light: #FEE2E2;
   
-  --info-color: #3B82F6;           /* Blue from chart and buttons */
+  --info-color: #3B82F6;
   --info-hover: #2563EB;
   --info-light: #DBEAFE;
 
   /* 🌑 Neutral Colors */
-  --text-color: #1E293B;           /* Dark text from image */
-  --text-muted: #64748B;           /* Muted text */
+  --text-color: #1E293B;
+  --text-muted: #64748B;
   --text-light: #94A3B8;
   
   --border-color: #E2E8F0;
   --border-hover: #CBD5E1;
   
-  --bg-light: #F8FAFC;             /* Light background */
+  --bg-light: #F8FAFC;
   --bg-white: #FFFFFF;
   --bg-dark: #0F172A;
 
@@ -39,11 +39,10 @@
   --surface-tertiary: #E2E8F0;
   --surface-dark: #1E293B;
 
-  /* 📝 Typography - Matching image fonts */
+  /* 📝 Typography */
   --font-primary: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', monospace;
   
-  /* Font sizes */
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 0.9375rem;
@@ -53,7 +52,6 @@
   --font-size-3xl: 1.875rem;
   --font-size-4xl: 2.25rem;
   
-  /* Font weights */
   --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
@@ -107,111 +105,209 @@ h4 { font-size: var(--font-size-xl); }
 
 /* 📊 Dashboard Header */
 .dashboard-header {
-  @apply bg-surface-primary p-8 rounded-xl shadow-sm mb-6 border border-border-color;
+  background-color: var(--surface-primary);
+  padding: 2rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
 }
 
 .dashboard-title {
-  @apply text-3xl font-bold text-text-color mb-1;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
 }
 
 .dashboard-subtitle {
-  @apply text-lg text-text-muted font-regular;
+  font-size: var(--font-size-lg);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-regular);
 }
 
 /* 🎫 Stats Cards */
 .stats-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .stat-card {
-  @apply bg-surface-primary p-7 rounded-xl shadow-sm border border-border-color transition-all duration-300 hover:shadow-md hover:-translate-y-2;
+  background-color: var(--surface-primary);
+  padding: 1.75rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-normal);
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-0.5rem);
 }
 
 .stat-value {
-  @apply text-4xl font-bold text-text-color mb-2;
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  @apply text-sm text-text-muted font-medium uppercase tracking-wide;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-change {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-top: 0.5rem;
 }
 
 .stat-change.positive {
-  @apply text-secondary-color bg-secondary-light;
+  color: var(--secondary-color);
+  background-color: var(--secondary-light);
 }
 
 .stat-change.negative {
-  @apply text-danger-color bg-danger-light;
+  color: var(--danger-color);
+  background-color: var(--danger-light);
 }
 
 /* 📈 Chart Container */
 .chart-container {
-  @apply bg-surface-primary p-8 rounded-xl shadow-sm border border-border-color;
+  background-color: var(--surface-primary);
+  padding: 2rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .chart-header {
-  @apply flex justify-between items-center mb-8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
 }
 
 .chart-title {
-  @apply text-xl font-semibold text-text-color;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-color);
 }
 
 .chart-period {
-  @apply flex gap-2 bg-surface-secondary p-1 rounded-md;
+  display: flex;
+  gap: 0.5rem;
+  background-color: var(--surface-secondary);
+  padding: 0.25rem;
+  border-radius: var(--radius-md);
 }
 
 .period-btn {
-  @apply px-4 py-2 border-none bg-transparent rounded-sm text-sm text-text-muted cursor-pointer;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.period-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .period-btn.active {
-  @apply text-primary-color bg-surface-secondary;
+  color: var(--info-color);
+  background-color: var(--surface-primary);
+  font-weight: var(--font-weight-medium);
 }
 
 /* 🎯 Percentage Display */
 .percentage-display {
-  @apply text-center p-8;
+  text-align: center;
+  padding: 2rem;
 }
 
 .percentage-value {
-  @apply text-5xl font-bold text-info-color mb-2;
+  font-size: 3rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--info-color);
+  margin-bottom: 0.5rem;
 }
 
 .percentage-label {
-  @apply text-lg text-text-muted font-medium;
+  font-size: var(--font-size-lg);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
 }
 
 /* 📅 Months Grid */
 .months-grid {
-  @apply grid grid-cols-12 gap-3 mt-8 pt-8 border-t border-border-color;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .month-label {
-  @apply text-center text-xs text-text-muted font-medium;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
 }
 
 /* ✅ Buttons */
 .btn {
-  @apply px-6 py-3 border-none rounded-md font-medium text-sm cursor-pointer transition-all duration-300;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
 }
 
 .btn-primary {
-  @apply bg-primary-gradient text-white font-semibold;
+  background: var(--primary-gradient);
+  color: white;
+  font-weight: var(--font-weight-semibold);
 }
 
 .btn-primary:hover {
-  @apply bg-gradient-to-r from-purple-700 to-purple-900;
+  background: linear-gradient(135deg, #1D4ED8 0%, #6D28D9 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* 📱 Responsive Design */
 @media (max-width: 768px) {
   .stats-grid {
-    @apply grid-cols-1;
+    grid-template-columns: 1fr;
   }
+  
   .chart-header {
-    @apply flex-col gap-4;
+    flex-direction: column;
+    gap: 1rem;
   }
+  
   .percentage-value {
-    @apply text-4xl;
+    font-size: 2.5rem;
+  }
+  
+  .months-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
