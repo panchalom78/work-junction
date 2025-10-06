@@ -21,9 +21,9 @@ const AvailabilityManagement = ({
   });
 
   const statusOptions = [
-    { value: 'available', label: '✅ Available', color: 'green', description: 'Accepting new bookings' },
-    { value: 'busy', label: '🔄 Busy', color: 'yellow', description: 'Limited availability' },
-    { value: 'off-duty', label: '⛔ Off Duty', color: 'red', description: 'Not accepting bookings' }
+    { value: 'available', label: '✅ Available', color: 'success', description: 'Accepting new bookings' },
+    { value: 'busy', label: '🔄 Busy', color: 'warning', description: 'Limited availability' },
+    { value: 'off-duty', label: '⛔ Off Duty', color: 'danger', description: 'Not accepting bookings' }
   ];
 
   const handleUpdateAvailability = (newAvailability) => {
@@ -31,15 +31,17 @@ const AvailabilityManagement = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
+      <div className="flex justify-between items-center" style={{ padding: '1rem' }}>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Availability Management</h2>
-          <p className="text-gray-600 mt-1">Set your working hours and availability status</p>
+          <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)', margin: '0 0 0.25rem 0' }}>Availability Management</h2>
+          <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)', margin: '0' }}>Set your working hours and availability status</p>
         </div>
         <button
           onClick={() => setShowAvailabilityModal(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          style={{ background: 'var(--primary-gradient)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all var(--transition-normal)' }}
+          onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
+          onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
         >
           <Edit3 className="w-5 h-5" />
           <span>Manage Schedule</span>
@@ -47,21 +49,28 @@ const AvailabilityManagement = ({
       </div>
 
       {/* Current Status */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Status</h3>
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', marginBottom: '1rem' }}>Current Status</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {statusOptions.map((status) => (
             <button
               key={status.value}
               onClick={() => onSetAvailabilityStatus(status.value)}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
-                availabilityStatus === status.value
-                  ? `border-${status.color}-500 bg-${status.color}-50 shadow-sm`
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
+              style={{
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                border: '2px solid',
+                borderColor: availabilityStatus === status.value ? `var(--${status.color}-color)` : 'var(--border-color)',
+                backgroundColor: availabilityStatus === status.value ? `var(--${status.color}-light)` : 'var(--surface-primary)',
+                textAlign: 'left',
+                transition: 'all var(--transition-normal)',
+                boxShadow: availabilityStatus === status.value ? 'var(--shadow-sm)' : 'none'
+              }}
+              onMouseOver={e => { if (availabilityStatus !== status.value) e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'; }}
+              onMouseOut={e => { if (availabilityStatus !== status.value) e.currentTarget.style.backgroundColor = 'var(--surface-primary)'; }}
             >
-              <div className="font-semibold text-gray-900 mb-1">{status.label}</div>
-              <div className="text-sm text-gray-600">{status.description}</div>
+              <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', marginBottom: '0.25rem' }}>{status.label}</div>
+              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>{status.description}</div>
             </button>
           ))}
         </div>
@@ -70,25 +79,25 @@ const AvailabilityManagement = ({
       {/* Quick Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Weekly Schedule */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-gray-900 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+            <h4 className="font-semibold text-gray-900 flex items-center" style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)' }}>
+              <Calendar className="w-5 h-5 mr-2 text-blue-600" style={{ color: 'var(--info-color)' }} />
               Weekly Schedule
             </h4>
-            <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+            <span style={{ backgroundColor: 'var(--info-light)', color: 'var(--info-color)', fontSize: 'var(--font-size-sm)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)', display: 'inline-block' }}>
               {availability.weeklySlots.length} days
             </span>
           </div>
           <div className="space-y-2">
             {availability.weeklySlots.slice(0, 3).map(slot => (
-              <div key={slot.id} className="flex justify-between items-center py-2">
-                <span className="text-gray-700 capitalize">{slot.day}</span>
-                <span className="text-sm text-gray-500">{slot.startTime} - {slot.endTime}</span>
+              <div key={slot.id} className="flex justify-between items-center py-2" style={{ padding: '0.5rem 0' }}>
+                <span style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-color)', textTransform: 'capitalize' }}>{slot.day}</span>
+                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>{slot.startTime} - {slot.endTime}</span>
               </div>
             ))}
             {availability.weeklySlots.length > 3 && (
-              <p className="text-sm text-gray-500 text-center">
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', textAlign: 'center' }}>
                 +{availability.weeklySlots.length - 3} more days
               </p>
             )}
@@ -96,31 +105,31 @@ const AvailabilityManagement = ({
         </div>
 
         {/* Special Dates */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-semibold text-gray-900 flex items-center">
-              <Clock className="w-5 h-5 mr-2 text-green-600" />
+            <h4 className="font-semibold text-gray-900 flex items-center" style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)' }}>
+              <Clock className="w-5 h-5 mr-2 text-green-600" style={{ color: 'var(--success-color)' }} />
               Special Dates
             </h4>
-            <span className="bg-green-100 text-green-800 text-sm px-2 py-1 rounded-full">
+            <span style={{ backgroundColor: 'var(--success-light)', color: 'var(--success-color)', fontSize: 'var(--font-size-sm)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)', display: 'inline-block' }}>
               {availability.customSlots.length} dates
             </span>
           </div>
           <div className="space-y-2">
             {availability.customSlots.slice(0, 3).map(slot => (
-              <div key={slot.id} className="py-2">
-                <div className="text-gray-700">
+              <div key={slot.id} className="py-2" style={{ padding: '0.5rem 0' }}>
+                <div style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-color)' }}>
                   {new Date(slot.date).toLocaleDateString('en-IN', { 
                     weekday: 'short', 
                     month: 'short', 
                     day: 'numeric' 
                   })}
                 </div>
-                <div className="text-sm text-gray-500">{slot.startTime} - {slot.endTime}</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>{slot.startTime} - {slot.endTime}</div>
               </div>
             ))}
             {availability.customSlots.length > 3 && (
-              <p className="text-sm text-gray-500 text-center">
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', textAlign: 'center' }}>
                 +{availability.customSlots.length - 3} more dates
               </p>
             )}
@@ -129,15 +138,19 @@ const AvailabilityManagement = ({
       </div>
 
       {/* Emergency Slot */}
-      <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-6" style={{ backgroundColor: 'var(--warning-light)', border: '1px solid var(--warning-200)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-lg font-semibold text-orange-900 mb-2">Emergency Slot</h4>
-            <p className="text-orange-700">
+            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--warning-color)', marginBottom: '0.5rem' }}>Emergency Slot</h4>
+            <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--warning-color)' }}>
               Create an immediate availability slot for urgent bookings. This will be highlighted to customers.
             </p>
           </div>
-          <button className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2">
+          <button style={{ background: 'var(--warning-color)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all var(--transition-normal)' }}
+            onMouseOver={e => e.currentTarget.style.background = 'var(--warning-hover)'}
+            onMouseOut={e => e.currentTarget.style.background = 'var(--warning-color)'}
+            className="flex items-center space-x-2"
+          >
             <Plus className="w-5 h-5" />
             <span>Create Emergency Slot</span>
           </button>

@@ -73,13 +73,13 @@ const AvailabilityModal = ({
   };
 
   const TimeSlotCard = ({ slot, onRemove, type = 'weekly' }) => (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200" style={{ backgroundColor: 'var(--surface-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
       <div className="flex items-center space-x-4">
-        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-          <Clock className="w-4 h-4 text-blue-600" />
+        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)' }}>
+          <Clock className="w-4 h-4 text-blue-600" style={{ color: 'var(--primary-color)' }} />
         </div>
         <div>
-          <p className="font-medium text-gray-900">
+          <p style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>
             {type === 'weekly' 
               ? daysOfWeek.find(d => d.value === slot.day)?.label
               : new Date(slot.date).toLocaleDateString('en-IN', { 
@@ -90,14 +90,17 @@ const AvailabilityModal = ({
                 })
             }
           </p>
-          <p className="text-sm text-gray-600">
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
             {slot.startTime} - {slot.endTime}
           </p>
         </div>
       </div>
       <button
         onClick={() => onRemove(slot.id)}
-        className="text-red-600 hover:text-red-800 transition-colors p-2"
+        style={{ color: 'var(--danger-color)', transition: 'color var(--transition-normal)' }}
+        onMouseOver={e => e.currentTarget.style.color = 'var(--danger-hover)'}
+        onMouseOut={e => e.currentTarget.style.color = 'var(--danger-color)'}
+        className="p-2"
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -105,33 +108,35 @@ const AvailabilityModal = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="p-6 border-b border-gray-200" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">Manage Availability</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)' }}>Manage Availability</h3>
+            <button onClick={onClose} style={{ color: 'var(--text-muted)', transition: 'color var(--transition-normal)' }} onMouseOver={e => e.currentTarget.style.color = 'var(--text-color)'} onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}>
               <X className="w-6 h-6" />
             </button>
           </div>
-          <p className="text-gray-600 mt-1">Set your regular working hours and special availability</p>
+          <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Set your regular working hours and special availability</p>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6" style={{ padding: '1.5rem' }}>
           {/* Weekly Availability */}
           <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', marginBottom: '1rem' }} className="flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-blue-600" style={{ color: 'var(--primary-color)' }} />
               Weekly Schedule
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Day</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Day</label>
                 <select
                   value={newWeeklySlot.day}
                   onChange={(e) => setNewWeeklySlot({ ...newWeeklySlot, day: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 >
                   {daysOfWeek.map(day => (
                     <option key={day.value} value={day.value}>{day.label}</option>
@@ -139,11 +144,13 @@ const AvailabilityModal = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Start Time</label>
                 <select
                   value={newWeeklySlot.startTime}
                   onChange={(e) => setNewWeeklySlot({ ...newWeeklySlot, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 >
                   {timeOptions.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -151,11 +158,13 @@ const AvailabilityModal = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>End Time</label>
                 <select
                   value={newWeeklySlot.endTime}
                   onChange={(e) => setNewWeeklySlot({ ...newWeeklySlot, endTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 >
                   {timeOptions.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -165,7 +174,9 @@ const AvailabilityModal = ({
               <div className="flex items-end">
                 <button
                   onClick={addWeeklySlot}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  style={{ width: '100%', background: 'var(--primary-gradient)', color: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all var(--transition-normal)' }}
+                  onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add</span>
@@ -183,10 +194,10 @@ const AvailabilityModal = ({
                 />
               ))}
               {weeklySlots.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No weekly slots added</p>
-                  <p className="text-sm text-gray-400 mt-1">Add your regular working hours</p>
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                  <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)' }}>No weekly slots added</p>
+                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-light)', marginTop: '0.25rem' }}>Add your regular working hours</p>
                 </div>
               )}
             </div>
@@ -194,28 +205,32 @@ const AvailabilityModal = ({
 
           {/* Custom Availability */}
           <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock className="w-5 h-5 mr-2 text-green-600" />
+            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', marginBottom: '1rem' }} className="flex items-center">
+              <Clock className="w-5 h-5 mr-2 text-green-600" style={{ color: 'var(--success-color)' }} />
               Special Dates
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Date</label>
                 <input
                   type="date"
                   value={newCustomSlot.date}
                   onChange={(e) => setNewCustomSlot({ ...newCustomSlot, date: e.target.value })}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--success-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Start Time</label>
                 <select
                   value={newCustomSlot.startTime}
                   onChange={(e) => setNewCustomSlot({ ...newCustomSlot, startTime: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.5rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--success-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 >
                   {timeOptions.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -225,7 +240,9 @@ const AvailabilityModal = ({
               <div className="flex items-end">
                 <button
                   onClick={addCustomSlot}
-                  className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                  style={{ width: '100%', background: 'var(--success-gradient)', color: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all var(--transition-normal)' }}
+                  onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'var(--success-gradient)'}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add</span>
@@ -243,42 +260,50 @@ const AvailabilityModal = ({
                 />
               ))}
               {customSlots.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                  <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No special dates added</p>
-                  <p className="text-sm text-gray-400 mt-1">Add availability for specific dates</p>
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
+                  <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+                  <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)' }}>No special dates added</p>
+                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-light)', marginTop: '0.25rem' }}>Add availability for specific dates</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Emergency Slot */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <h4 className="text-lg font-semibold text-orange-900 mb-2 flex items-center">
-              <Clock className="w-5 h-5 mr-2 text-orange-600" />
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4" style={{ backgroundColor: 'var(--warning-light)', border: '1px solid var(--warning-200)', borderRadius: 'var(--radius-md)', padding: '1rem' }}>
+            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--warning-color)', marginBottom: '0.5rem' }} className="flex items-center">
+              <Clock className="w-5 h-5 mr-2 text-orange-600" style={{ color: 'var(--warning-color)' }} />
               Emergency Slot
             </h4>
-            <p className="text-orange-700 text-sm mb-4">
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--warning-color)', marginBottom: '1rem' }}>
               Create an emergency slot for urgent bookings. This will be visible to customers as available immediately.
             </p>
-            <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2">
+            <button style={{ background: 'var(--warning-color)', color: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.background = 'var(--warning-hover)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--warning-color)'}
+              className="flex items-center space-x-2"
+            >
               <Plus className="w-4 h-4" />
               <span>Create Emergency Slot</span>
             </button>
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl" style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-secondary)', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
           <div className="flex space-x-4">
             <button
               onClick={onClose}
-              className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+              style={{ flex: '1', backgroundColor: 'var(--surface-primary)', color: 'var(--text-color)', border: '2px solid var(--border-color)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-semibold)', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+              onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              style={{ flex: '1', background: 'var(--primary-gradient)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-semibold)', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
             >
               Save Availability
             </button>

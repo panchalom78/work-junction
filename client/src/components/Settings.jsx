@@ -3,14 +3,14 @@ import { Globe, Bell, Shield, CreditCard, User, Mail, Phone, MapPin } from 'luci
 
 const Settings = ({ language, onSetLanguage, languages }) => {
   const SettingSection = ({ title, icon: Icon, children, description }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
       <div className="flex items-center space-x-3 mb-4">
-        <div className="p-2 bg-blue-100 rounded-lg">
-          <Icon className="w-5 h-5 text-blue-600" />
+        <div className="p-2 bg-blue-100 rounded-lg" style={{ backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)' }}>
+          <Icon className="w-5 h-5 text-blue-600" style={{ color: 'var(--primary-color)' }} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', margin: '0' }}>{title}</h3>
+          {description && <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{description}</p>}
         </div>
       </div>
       {children}
@@ -20,19 +20,26 @@ const Settings = ({ language, onSetLanguage, languages }) => {
   const LanguageOption = ({ lang, isSelected, onClick }) => (
     <button
       onClick={() => onClick(lang.code)}
-      className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-        isSelected
-          ? 'border-blue-500 bg-blue-50'
-          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-      }`}
+      style={{
+        width: '100%',
+        padding: '1rem',
+        borderRadius: 'var(--radius-md)',
+        border: '2px solid',
+        borderColor: isSelected ? 'var(--primary-color)' : 'var(--border-color)',
+        backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--surface-primary)',
+        textAlign: 'left',
+        transition: 'all var(--transition-normal)'
+      }}
+      onMouseOver={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'; }}
+      onMouseOut={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-primary)'; }}
     >
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-semibold text-gray-900">{lang.name}</div>
-          <div className="text-sm text-gray-600 mt-1">{lang.native}</div>
+          <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)' }}>{lang.name}</div>
+          <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{lang.native}</div>
         </div>
         {isSelected && (
-          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--primary-color)' }}>
             <div className="w-2 h-2 bg-white rounded-full"></div>
           </div>
         )}
@@ -41,31 +48,50 @@ const Settings = ({ language, onSetLanguage, languages }) => {
   );
 
   const ToggleSwitch = ({ enabled, onChange, label, description }) => (
-    <div className="flex items-center justify-between py-3">
+    <div className="flex items-center justify-between py-3" style={{ padding: '0.75rem 0' }}>
       <div className="flex-1">
-        <label className="font-medium text-gray-900">{label}</label>
-        {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+        <label style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>{label}</label>
+        {description && <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{description}</p>}
       </div>
       <button
         onClick={() => onChange(!enabled)}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-          enabled ? 'bg-blue-600' : 'bg-gray-200'
-        }`}
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          height: '1.5rem',
+          width: '2.75rem',
+          flexShrink: '0',
+          cursor: 'pointer',
+          borderRadius: '9999px',
+          border: '2px solid transparent',
+          transition: 'background-color var(--transition-normal)',
+          backgroundColor: enabled ? 'var(--primary-color)' : 'var(--border-color)'
+        }}
+        onMouseOver={e => { if (!enabled) e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'; }}
+        onMouseOut={e => { if (!enabled) e.currentTarget.style.backgroundColor = 'var(--border-color)'; }}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-            enabled ? 'translate-x-5' : 'translate-x-0'
-          }`}
+          style={{
+            pointerEvents: 'none',
+            display: 'inline-block',
+            height: '1.25rem',
+            width: '1.25rem',
+            transform: enabled ? 'translateX(1.25rem)' : 'translateX(0)',
+            borderRadius: '9999px',
+            backgroundColor: 'white',
+            boxShadow: 'var(--shadow-sm)',
+            transition: 'transform var(--transition-normal)'
+          }}
         />
       </button>
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-        <p className="text-gray-600 mt-1">Manage your account preferences and settings</p>
+    <div className="space-y-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
+      <div style={{ padding: '1rem' }}>
+        <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)', margin: '0 0 0.25rem 0' }}>Settings</h2>
+        <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)', margin: '0' }}>Manage your account preferences and settings</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -130,39 +156,50 @@ const Settings = ({ language, onSetLanguage, languages }) => {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Full Name</label>
                 <input
                   type="text"
                   defaultValue="Rajesh Kumar"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Email</label>
                 <input
                   type="email"
                   defaultValue="rajesh.kumar@example.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Phone</label>
                 <input
                   type="tel"
                   defaultValue="+91 98765 43210"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Location</label>
                 <input
                   type="text"
                   defaultValue="Mumbai, Maharashtra"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
                 />
               </div>
             </div>
-            <button className="mt-4 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+            <button style={{ background: 'var(--primary-gradient)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', marginTop: '1rem', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
+            >
               Update Profile
             </button>
           </SettingSection>
@@ -176,17 +213,26 @@ const Settings = ({ language, onSetLanguage, languages }) => {
             description="Manage your account security settings"
           >
             <div className="space-y-3">
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="font-medium text-gray-900">Change Password</div>
-                <div className="text-sm text-gray-600 mt-1">Update your account password</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Change Password</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Update your account password</div>
               </button>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="font-medium text-gray-900">Two-Factor Authentication</div>
-                <div className="text-sm text-gray-600 mt-1">Add an extra layer of security</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Two-Factor Authentication</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Add an extra layer of security</div>
               </button>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="font-medium text-gray-900">Login Activity</div>
-                <div className="text-sm text-gray-600 mt-1">Review recent account activity</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Login Activity</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Review recent account activity</div>
               </button>
             </div>
           </SettingSection>
@@ -198,31 +244,43 @@ const Settings = ({ language, onSetLanguage, languages }) => {
             description="Manage how you receive payments"
           >
             <div className="space-y-3">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-medium text-gray-900">Primary Payment Method</div>
-                <div className="text-sm text-gray-600 mt-1">UPI: rajesh.kumar@okicici</div>
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--surface-secondary)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Primary Payment Method</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>UPI: rajesh.kumar@okicici</div>
               </div>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="font-medium text-gray-900">Add Bank Account</div>
-                <div className="text-sm text-gray-600 mt-1">Link your bank account for payouts</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Add Bank Account</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Link your bank account for payouts</div>
               </button>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="font-medium text-gray-900">Payout Schedule</div>
-                <div className="text-sm text-gray-600 mt-1">Set how often you receive payments</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Payout Schedule</div>
+                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Set how often you receive payments</div>
               </button>
             </div>
           </SettingSection>
 
           {/* Quick Actions */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h4 className="font-semibold text-blue-900 mb-2">Need Help?</h4>
-            <p className="text-blue-700 text-sm mb-4">Our support team is here to help you</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6" style={{ backgroundColor: 'var(--primary-light)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
+            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Need Help?</h4>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--primary-color)', marginBottom: '1rem' }}>Our support team is here to help you</p>
             <div className="space-y-2">
-              <button className="w-full text-left p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
-                <div className="font-medium text-blue-900">Contact Support</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', backgroundColor: 'var(--surface-primary)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-md)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--primary-color)' }}>Contact Support</div>
               </button>
-              <button className="w-full text-left p-3 bg-white rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
-                <div className="font-medium text-blue-900">View Help Center</div>
+              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', backgroundColor: 'var(--surface-primary)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-md)', transition: 'background-color var(--transition-normal)' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
+              >
+                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--primary-color)' }}>View Help Center</div>
               </button>
             </div>
           </div>

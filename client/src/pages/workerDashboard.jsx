@@ -16,7 +16,7 @@ const WorkerDashboard = () => {
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
 
-  // Mock data (same as before)
+  // Mock Data
   const workerData = {
     name: "Rajesh",
     earnings: "2,34,500",
@@ -33,34 +33,36 @@ const WorkerDashboard = () => {
   const [newService, setNewService] = useState([]);
   const [availabilityStatus, setAvailabilityStatus] = useState('available');
   const [language, setLanguage] = useState('English');
+
   const earningsData = [];
   const languages = [];
   const skills = [];
 
-  // Handler functions (same as before)
-  const handleAcceptBooking = (bookingId) => { };
-  const handleDeclineBooking = (bookingId) => {  };
-  const handleAddService = () => {  };
-  const handleDeleteService = (serviceId) => { };
-  const handleEditService = (service) => {  };
-  const handleImageUpload = (serviceName, files) => { };
-  const handleDeleteImage = (serviceName, imageId) => {  };
+  // Handlers
+  const handleAcceptBooking = (bookingId) => {};
+  const handleDeclineBooking = (bookingId) => {};
+  const handleAddService = () => {};
+  const handleDeleteService = (serviceId) => {};
+  const handleEditService = (service) => {};
+  const handleImageUpload = (serviceName, files) => {};
+  const handleDeleteImage = (serviceName, imageId) => {};
 
   return (
     <div className="min-h-screen bg-gray-50 lg:pl-64">
-      {/* Navigation */}
-      <WorkerNavbar 
+      {/* 🔹 Navigation */}
+      <WorkerNavbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
 
-      {/* Main Content */}
+      {/* 🔹 Main Content */}
       <main className="lg:ml-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          
           {activeTab === 'overview' && (
-            <Overview 
+            <Overview
               workerData={workerData}
               earningsData={earningsData}
               bookings={bookings}
@@ -70,7 +72,7 @@ const WorkerDashboard = () => {
           )}
 
           {activeTab === 'services' && (
-            <ServiceManagement 
+            <ServiceManagement
               services={services}
               onShowServiceModal={() => setShowServiceModal(true)}
               onEditService={handleEditService}
@@ -79,7 +81,7 @@ const WorkerDashboard = () => {
           )}
 
           {activeTab === 'bookings' && (
-            <BookingManagement 
+            <BookingManagement
               bookings={bookings}
               onAcceptBooking={handleAcceptBooking}
               onDeclineBooking={handleDeclineBooking}
@@ -87,7 +89,7 @@ const WorkerDashboard = () => {
           )}
 
           {activeTab === 'portfolio' && (
-            <PortfolioManagement 
+            <PortfolioManagement
               services={services}
               portfolio={portfolio}
               onShowPortfolioModal={() => setShowPortfolioModal(true)}
@@ -96,14 +98,14 @@ const WorkerDashboard = () => {
           )}
 
           {activeTab === 'availability' && (
-            <AvailabilityManagement 
+            <AvailabilityManagement
               availabilityStatus={availabilityStatus}
               onSetAvailabilityStatus={setAvailabilityStatus}
             />
           )}
 
           {activeTab === 'settings' && (
-            <Settings 
+            <Settings
               language={language}
               onSetLanguage={setLanguage}
               languages={languages}
@@ -112,9 +114,9 @@ const WorkerDashboard = () => {
         </div>
       </main>
 
-      
+      {/* 🔹 Modals */}
       {showServiceModal && (
-        <ServiceModal 
+        <ServiceModal
           editingService={editingService}
           newService={newService}
           setNewService={setNewService}
@@ -129,7 +131,7 @@ const WorkerDashboard = () => {
       )}
 
       {showPortfolioModal && (
-        <PortfolioModal 
+        <PortfolioModal
           services={services}
           portfolio={portfolio}
           onImageUpload={handleImageUpload}

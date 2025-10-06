@@ -10,37 +10,41 @@ const ServiceModal = ({
   onClose 
 }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="p-6 border-b border-gray-200" style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)' }}>
               {editingService ? 'Edit Service' : 'Add New Service'}
             </h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button onClick={onClose} style={{ color: 'var(--text-muted)', transition: 'color var(--transition-normal)' }} onMouseOver={e => e.currentTarget.style.color = 'var(--text-color)'} onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}>
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4" style={{ padding: '1.5rem' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Service Name</label>
+            <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Service Name</label>
             <input
               type="text"
               value={newService.name}
               onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
               placeholder="e.g., Tap Repair"
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Skill Category</label>
+            <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Skill Category</label>
             <select
               value={newService.skill}
               onChange={(e) => setNewService({ ...newService, skill: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
             >
               <option value="">Select a skill</option>
               {skills.map(skill => (
@@ -50,50 +54,60 @@ const ServiceModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹)</label>
+            <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Price (₹)</label>
             <input
               type="number"
               value={newService.price}
               onChange={(e) => setNewService({ ...newService, price: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
               placeholder="300"
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+            <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Duration</label>
             <input
               type="text"
               value={newService.duration}
               onChange={(e) => setNewService({ ...newService, duration: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
               placeholder="e.g., 1 hour"
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Description</label>
             <textarea
               value={newService.description}
               onChange={(e) => setNewService({ ...newService, description: e.target.value })}
               rows="3"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
               placeholder="Describe the service..."
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
             />
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl" style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-secondary)', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
           <div className="flex space-x-4">
             <button
               onClick={onClose}
-              className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+              style={{ flex: '1', backgroundColor: 'var(--surface-primary)', color: 'var(--text-color)', border: '2px solid var(--border-color)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-semibold)', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+              onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
             >
               Cancel
             </button>
             <button
               onClick={onAddService}
-              className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              style={{ flex: '1', background: 'var(--primary-gradient)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-semibold)', transition: 'all var(--transition-normal)' }}
+              onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
             >
               {editingService ? 'Update Service' : 'Add Service'}
             </button>

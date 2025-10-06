@@ -14,15 +14,15 @@ const Overview = ({
   const maxEarning = Math.max(...earningsData.map(item => item.amount));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
       {/* Welcome Section */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {workerData.name}</h1>
-        <p className="text-gray-600 mt-1">Here's your work overview for today.</p>
+      <div className="dashboard-header" style={{ backgroundColor: 'var(--surface-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', padding: '2rem', marginBottom: '1.5rem' }}>
+        <h1 className="dashboard-title" style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)', margin: '0 0 0.25rem 0', lineHeight: '1.2' }}>Welcome back, {workerData.name}</h1>
+        <p className="dashboard-subtitle" style={{ fontSize: 'var(--font-size-lg)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-regular)', margin: '0' }}>Here's your work overview for today.</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <StatsCard 
           icon={DollarSign} 
           label="Total Earnings" 
@@ -46,27 +46,27 @@ const Overview = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* Status Card */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="stat-card" style={{ backgroundColor: 'var(--surface-primary)', padding: '1.75rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)', transition: 'all var(--transition-normal)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Status</p>
+                <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>Status</p>
                 <div className="flex items-center space-x-2 mt-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-lg font-semibold text-gray-900">Available for work</span>
+                  <div className="w-2 h-2 bg-success-color rounded-full"></div>
+                  <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>Available for work</span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-600">Upcoming Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">{workerData.upcomingJobs}</p>
+                <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>Upcoming Jobs</p>
+                <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary-color)' }}>{workerData.upcomingJobs}</p>
               </div>
             </div>
           </div>
 
           {/* Earnings Chart */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Earnings Overview</h3>
-              <TrendingUp className="w-5 h-5 text-green-500" />
+          <div className="chart-container" style={{ backgroundColor: 'var(--surface-primary)', padding: '2rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+            <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h3 className="chart-title" style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', margin: '0' }}>Earnings Overview</h3>
+              <TrendingUp className="w-5 h-5 text-success-color" />
             </div>
             
             <div className="flex items-end justify-between h-48 mt-8">
@@ -75,13 +75,13 @@ const Overview = ({
                 return (
                   <div key={index} className="flex flex-col items-center flex-1">
                     <div className="text-center mb-2">
-                      <span className="text-sm font-medium text-gray-600">₹{(item.amount / 1000).toFixed(0)}k</span>
+                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>₹{(item.amount / 1000).toFixed(0)}k</span>
                     </div>
                     <div
-                      className="w-8 bg-blue-500 rounded-t-lg transition-all duration-300 hover:bg-blue-600"
+                      className="w-8 bg-primary-color rounded-t-lg transition-all duration-300 hover:bg-primary-hover cursor-pointer"
                       style={{ height: `${height}%` }}
                     ></div>
-                    <span className="text-xs text-gray-500 mt-2">{item.month}</span>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{item.month}</span>
                   </div>
                 );
               })}
@@ -91,55 +91,59 @@ const Overview = ({
 
         <div className="space-y-8">
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <QuickAction 
-                icon={Clock} 
-                label="Create Emergency Slot" 
-                onClick={() => onSetActiveTab('availability')}
-                color="orange"
-              />
-              <QuickAction 
-                icon={User} 
-                label="Update Work Profile" 
-                onClick={() => onSetActiveTab('services')}
-                color="blue"
-              />
-              <QuickAction 
-                icon={Plus} 
-                label="Add New Service" 
-                onClick={onShowServiceModal}
-                color="green"
-              />
+          <div className="card" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+            <div className="card-header" style={{ padding: '1rem' }}>
+              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', margin: '0' }}>Quick Actions</h3>
+            </div>
+            <div className="card-body" style={{ padding: '1rem' }}>
+              <div className="space-y-3">
+                <QuickAction 
+                  icon={Clock} 
+                  label="Create Emergency Slot" 
+                  onClick={() => onSetActiveTab('availability')}
+                  color="orange"
+                />
+                <QuickAction 
+                  icon={User} 
+                  label="Update Work Profile" 
+                  onClick={() => onSetActiveTab('services')}
+                  color="blue"
+                />
+                <QuickAction 
+                  icon={Plus} 
+                  label="Add New Service" 
+                  onClick={onShowServiceModal}
+                  color="green"
+                />
+              </div>
             </div>
           </div>
 
           {/* Recent Bookings */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Bookings</h3>
-            <div className="space-y-4">
-              {bookings.slice(0, 3).map((booking) => (
-                <div key={booking.id} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-gray-900">{booking.customer}</h4>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        booking.status === 'confirmed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                      </span>
+          <div className="card" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+            <div className="card-header" style={{ padding: '1rem' }}>
+              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', margin: '0' }}>Recent Bookings</h3>
+            </div>
+            <div className="card-body" style={{ padding: '1rem' }}>
+              <div className="space-y-4">
+                {bookings.slice(0, 3).map((booking) => (
+                  <div key={booking.id} className="flex items-start space-x-3 p-3 border border-border-color rounded-lg hover:bg-surface-secondary transition-colors" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
+                    <div className="w-10 h-10 bg-primary-light rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--primary-light)' }}>
+                      <User className="w-5 h-5 text-primary-color" style={{ color: 'var(--primary-color)' }} />
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{booking.service}</p>
-                    <p className="text-xs text-gray-500 mt-1">{booking.date}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>{booking.customer}</h4>
+                        <span className={`text-xs px-2 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-success-light text-success-color' : 'bg-warning-light text-warning-color'}`} style={{ backgroundColor: booking.status === 'confirmed' ? 'var(--success-light)' : 'var(--warning-light)', color: booking.status === 'confirmed' ? 'var(--success-color)' : 'var(--warning-color)' }}>
+                          {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{booking.service}</p>
+                      <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-light)', marginTop: '0.25rem' }}>{booking.date}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
