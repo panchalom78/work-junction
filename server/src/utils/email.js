@@ -1,16 +1,20 @@
 import { createTransport } from "nodemailer";
 
-/**
- * Create email transporter
- */
+
+
 const createTransporter = () => {
-    return createTransport({
-        host: process.env.EMAIL_HOST || "smtp.gmail.com",
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD, // App password for Gmail
-        },
-    });
+  return createTransport({
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port: 465,        // SSL port for Gmail
+    secure: true,     // true for port 465
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD, // Gmail App password
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
 };
 
 /**
@@ -23,6 +27,7 @@ const createTransporter = () => {
 const sendOTPEmail = async (email, otp, name, purpose = "REGISTRATION") => {
     try {
         const transporter = createTransporter();
+
 
         let subject, htmlContent;
 

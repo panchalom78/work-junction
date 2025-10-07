@@ -115,12 +115,35 @@ export const getWorkerServices = async (req, res) => {
   try {
     const workerId = req.user._id;
 
-    const services = await WorkerService.find({ workerId })
-      .populate("skillId", "name")   // Get skill name
-      .populate("workerId", "name")  // Get worker name
-      .lean();
+    // Get all worker services
+    const workerServices = await WorkerService.find({ workerId }).lean();
 
-    res.status(200).json(services);
+    // For each worker service, get the skill and service name
+    const servicesWithNames = await Promise.all(
+      workerServices.map(async (ws) => {
+        // Find the skill containing this service
+        const skill = await Skill.findOne({ "services.serviceId": ws.serviceId }).lean();
+
+        if (skill) {
+          // Find the service inside the skill
+          const service = skill.services.find(s => s.serviceId.toString() === ws.serviceId.toString());
+
+          return {
+            ...ws,
+            skillName: skill.name,
+            serviceName: service ? service.name : "Unknown Service",
+          };
+        } else {
+          return {
+            ...ws,
+            skillName: "Unknown Skill",
+            serviceName: "Unknown Service",
+          };
+        }
+      })
+    );
+
+    res.status(200).json(servicesWithNames);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

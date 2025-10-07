@@ -19,8 +19,8 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
         // Map backend data correctly
         const mappedServices = response.data.map(service => ({
           id: service._id, // WorkerService _id
-          name: service.serviceId?.name || 'Unnamed Service',
-          skill: service.skillId?.name || 'No Skill',
+          name: service.serviceName || 'Unnamed Service',
+          skill: service.skillName || 'No Skill',
           description: service.details || service.serviceId?.description || 'No description',
           price: service.price || 0,
           pricingType: service.pricingType || 'FIXED',
