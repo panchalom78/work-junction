@@ -6,6 +6,8 @@ import OTPVerificationPage from "../pages/otpVerifaction";
 import WorkerVerificationPage from "../pages/workerVerificationPage";
 import WorkerDashboard from "../pages/workerDashboard";
 import WorkJunctionLanding from "../pages/WorkJunctionLanding";
+import AdminDashboard from "../pages/AdminDashboard";
+import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customer";
 
 
@@ -21,6 +23,8 @@ const Routers = () => {
                     <Route path="/otpVerifaction" element={<OTPVerificationPage />} />
                     <Route path="/verification" element={<WorkerVerificationPage />} />
                     <Route path="/workerDashboard" element={<WorkerDashboard />} />
+                    <Route path="/adminDashboard" element={<AdminDashboard />} />
+                    <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
                     <Route path= "/customerDashboard" element={<CustomerDashboard/>}></Route>
                 </Routes>
             </Router>
