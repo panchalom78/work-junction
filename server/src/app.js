@@ -7,6 +7,7 @@ config();
 import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
+import workerRoutes from "./routes/worker.route.js";
 
 const app = express();
 
@@ -19,7 +20,7 @@ app.use(cookieParser());
 app.use((req, res, next) => {
     res.header(
         "Access-Control-Allow-Origin",
-        process.env.CLIENT_URL || "http://localhost:3000"
+        process.env.CLIENT_URL || "http://localhost:5173"
     );
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
@@ -44,6 +45,7 @@ connect(process.env.MONGODB_URI)
 app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
+app.use("/api/worker", workerRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {

@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-// models/User.js
+
 
 // Address Schema (Nested)
 const addressSchema = new Schema(
