@@ -17,6 +17,10 @@ const skillSchema = new Schema(
                 },
                 name: { type: String, required: true, trim: true },
                 description: { type: String, trim: true },
+                price : { type: Number, default: 0 },
+                duration : { type: String, default: 'N/A' },
+                createdAt: { type: Date, default: Date.now },
+                updatedAt: { type: Date, default: Date.now }
             },
         ],
     },
