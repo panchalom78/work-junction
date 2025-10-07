@@ -259,7 +259,7 @@ const LoginPage = () => {
                                     <button
                                         className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
                                         onClick={() =>
-                                            (window.location.href = "/register")
+                                            (window.location.href = "/signup")
                                         }
                                     >
                                         Register Now
