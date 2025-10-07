@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import lottie from "lottie-web";
 import {
@@ -33,6 +34,7 @@ const RegisterPage = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const navigate = useNavigate();
     const lottieRef = useRef(null);
     const loadingRef = useRef(null);
 
@@ -134,6 +136,7 @@ const RegisterPage = () => {
         setIsLoading(false);
 
         if (res.success) {
+            navigate("/otpVerifaction")
             setCurrentStep(3);
         } else {
             setErrors((prev) => ({

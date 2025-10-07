@@ -68,4 +68,32 @@ export const useAuthStore = create((set) => ({
             return { success: false };
         }
     },
+    verifyOTP: async ({ otp, email }) => {
+    try {
+      set({ loading: true, error: null, message: null });
+
+      const res = await axiosInstance.post("/api/otp/verify", { otp, email });
+
+      if (res.data.success) {
+        set({
+          loading: false,
+          message: res.data.message || "OTP verified successfully",
+        });
+        return { success: true };
+      } else {
+        set({
+          loading: false,
+          error: res.data.message || "OTP verification failed",
+        });
+        return { success: false };
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      set({
+        loading: false,
+        error: err.response?.data?.message || "OTP verification failed",
+      });
+      return { success: false };
+    }
+  },
 }));

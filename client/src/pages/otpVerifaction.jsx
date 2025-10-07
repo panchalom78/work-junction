@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Lottie from 'lottie-react';
+import { useAuthStore } from "../store/auth.store.js";
+import { useNavigate } from "react-router-dom";
+
 
 import {
   FiMail,
@@ -12,6 +15,7 @@ import {
 
 // ✅ Import your Lottie animation
 import otpVerificationAnim from '../assets/tool.json'
+import axios from 'axios';
 
 const OTPVerificationPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -19,14 +23,16 @@ const OTPVerificationPage = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
+  const navigate = useNavigate();
+  const verifyOTP = useAuthStore((state) => state.verifyOTP);
   const inputRefs = useRef([]);
+  const user = useAuthStore((state) => state.user);
 
   // Mock email/phone - you can pass this as props
   const contactInfo = {
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    type: 'email' // or 'phone'
-  };
+    type: 'email', // or 'phone'
+    email: user?.email || ''
+  }
 
   useEffect(() => {
     let timer;
@@ -79,7 +85,7 @@ const OTPVerificationPage = () => {
     }
   };
 
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault();
     const otpString = otp.join('');
     
@@ -87,15 +93,22 @@ const OTPVerificationPage = () => {
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate API verification
-    setTimeout(() => {
-      setIsLoading(false);
+    const result = await verifyOTP({ otp: otpString, email: contactInfo.email });
+
+    setIsLoading(false);
+
+    if (result.success) {
       setIsVerified(true);
-      // In real app, you'd verify the OTP with your backend
-      console.log('Verifying OTP:', otpString);
-    }, 1500);
+
+      setTimeout(() => {
+        navigate("/verification");
+      }, 1000);
+    } else {
+      alert("OTP verification failed");
+    }
+
+
+    
   };
 
   const handleResendOTP = () => {
@@ -109,6 +122,7 @@ const OTPVerificationPage = () => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
+
 
     // Simulate resend API call
     console.log('Resending OTP...');
