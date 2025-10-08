@@ -24,7 +24,7 @@ export const useAuthStore = create((set) => ({
                 loading: false,
             });
 
-            return { success: true, data: res.data };
+            return { success: true, user: res.data?.data?.user || null };
         } catch (err) {
             console.error("Register API error:", err);
             set({
@@ -53,7 +53,7 @@ export const useAuthStore = create((set) => ({
                 loading: false,
             });
 
-            return { success: true, data: res.data };
+            return { success: true, user: res.data?.data || null };
         } catch (err) {
             console.error("Login API error:", err);
 
@@ -69,31 +69,86 @@ export const useAuthStore = create((set) => ({
         }
     },
     verifyOTP: async ({ otp, email }) => {
-    try {
-      set({ loading: true, error: null, message: null });
+        try {
+            set({ loading: true, error: null, message: null });
 
-      const res = await axiosInstance.post("/api/otp/verify", { otp, email });
+            const res = await axiosInstance.post("/api/otp/verify", {
+                otp,
+                email,
+            });
 
-      if (res.data.success) {
-        set({
-          loading: false,
-          message: res.data.message || "OTP verified successfully",
-        });
-        return { success: true };
-      } else {
-        set({
-          loading: false,
-          error: res.data.message || "OTP verification failed",
-        });
-        return { success: false };
-      }
-    } catch (err) {
-      console.error("OTP verification error:", err);
-      set({
-        loading: false,
-        error: err.response?.data?.message || "OTP verification failed",
-      });
-      return { success: false };
-    }
-  },
+            if (res.data.success) {
+                set({
+                    loading: false,
+                    message: res.data.message || "OTP verified successfully",
+                });
+                return { success: true };
+            } else {
+                set({
+                    loading: false,
+                    error: res.data.message || "OTP verification failed",
+                });
+                return { success: false };
+            }
+        } catch (err) {
+            console.error("OTP verification error:", err);
+            set({
+                loading: false,
+                error: err.response?.data?.message || "OTP verification failed",
+            });
+            return { success: false };
+        }
+    },
+    resendOTP: async (email) => {
+        try {
+            set({ loading: true, error: null, message: null });
+
+            const res = await axiosInstance.post("/api/otp/resend", { email });
+
+            if (res.data.success) {
+                set({
+                    loading: false,
+                    message: res.data.message || "OTP resent successfully",
+                });
+                return { success: true };
+            } else {
+                set({
+                    loading: false,
+                    error: res.data.message || "Failed to resend OTP",
+                });
+                return { success: false };
+            }
+        } catch (err) {
+            console.error("Resend OTP API error:", err);
+            set({
+                loading: false,
+                error: err.response?.data?.message || "Failed to resend OTP",
+            });
+            return { success: false };
+        }
+    },
+    getUser: async () => {
+        try {
+            set({ loading: true, error: null, message: null });
+
+            const res = await axiosInstance.get("/api/auth/me", {
+                withCredentials: true, // to include JWT cookie if used
+            });
+
+            set({
+                user: res.data?.data || null,
+                message: res.data?.message || "User fetched successfully",
+                loading: false,
+            });
+
+            return { success: true, user: res.data?.data || null };
+        } catch (err) {
+            console.error("Get user API error:", err);
+            set({
+                loading: false,
+                error: err.response?.data?.message || "Failed to fetch user",
+            });
+            return { success: false };
+        }
+    },
 }));
