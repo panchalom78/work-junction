@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
+import { useEffect } from "react";
+
 import {
   Search,
   SlidersHorizontal,
@@ -6,24 +8,62 @@ import {
   X,
   User,
   Calendar,
+  Link,
 } from "lucide-react";
+import { useCustomerStore } from "../store/customer.store";
+
+// Temporary debug component - remove after fixing
+const DebugPanel = () => {
+  const [result, setResult] = React.useState(null);
+  
+  const testSearch = async () => {
+    try {
+      const response = await fetch('/api/customer/search', { credentials: 'include' });
+      const data = await response.json();
+      setResult({ status: response.status, data });
+    } catch (error) {
+      setResult({ error: error.message });
+    }
+  };
+
+  return (
+    <div className="fixed bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg border max-w-sm z-50">
+      <button onClick={testSearch} className="px-3 py-1 bg-blue-500 text-white rounded text-xs mb-2">
+        Test API
+      </button>
+      {result && (
+        <pre className="text-xs overflow-auto max-h-40 bg-gray-100 p-2 rounded">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+};
 
 const CustomerDashboard = () => {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Services");
-  const [filters, setFilters] = useState({
-    skill: "",
-    service: "",
-    priceMin: "",
-    priceMax: "",
-    ratingMin: "",
-    ratingMax: "",
-    location: "",
-    workerName: "",
-    workerPhone: "",
-    sortBy: "",
-  });
+  const {
+    isFilterOpen,
+    setFilterOpen,
+    searchQuery,
+    setFilter,
+    selectedCategory,
+    setSelectedCategory,
+    filters,
+    clearFilters,
+    workers,
+    searchServices,
+    loading,
+    error,
+  } = useCustomerStore();
+
+  useEffect(() => {
+    searchServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  console.log("Workers from store:", workers);
+  console.log("Loading:", loading);
+  console.log("Error:", error);
 
   const categories = [
     { name: "All Services", icon: "🔧" },
@@ -35,88 +75,32 @@ const CustomerDashboard = () => {
     { name: "Cleaners", icon: "🧹" },
   ];
 
-  const workers = [
-    {
-      id: 1,
-      name: "Rajesh Kumar",
-      title: "Master Carpenter",
-      rating: 4.9,
-      reviews: 156,
-      experience: "10+ years",
-      description:
-        "Specialized in custom furniture and home renovation with 100+ satisfied clients.",
-      image: "https://i.pravatar.cc/150?img=12",
-      price: "Premium",
-      available: true,
-      category: "Carpenters",
-      location: "Vadodara",
-      phone: "9876543210",
-    },
-    {
-      id: 2,
-      name: "Vikram Singh",
-      title: "Electrical Engineer",
-      rating: 4.8,
-      reviews: 142,
-      experience: "8+ years",
-      description:
-        "Expert in home wiring, switchboard repairs and smart home installations.",
-      image: "https://i.pravatar.cc/150?img=33",
-      price: "Mid-Range",
-      available: true,
-      category: "Electricians",
-      location: "Ahmedabad",
-      phone: "9876501234",
-    },
-    // ... other workers remain the same
-  ];
-
   const toggleFilter = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const clearAllFilters = () => {
-    setFilters({
-      skill: "",
-      service: "",
-      priceMin: "",
-      priceMax: "",
-      ratingMin: "",
-      ratingMax: "",
-      location: "",
-      workerName: "",
-      workerPhone: "",
-      sortBy: "",
-    });
+    setFilter(key, value);
   };
 
   const getFilteredWorkers = () => {
     return workers
       .filter((worker) => {
-        // Skill / Service
         if (filters.skill && worker.category !== filters.skill) return false;
         if (
           filters.service &&
-          !worker.title.toLowerCase().includes(filters.service.toLowerCase())
+          !worker.title?.toLowerCase().includes(filters.service.toLowerCase())
         )
           return false;
-
-        // Worker Name / Phone
         if (
           filters.workerName &&
-          !worker.name.toLowerCase().includes(filters.workerName.toLowerCase())
+          !worker.name?.toLowerCase().includes(filters.workerName.toLowerCase())
         )
           return false;
-        if (filters.workerPhone && !worker.phone.includes(filters.workerPhone))
+        if (filters.workerPhone && !worker.phone?.includes(filters.workerPhone))
           return false;
 
-        // Rating
         if (filters.ratingMin && worker.rating < Number(filters.ratingMin))
           return false;
         if (filters.ratingMax && worker.rating > Number(filters.ratingMax))
           return false;
 
-        // Price (assume Budget=1, Mid-Range=2, Premium=3 for comparison)
         const priceMap = { Budget: 1, "Mid-Range": 2, Premium: 3 };
         if (
           filters.priceMin &&
@@ -129,16 +113,14 @@ const CustomerDashboard = () => {
         )
           return false;
 
-        // Location
         if (
           filters.location &&
           !worker.location
-            .toLowerCase()
+            ?.toLowerCase()
             .includes(filters.location.toLowerCase())
         )
           return false;
 
-        // Category selection
         if (
           selectedCategory !== "All Services" &&
           worker.category !== selectedCategory
@@ -156,7 +138,7 @@ const CustomerDashboard = () => {
           case "name":
             return a.name.localeCompare(b.name);
           default:
-            return 0; // default relevance
+            return 0;
         }
       });
   };
@@ -176,7 +158,7 @@ const CustomerDashboard = () => {
             <div className="flex items-center gap-6">
               <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
                 <User size={20} />
-                <span className="hidden sm:inline">Profile</span>
+                <Link path="/debugpage" className="hidden sm:inline">Profile</Link>
               </button>
               <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
                 <Calendar size={20} />
@@ -207,11 +189,14 @@ const CustomerDashboard = () => {
                 type="text"
                 placeholder="What service are you looking for?"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setFilter("service", e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
-            <button className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium">
+            <button
+              onClick={searchServices}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium"
+            >
               Search
             </button>
           </div>
@@ -254,7 +239,7 @@ const CustomerDashboard = () => {
             </p>
           </div>
           <button
-            onClick={() => setIsFilterOpen(true)}
+            onClick={() => setFilterOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
           >
             <SlidersHorizontal size={20} />
@@ -267,82 +252,108 @@ const CustomerDashboard = () => {
           </button>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <p className="font-medium">Error loading workers:</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && filteredWorkers.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No professionals found</p>
+            <p className="text-gray-400 text-sm mt-2">
+              Try adjusting your search or filters
+            </p>
+          </div>
+        )}
+
         {/* Workers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredWorkers.map((worker) => (
-            <div
-              key={worker.id}
-              className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-6"
-            >
-              <div className="flex items-start gap-4 mb-4">
-                <img
-                  src={worker.image}
-                  alt={worker.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-                <div className="flex-1">
-                  <h4 className="font-bold text-lg text-gray-900">
-                    {worker.name}
-                  </h4>
-                  <p className="text-purple-600 text-sm font-medium">
-                    {worker.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex items-center gap-1">
-                      <Star
-                        size={16}
-                        className="fill-yellow-400 text-yellow-400"
-                      />
-                      <span className="font-semibold text-sm">
-                        {worker.rating}
+        {!loading && !error && filteredWorkers.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorkers.map((worker) => (
+              <div
+                key={worker.id || worker._id}
+                className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-6"
+              >
+                <div className="flex items-start gap-4 mb-4">
+                  <img
+                    src={worker.image || "https://i.pravatar.cc/150"}
+                    alt={worker.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-bold text-lg text-gray-900">
+                      {worker.name}
+                    </h4>
+                    <p className="text-purple-600 text-sm font-medium">
+                      {worker.title || "Professional"}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Star
+                          size={16}
+                          className="fill-yellow-400 text-yellow-400"
+                        />
+                        <span className="font-semibold text-sm">
+                          {worker.rating || "N/A"}
+                        </span>
+                      </div>
+                      <span className="text-gray-400 text-sm">•</span>
+                      <span className="text-gray-600 text-sm">
+                        {worker.reviews || 0} reviews
                       </span>
                     </div>
-                    <span className="text-gray-400 text-sm">•</span>
-                    <span className="text-gray-600 text-sm">
-                      {worker.reviews} reviews
-                    </span>
                   </div>
                 </div>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                  {worker.description ||
+                    "Trusted professional ready to help with your needs."}
+                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-medium text-gray-500">
+                    Experience: {worker.experience || "N/A"}
+                  </span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      worker.available
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {worker.available ? "Available" : "Busy"}
+                  </span>
+                </div>
+                <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium">
+                  View Profile
+                </button>
               </div>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                {worker.description}
-              </p>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium text-gray-500">
-                  Experience: {worker.experience}
-                </span>
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${
-                    worker.available
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {worker.available ? "Available" : "Busy"}
-                </span>
-              </div>
-              <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium">
-                View Profile
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filter Sidebar */}
       {isFilterOpen && (
         <>
-          {/* Dim background */}
           <div
-            className={`fixed top-0 right-0 w-80 h-full bg-white shadow-2xl transform transition-transform duration-300 z-50 ${
-              isFilterOpen ? "translate-x-0" : "translate-x-full"
-            }`}
-          />
+            onClick={() => setFilterOpen(false)}
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          ></div>
           <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-white z-50 shadow-2xl overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900">Filters</h3>
               <button
-                onClick={() => setIsFilterOpen(false)}
+                onClick={() => setFilterOpen(false)}
                 className="p-2 hover:bg-gray-100 rounded-full transition"
               >
                 <X size={24} />
@@ -377,9 +388,7 @@ const CustomerDashboard = () => {
               {/* Price Range */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Min Price
-                  </h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Min Price</h4>
                   <input
                     type="number"
                     placeholder="0"
@@ -389,9 +398,7 @@ const CustomerDashboard = () => {
                   />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Max Price
-                  </h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Max Price</h4>
                   <input
                     type="number"
                     placeholder="1000"
@@ -405,9 +412,7 @@ const CustomerDashboard = () => {
               {/* Rating Range */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Min Rating
-                  </h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Min Rating</h4>
                   <input
                     type="number"
                     min="0"
@@ -420,9 +425,7 @@ const CustomerDashboard = () => {
                   />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">
-                    Max Rating
-                  </h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Max Rating</h4>
                   <input
                     type="number"
                     min="0"
@@ -450,9 +453,7 @@ const CustomerDashboard = () => {
 
               {/* Worker Name */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">
-                  Worker Name
-                </h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Worker Name</h4>
                 <input
                   type="text"
                   placeholder="Search by name"
@@ -464,9 +465,7 @@ const CustomerDashboard = () => {
 
               {/* Worker Phone */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">
-                  Worker Phone
-                </h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Worker Phone</h4>
                 <input
                   type="text"
                   placeholder="Search by phone"
@@ -495,13 +494,13 @@ const CustomerDashboard = () => {
             {/* Filter Actions */}
             <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex gap-3">
               <button
-                onClick={clearAllFilters}
+                onClick={clearFilters}
                 className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
               >
                 Clear All
               </button>
               <button
-                onClick={() => setIsFilterOpen(false)}
+                onClick={() => setFilterOpen(false)}
                 className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium"
               >
                 Apply Filters

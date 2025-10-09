@@ -41,7 +41,7 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const lottieRef = useRef(null);
   const loadingRef = useRef(null);
-
+  const user = useAuthStore((state) => state.user);
   const { register, loading, error, message } = useAuthStore();
 
   const roles = [
@@ -141,7 +141,10 @@ const RegisterPage = () => {
 
     if (res.success) {
       toast.success("Account created successfully! 🎉");
+      if(user?.role === "WORKER")
       navigate("/otpVerifaction");
+      else  
+        navigate("/customer/dashboard")
       setCurrentStep(3);
     } else {
       toast.error(res.message || "Registration failed. Try again.");

@@ -2,6 +2,7 @@ import express, { json, urlencoded } from "express";
 import { connect } from "mongoose";
 import cookieParser from "cookie-parser";
 import { config } from "dotenv";
+import customerRoutes from "./routes/customer.routes.js";
 
 config();
 import authRoutes from "./routes/auth.route.js";
@@ -49,6 +50,7 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
 app.use("/api/skill", skillRoutes);
+app.use("/api/customer", customerRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {
