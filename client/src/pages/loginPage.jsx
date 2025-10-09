@@ -18,7 +18,7 @@ const LoginPage = () => {
 
     const lottieRef = useRef(null);
     const loadingRef = useRef(null);
-    const { login } = useAuthStore();
+    const { login, getUser } = useAuthStore();
 
     // Hero Lottie animation
     useEffect(() => {
@@ -34,6 +34,33 @@ const LoginPage = () => {
         }
     }, []);
 
+    useEffect(() => {
+        const navigateUser = async () => {
+            const response = await getUser();
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.status == "APPROVED"
+                        ) {
+                            navigate("/worker/dashboard");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "CUSTOMER") {
+                        navigate("/customer/dashboard");
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            }
+        };
+        navigateUser();
+    }, []);
     // Loading spinner animation
     useEffect(() => {
         if (isLoading && loadingRef.current) {
