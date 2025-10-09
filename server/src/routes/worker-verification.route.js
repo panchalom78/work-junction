@@ -29,6 +29,7 @@ import {
     uploadAadhar as multerAadhar,
     uploadPoliceVerification as multerPolice,
     uploadVerificationDoc,
+    uploadPortfolio,
 } from "../config/cloudinary.js";
 
 // Worker routes - upload documents

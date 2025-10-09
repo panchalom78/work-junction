@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import axiosInstance from "../utils/axiosInstance";
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
     user: null,
     loading: false,
     error: null,
@@ -129,10 +129,17 @@ export const useAuthStore = create((set) => ({
     },
     getUser: async () => {
         try {
+            // ✅ If user data already exists in store, return it immediately
+            const currentUser = get().user;
+            if (currentUser) {
+                return { success: true, user: currentUser, cached: true };
+            }
+
+            // Otherwise, fetch from API
             set({ loading: true, error: null, message: null });
 
             const res = await axiosInstance.get("/api/auth/me", {
-                withCredentials: true, // to include JWT cookie if used
+                withCredentials: true, // include cookie if JWT is stored as cookie
             });
 
             set({
@@ -141,7 +148,11 @@ export const useAuthStore = create((set) => ({
                 loading: false,
             });
 
-            return { success: true, user: res.data?.data || null };
+            return {
+                success: true,
+                user: res.data?.data || null,
+                cached: false,
+            };
         } catch (err) {
             console.error("Get user API error:", err);
             set({

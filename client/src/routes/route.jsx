@@ -20,11 +20,11 @@ const Routers = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Register />} />
                     <Route
-                        path="/otpVerifaction"
+                        path="/otpVerification"
                         element={<OTPVerificationPage />}
                     />
                     <Route
-                        path="/verification"
+                        path="/worker/verification"
                         element={<WorkerVerificationPage />}
                     />
                     <Route
