@@ -14,7 +14,7 @@ import workerRoutes from "./routes/worker.route.js";
 import skillRoutes from "./routes/skill.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
 import workerScheduleRoutes from "./routes/worker-schedule.route.js";
-
+import bookingRoutes from "./routes/booking.route.js";
 const app = express();
 
 // Middleware
@@ -58,6 +58,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/worker/services", workerServiceRoutes);
 app.use("/api/workers/", workerScheduleRoutes);
+app.use("/api/bookings",bookingRoutes)
 
 // Health check route
 app.get("/health", (req, res) => {

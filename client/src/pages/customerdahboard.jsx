@@ -1,6 +1,6 @@
-import React from "react";
-import { useEffect } from "react";
-
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Servicebooking from "./servicebooking";
 import {
   Search,
   SlidersHorizontal,
@@ -8,37 +8,8 @@ import {
   X,
   User,
   Calendar,
-  Link,
 } from "lucide-react";
 import { useCustomerStore } from "../store/customer.store";
-
-// Temporary debug component - remove after fixing
-const DebugPanel = () => {
-  const [result, setResult] = React.useState(null);
-  
-  const testSearch = async () => {
-    try {
-      const response = await fetch('/api/customer/search', { credentials: 'include' });
-      const data = await response.json();
-      setResult({ status: response.status, data });
-    } catch (error) {
-      setResult({ error: error.message });
-    }
-  };
-
-  return (
-    <div className="fixed bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg border max-w-sm z-50">
-      <button onClick={testSearch} className="px-3 py-1 bg-blue-500 text-white rounded text-xs mb-2">
-        Test API
-      </button>
-      {result && (
-        <pre className="text-xs overflow-auto max-h-40 bg-gray-100 p-2 rounded">
-          {JSON.stringify(result, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-};
 
 const CustomerDashboard = () => {
   const {
@@ -56,14 +27,12 @@ const CustomerDashboard = () => {
     error,
   } = useCustomerStore();
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     searchServices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  console.log("Workers from store:", workers);
-  console.log("Loading:", loading);
-  console.log("Error:", error);
 
   const categories = [
     { name: "All Services", icon: "🔧" },
@@ -82,17 +51,35 @@ const CustomerDashboard = () => {
   const getFilteredWorkers = () => {
     return workers
       .filter((worker) => {
+        if (selectedCategory !== "All Services") {
+          const categoryMap = {
+            Carpenters: "Carpenter",
+            Painters: "Painter",
+            Electricians: "Electrician",
+            Movers: "Mover",
+            Plumbers: "Plumber",
+            Cleaners: "Cleaner",
+          };
+          const expectedSkill = categoryMap[selectedCategory];
+          if (expectedSkill && worker.category !== expectedSkill) {
+            return false;
+          }
+        }
+
         if (filters.skill && worker.category !== filters.skill) return false;
+
         if (
           filters.service &&
           !worker.title?.toLowerCase().includes(filters.service.toLowerCase())
         )
           return false;
+
         if (
           filters.workerName &&
           !worker.name?.toLowerCase().includes(filters.workerName.toLowerCase())
         )
           return false;
+
         if (filters.workerPhone && !worker.phone?.includes(filters.workerPhone))
           return false;
 
@@ -101,16 +88,9 @@ const CustomerDashboard = () => {
         if (filters.ratingMax && worker.rating > Number(filters.ratingMax))
           return false;
 
-        const priceMap = { Budget: 1, "Mid-Range": 2, Premium: 3 };
-        if (
-          filters.priceMin &&
-          priceMap[worker.price] < Number(filters.priceMin)
-        )
+        if (filters.priceMin && worker.priceAmount < Number(filters.priceMin))
           return false;
-        if (
-          filters.priceMax &&
-          priceMap[worker.price] > Number(filters.priceMax)
-        )
+        if (filters.priceMax && worker.priceAmount > Number(filters.priceMax))
           return false;
 
         if (
@@ -121,12 +101,6 @@ const CustomerDashboard = () => {
         )
           return false;
 
-        if (
-          selectedCategory !== "All Services" &&
-          worker.category !== selectedCategory
-        )
-          return false;
-
         return true;
       })
       .sort((a, b) => {
@@ -134,7 +108,7 @@ const CustomerDashboard = () => {
           case "rating":
             return b.rating - a.rating;
           case "price":
-            return a.price.localeCompare(b.price);
+            return (a.priceAmount || 0) - (b.priceAmount || 0);
           case "name":
             return a.name.localeCompare(b.name);
           default:
@@ -145,6 +119,10 @@ const CustomerDashboard = () => {
 
   const filteredWorkers = getFilteredWorkers();
   const activeFilterCount = Object.values(filters).filter((v) => v).length;
+
+  const handleBookingClick = (workerId) => {
+    navigate(`/servicebooking/${workerId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,7 +136,7 @@ const CustomerDashboard = () => {
             <div className="flex items-center gap-6">
               <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
                 <User size={20} />
-                <Link path="/debugpage" className="hidden sm:inline">Profile</Link>
+                <span className="hidden sm:inline">Profile</span>
               </button>
               <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
                 <Calendar size={20} />
@@ -333,7 +311,11 @@ const CustomerDashboard = () => {
                     {worker.available ? "Available" : "Busy"}
                   </span>
                 </div>
-                <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium">
+                {/* ✅ Corrected navigation */}
+                <button
+                  onClick={() => handleBookingClick(worker.id || worker._id)}
+                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium"
+                >
                   View Profile
                 </button>
               </div>
@@ -453,7 +435,9 @@ const CustomerDashboard = () => {
 
               {/* Worker Name */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Worker Name</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  Worker Name
+                </h4>
                 <input
                   type="text"
                   placeholder="Search by name"
@@ -465,7 +449,9 @@ const CustomerDashboard = () => {
 
               {/* Worker Phone */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Worker Phone</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  Worker Phone
+                </h4>
                 <input
                   type="text"
                   placeholder="Search by phone"
@@ -495,13 +481,13 @@ const CustomerDashboard = () => {
             <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex gap-3">
               <button
                 onClick={clearFilters}
-                className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
               >
                 Clear All
               </button>
               <button
                 onClick={() => setFilterOpen(false)}
-                className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-medium"
+                className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 font-medium"
               >
                 Apply Filters
               </button>

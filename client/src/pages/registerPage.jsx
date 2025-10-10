@@ -141,7 +141,7 @@ const RegisterPage = () => {
 
         if (res.success) {
             toast.success("Account created successfully! 🎉");
-            navigate("/otpVerifaction");
+            navigate("/otpVerification");
             setCurrentStep(3);
         } else {
             toast.error(res.message || "Registration failed. Try again.");

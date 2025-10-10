@@ -9,8 +9,7 @@ import WorkJunctionLanding from "../pages/WorkJunctionLanding";
 import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customerdahboard";
-import Debugpage from "../pages/debugpage";
-
+import ServiceBooking from "../pages/servicebooking";
 const Routers = () => {
     return (
         <div>
@@ -45,8 +44,10 @@ const Routers = () => {
                     ></Route>
 
                     <Route
-                        path="/debugpage"
-                        element={<Debugpage/>}></Route>
+                        path="/servicebooking/:id"
+                        element={<ServiceBooking/>}>
+                    </Route>
+                   
                 </Routes>
             </Router>
         </div>

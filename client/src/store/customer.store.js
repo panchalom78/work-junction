@@ -1,203 +1,209 @@
 import { create } from "zustand";
 
 export const useCustomerStore = create((set, get) => ({
-  isFilterOpen: false,
-  searchQuery: "",
-  selectedCategory: "All Services",
-
-  filters: {
-    skill: "",
-    service: "",
-    priceMin: "",
-    priceMax: "",
-    ratingMin: "",
-    ratingMax: "",
-    location: "",
-    workerName: "",
-    workerPhone: "",
-    sortBy: "",
-    page: 1,
-    limit: 10,
-  },
-
   workers: [],
-  pagination: {
-    currentPage: 1,
-    totalPages: 0,
-    totalResults: 0,
-    resultsPerPage: 10,
-  },
-  bookings: [],
-  chats: [],
-  language: "en",
-  loading: false,
-  error: null,
+    selectedWorker: null,
+    loading: false,
+    error: null,
+    isFilterOpen: false,
+    selectedCategory: "All Services",
+    searchQuery: "",
 
-  setFilterOpen: (open) => set({ isFilterOpen: open }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setSelectedCategory: (cat) => {
-    set({ selectedCategory: cat });
-    const skillMap = {
-      "All Services": "",
-      "Carpenters": "Carpenter",
-      "Painters": "Painter",
-      "Electricians": "Electrician",
-      "Movers": "Mover",
-      "Plumbers": "Plumber",
-      "Cleaners": "Cleaner",
-    };
-    get().setFilter("skill", skillMap[cat] || "");
-    get().searchServices();
-  },
-  setFilter: (key, value) => {
-    set((state) => ({ filters: { ...state.filters, [key]: value, page: 1 } }));
-  },
-  clearFilters: () => {
-    set({
-      filters: {
+    // Filters
+    filters: {
         skill: "",
         service: "",
-        priceMin: "",
-        priceMax: "",
-        ratingMin: "",
-        ratingMax: "",
-        location: "",
         workerName: "",
         workerPhone: "",
+        ratingMin: "",
+        ratingMax: "",
+        priceMin: "",
+        priceMax: "",
+        location: "",
         sortBy: "",
-        page: 1,
-        limit: 10,
-      },
-      selectedCategory: "All Services",
-    });
-    get().searchServices();
-  },
+    },
 
-  searchServices: async () => {
-    const { filters } = get();
-    set({ loading: true, error: null });
+    // Actions
+    setFilterOpen: (isOpen) => set({ isFilterOpen: isOpen }),
 
-    try {
-      const filterMap = {
-        skill: "skill",
-        service: "service",
-        priceMin: "minPrice",
-        priceMax: "maxPrice",
-        ratingMin: "minRating",
-        ratingMax: "maxRating",
-        location: "city",
-        workerName: "workerName",
-        workerPhone: "workerPhone",
-        sortBy: "sortBy",
-        page: "page",
-        limit: "limit",
-      };
+    setSelectedCategory: (category) => {
+        set({ selectedCategory: category });
+        // Auto-trigger search when category changes
+        get().searchServices();
+    },
 
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && filterMap[key]) {
-          params.append(filterMap[key], value);
+    setFilter: (key, value) => {
+        set((state) => ({
+            filters: {
+                ...state.filters,
+                [key]: value,
+            },
+        }));
+    },
+
+    clearFilters: () => {
+        set({
+            filters: {
+                skill: "",
+                service: "",
+                workerName: "",
+                workerPhone: "",
+                ratingMin: "",
+                ratingMax: "",
+                priceMin: "",
+                priceMax: "",
+                location: "",
+                sortBy: "",
+            },
+            selectedCategory: "All Services",
+            searchQuery: "",
+        });
+        // Re-fetch workers after clearing filters
+        get().searchServices();
+    },
+
+    // Search/Fetch workers with filters
+    searchServices: async () => {
+        const state = get();
+        set({ loading: true, error: null });
+
+        try {
+            // Build query parameters
+            const params = new URLSearchParams();
+
+            // Add category as skill filter if not "All Services"
+            if (state.selectedCategory !== "All Services") {
+                const categoryToSkillMap = {
+                    Carpenters: "Carpenter",
+                    Painters: "Painter",
+                    Electricians: "Electrician",
+                    Movers: "Mover",
+                    Plumbers: "Plumber",
+                    Cleaners: "Cleaner",
+                };
+                const skill = categoryToSkillMap[state.selectedCategory];
+                if (skill) {
+                    params.append("skill", skill);
+                }
+            }
+
+            // Add filters from sidebar
+            Object.entries(state.filters).forEach(([key, value]) => {
+                if (value) {
+                    params.append(key, value);
+                }
+            });
+
+            // Add limit
+            params.append("limit", "20");
+
+            console.log("Fetching workers with params:", params.toString());
+
+            const response = await fetch(
+                `/api/customer/search?${params.toString()}`,
+                {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to fetch workers");
+            }
+
+            const result = await response.json();
+
+            console.log("Workers fetched successfully:", result.data.length);
+
+            set({
+                workers: result.data || [],
+                loading: false,
+                error: null,
+            });
+        } catch (error) {
+            console.error("Error searching workers:", error);
+            set({
+                workers: [],
+                loading: false,
+                error: error.message || "Failed to load workers. Please try again.",
+            });
         }
-      });
+    },
 
-      const url = `/api/customer/search?${params.toString()}`;
-      console.log("Fetching URL:", url);
+    // Fetch single worker details
+    fetchWorkerById: async (workerId) => {
+        set({ loading: true, error: null });
 
-      const response = await fetch(url, {
-        method: "GET",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      });
+        try {
+            const response = await fetch(
+                `/api/customer/workers/${workerId}`,
+                {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
 
-      console.log("Response Status:", response.status);
-      console.log("Response Headers:", Object.fromEntries(response.headers));
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to fetch worker details");
+            }
 
-      // Check content type before parsing
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON Response:", text.substring(0, 500));
-        throw new Error(
-          `Server returned ${contentType || "unknown content type"} instead of JSON. ` +
-          `Status: ${response.status}. This usually means the route doesn't exist or authentication failed.`
-        );
-      }
+            const result = await response.json();
 
-      const data = await response.json();
-      console.log("API Response:", data);
+            set({
+                selectedWorker: result.data,
+                loading: false,
+                error: null,
+            });
 
-      if (data.success) {
-        console.log("✅ API Success - Raw data:", data.data);
-        console.log("Workers array:", data.data.workers);
-        console.log("Workers count:", data.data.workers?.length || 0);
+            return result.data;
+        } catch (error) {
+            console.error("Error fetching worker:", error);
+            set({
+                selectedWorker: null,
+                loading: false,
+                error: error.message || "Failed to load worker details",
+            });
+            throw error;
+        }
+    },
 
-        if (!data.data.workers || data.data.workers.length === 0) {
-          console.warn("⚠️ No workers returned from API");
-          set({ 
-            workers: [], 
-            pagination: data.data.pagination || {
-              currentPage: 1,
-              totalPages: 0,
-              totalResults: 0,
-              resultsPerPage: 10,
-            }, 
+    // Clear selected worker
+    clearSelectedWorker: () => {
+        set({ selectedWorker: null });
+    },
+
+    // Reset entire store
+    resetStore: () => {
+        set({
+            workers: [],
+            selectedWorker: null,
             loading: false,
-            error: null
-          });
-          return;
-        }
-
-        const transformedWorkers = data.data.workers.map((worker) => {
-          console.log("Transforming worker:", worker);
-          return {
-            id: worker.workerServiceId,
-            name: worker.workerName,
-            title: worker.skill,
-            rating: worker.avgRating || 0,
-            reviews: worker.ratingCount || 0,
-            experience: "N/A",
-            description: worker.details || "No description available",
-            image: `https://i.pravatar.cc/150?u=${worker.workerId}`,
-            price: worker.pricingType || "N/A",
-            priceAmount: worker.price,
-            available: true,
-            category: worker.skill,
-            location: worker.address?.city || "N/A",
-            phone: worker.workerPhone,
-            distance: worker.distance,
-            portfolioImages: worker.portfolioImages || [],
-          };
+            error: null,
+            isFilterOpen: false,
+            selectedCategory: "All Services",
+            searchQuery: "",
+            filters: {
+                skill: "",
+                service: "",
+                workerName: "",
+                workerPhone: "",
+                ratingMin: "",
+                ratingMax: "",
+                priceMin: "",
+                priceMax: "",
+                location: "",
+                sortBy: "",
+            },
         });
-
-        console.log("✅ Transformed Workers:", transformedWorkers);
-        console.log("Setting workers in store, count:", transformedWorkers.length);
-        
-        set({ 
-          workers: transformedWorkers, 
-          pagination: data.data.pagination, 
-          loading: false,
-          error: null
-        });
-
-        // Verify state was updated
-        console.log("Store state after update:", get().workers.length, "workers");
-      } else {
-        console.error("❌ API returned success:false", data.message);
-        set({ 
-          error: data.message || "Failed to fetch workers", 
-          workers: [], 
-          loading: false 
-        });
-      }
-    } catch (err) {
-      console.error("Search Services Error:", err);
-      set({ 
-        error: err.message || "Network error occurred", 
-        workers: [], 
-        loading: false 
-      });
-    }
-  },
+    },
 
   // Booking History
   getBookingHistory: async () => {

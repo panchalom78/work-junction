@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-    searchServices,
     getBookingHistory,
     submitReview,
     sendMessage,
@@ -8,16 +7,16 @@ import {
     getUserChats,
     updateLanguagePreference,
     getLanguagePreference,
-    getWorkerList
 } from "../controllers/customer.controller.js";
+import { getWorkerById,getWorkers } from "../controllers/sreviceSearch.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 const router = Router();
 
 // All routes require authentication
 
 // REQ-CU-001: Service Search and Browsing
-router.route("/search").get(protect, searchServices);
-router.route("/workers").get(protect, getWorkerList);
+router.route("/search").get(protect, getWorkers);
+router.route("/workers").get(protect, getWorkerById);
 // REQ-CU-002: Booking History
 router.route("/bookings/history").get( getBookingHistory);
 
