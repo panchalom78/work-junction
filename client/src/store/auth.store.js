@@ -24,7 +24,11 @@ export const useAuthStore = create((set, get) => ({
                 loading: false,
             });
 
-            return { success: true, user: res.data?.data?.user || null };
+            return {
+                success: true,
+                user: res.data?.data?.user || null,
+                message: res.data?.message,
+            };
         } catch (err) {
             console.error("Register API error:", err);
             set({
@@ -33,7 +37,13 @@ export const useAuthStore = create((set, get) => ({
                     err.response?.data?.message ||
                     "Registration failed, please try again",
             });
-            return { success: false };
+            return {
+                success: false,
+                message:
+                    err.response?.data?.message ||
+                    err.response?.data?.errors[0].message ||
+                    "Registration failed, please try again",
+            };
         }
     },
     login: async (formData) => {
@@ -53,7 +63,11 @@ export const useAuthStore = create((set, get) => ({
                 loading: false,
             });
 
-            return { success: true, user: res.data?.data || null };
+            return {
+                success: true,
+                user: res.data?.data || null,
+                message: res.data?.message || "Login successful",
+            };
         } catch (err) {
             console.error("Login API error:", err);
 
@@ -65,7 +79,13 @@ export const useAuthStore = create((set, get) => ({
                     "Login failed, please try again",
             });
 
-            return { success: false };
+            return {
+                success: false,
+                message:
+                    err.response?.data?.message ||
+                    err.response?.data?.errors[0].message ||
+                    "Login failed, please try again",
+            };
         }
     },
     verifyOTP: async ({ otp, email }) => {
@@ -160,6 +180,28 @@ export const useAuthStore = create((set, get) => ({
                 error: err.response?.data?.message || "Failed to fetch user",
             });
             return { success: false };
+        }
+    },
+
+    updateProfile: async (profileData) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axiosInstance.put(
+                "/api/auth/profile",
+                profileData
+            );
+            set({
+                user: { ...get().user, ...response.data.data },
+                loading: false,
+            });
+            return response.data;
+        } catch (error) {
+            set({
+                error:
+                    error.response?.data?.message || "Failed to update profile",
+                loading: false,
+            });
+            throw error;
         }
     },
 }));

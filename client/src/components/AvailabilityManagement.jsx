@@ -19,6 +19,7 @@ const AvailabilityManagement = () => {
         formatTimetableForFrontend,
         formatNonAvailabilityForFrontend,
         clearError,
+        getAvailability,
     } = useWorkerScheduleStore();
 
     const [availability, setAvailability] = useState({
@@ -62,7 +63,11 @@ const AvailabilityManagement = () => {
 
     const loadData = async () => {
         try {
-            await Promise.all([getTimetable(), getNonAvailability()]);
+            await Promise.all([
+                getTimetable(),
+                getNonAvailability(),
+                getAvailability(),
+            ]);
         } catch (error) {
             console.error("Failed to load availability data:", error);
         }

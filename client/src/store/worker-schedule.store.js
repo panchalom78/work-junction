@@ -133,16 +133,16 @@ const useWorkerScheduleStore = create((set, get) => ({
     },
 
     // Check availability for specific date
-    checkAvailability: async (date) => {
+    getAvailability: async (date) => {
         try {
             set({ loading: true, error: null });
             const response = await api.get(
-                "/api/workers/my/availability-status",
-                {
-                    params: { date },
-                }
+                "/api/workers/my/availability-status"
             );
-            set({ loading: false });
+            set({
+                loading: false,
+                availabilityStatus: response.data.data.status,
+            });
             return response.data;
         } catch (error) {
             set({

@@ -32,11 +32,11 @@ const WorkerVerificationPage = () => {
 
     // Navigate to worker landing page when verified
     useEffect(() => {
-        if (status?.verificationStatus === "VERIFIED") {
+        if (status?.verificationStatus === "APPROVED") {
             // Optional: Add a small delay to show success state
             const timer = setTimeout(() => {
                 // Uncomment this in your actual project to enable navigation
-                navigate("/workerDashboard");
+                navigate("/worker/dashboard");
                 console.log("Worker verified! Navigate to /worker/dashboard");
             }, 2000);
             return () => clearTimeout(timer);
@@ -475,7 +475,7 @@ const WorkerVerificationPage = () => {
                             <button
                                 onClick={handleSubmitDocuments}
                                 disabled={loading}
-                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading
                                     ? "Uploading..."
@@ -594,7 +594,7 @@ const WorkerVerificationPage = () => {
                             <button
                                 onClick={() => setShowUploadModal(true)}
                                 disabled={loading}
-                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
+                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
                             >
                                 📁 Upload Documents
                             </button>
@@ -603,7 +603,7 @@ const WorkerVerificationPage = () => {
                             <button
                                 onClick={() => setShowUploadModal(true)}
                                 disabled={loading}
-                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
+                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700  font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
                             >
                                 🔄 Resubmit Documents
                             </button>
@@ -614,7 +614,7 @@ const WorkerVerificationPage = () => {
                             </button>
                         )}
                         {statusData.actions.includes("view_certificate") && (
-                            <button className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform">
+                            <button className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform">
                                 📄 Download Certificate
                             </button>
                         )}

@@ -115,36 +115,41 @@ const RegisterPage = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        const newErrors = {};
+        try {
+            e.preventDefault();
+            const newErrors = {};
 
-        Object.keys(formData).forEach((key) => {
-            const error = validateField(key, formData[key]);
-            if (error) newErrors[key] = error;
-        });
+            Object.keys(formData).forEach((key) => {
+                const error = validateField(key, formData[key]);
+                if (error) newErrors[key] = error;
+            });
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            toast.error("Please fill all required fields correctly!"); // ✅ Toast for validation error
-            return;
-        }
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                toast.error("Please fill all required fields correctly!"); // ✅ Toast for validation error
+                return;
+            }
 
-        setIsLoading(true);
-        const res = await register({
-            email: formData.email,
-            password: formData.password,
-            name: formData.fullName,
-            phone: formData.phone,
-            role: formData.role,
-        });
-        setIsLoading(false);
+            setIsLoading(true);
+            const res = await register({
+                email: formData.email,
+                password: formData.password,
+                name: formData.fullName,
+                phone: formData.phone,
+                role: formData.role,
+            });
+            setIsLoading(false);
+            console.log();
 
-        if (res.success) {
-            toast.success("Account created successfully! 🎉");
-            navigate("/otpVerifaction");
-            setCurrentStep(3);
-        } else {
-            toast.error(res.message || "Registration failed. Try again.");
+            if (res.success) {
+                toast.success("Account created successfully! 🎉");
+                navigate("/otpVerification");
+                setCurrentStep(3);
+            } else {
+                toast.error(res.message);
+            }
+        } catch (error) {
+            toast.error(error.message || "Registration failed. Try again.");
         }
     };
 
