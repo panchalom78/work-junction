@@ -129,19 +129,23 @@ const logout = async (req, res) => {
  * @route   GET /api/auth/me
  * @access  Private
  */
-const getMe = async (req, res) => {
-    try {
-        return successResponse(
-            res,
-            200,
-            "User profile retrieved successfully",
-            formatUserResponse(req.user)
-        );
-    } catch (error) {
-        console.error("GetMe error:", error);
-        return errorResponse(res, 500, "Server error");
+ const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password -otp -otpExpires");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
     }
+    return res.status(200).json({
+      success: true,
+      message: "User fetched successfully",
+      data: { _id: user._id, email: user.email, name: user.name, role: user.role },
+    });
+  } catch (err) {
+    console.error("Get user error:", err);
+    return res.status(500).json({ success: false, message: "Server error." });
+  }
 };
+
 
 /**
  * @desc    Change password

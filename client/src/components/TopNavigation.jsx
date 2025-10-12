@@ -3,7 +3,7 @@ import { MapPin, Bell, User, ChevronDown, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
 const TopNavigation = ({ sidebarOpen, setSidebarOpen }) => {
-  const { user } = useAuthStore();
+ 
 
   return (
     <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">

@@ -37,6 +37,7 @@ const LoginPage = () => {
     useEffect(() => {
         const navigateUser = async () => {
             const response = await getUser();
+            console.log(response);
             if (response.success) {
                 if (!response.user.isVerified) {
                     navigate("/otpVerification");
