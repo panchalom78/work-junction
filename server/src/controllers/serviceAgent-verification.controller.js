@@ -71,11 +71,7 @@ const getPendingVerifications = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get worker verification details (with area access check)
- * @route   GET /api/service-agent/verifications/:workerId
- * @access  Private (Service Agent/Admin only)
- */
+
 const getWorkerVerificationDetails = async (req, res) => {
     try {
         const { workerId } = req.params;

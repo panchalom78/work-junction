@@ -5,6 +5,7 @@ export const useAuthStore = create((set) => ({
     loading: false,
     error: null,
     message: null,
+    role: null,
 
     register: async (formData) => {
         try {
@@ -22,6 +23,7 @@ export const useAuthStore = create((set) => ({
                 user: res.data?.data?.user || null,
                 message: res.data?.message || "Registered successfully",
                 loading: false,
+                role: res.data?.data?.role || null,
             });
 
             return { success: true, data: res.data };
@@ -51,6 +53,7 @@ export const useAuthStore = create((set) => ({
                 user: res.data?.data || null, // adjust if your API wraps user differently
                 message: res.data?.message || "Login successful",
                 loading: false,
+                role: res.data?.data?.role || null,
             });
 
             return { success: true, data: res.data };

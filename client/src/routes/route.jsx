@@ -9,6 +9,7 @@ import WorkJunctionLanding from "../pages/WorkJunctionLanding";
 import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customer";
+import ServiceAgentSetup from "../pages/ServiceAgentSetup";
 
 
 
@@ -24,8 +25,12 @@ const Routers = () => {
                     <Route path="/verification" element={<WorkerVerificationPage />} />
                     <Route path="/workerDashboard" element={<WorkerDashboard />} />
                     <Route path="/adminDashboard" element={<AdminDashboard />} />
-                    <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
+                   
                     <Route path= "/customerDashboard" element={<CustomerDashboard/>}></Route>
+
+                    {/* Service Agent */}
+                     <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
+                     <Route path = "/serviceAgentSetup"  element = {<ServiceAgentSetup/>}/>
                 </Routes>
             </Router>
         </div>
