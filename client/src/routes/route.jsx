@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import React from 'react'
+import React from "react";
 import Login from "../pages/loginPage";
 import Register from "../pages/registerPage";
 import OTPVerificationPage from "../pages/otpVerifaction";
@@ -10,8 +10,6 @@ import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customer";
 import ServiceAgentSetup from "../pages/ServiceAgentSetup";
-
-
 
 const Routers = () => {
     return (

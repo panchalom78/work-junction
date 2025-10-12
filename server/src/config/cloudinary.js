@@ -122,10 +122,27 @@ const extractPublicId = (url) => {
     return publicId;
 };
 
+const portfolioStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "worker-portfolio",
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        transformation: [{ quality: "auto" }],
+    },
+});
+
+const uploadPortfolio = multer({
+    storage: portfolioStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+    },
+});
+
 export {
     cloudinary,
     uploadSelfie,
     uploadAadhar,
+    uploadPortfolio,
     uploadPoliceVerification,
     uploadVerificationDoc,
     deleteFromCloudinary,

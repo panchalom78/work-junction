@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
 
-
 // Address Schema (Nested)
 const addressSchema = new Schema(
     {
@@ -79,13 +78,48 @@ const bankDetailsSchema = new Schema(
 // Timetable Schema (Nested for Worker)
 const timetableSchema = new Schema(
     {
-        Monday: { type: String, default: "" },
-        Tuesday: { type: String, default: "" },
-        Wednesday: { type: String, default: "" },
-        Thursday: { type: String, default: "" },
-        Friday: { type: String, default: "" },
-        Saturday: { type: String, default: "" },
-        Sunday: { type: String, default: "" },
+        Monday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Tuesday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Wednesday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Thursday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Friday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Saturday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
+        Sunday: [
+            {
+                start: { type: String, default: "" },
+                end: { type: String, default: "" },
+            },
+        ],
     },
     { _id: false }
 );
@@ -93,8 +127,8 @@ const timetableSchema = new Schema(
 // Non-Availability Schema (Nested Array for Worker)
 const nonAvailabilitySchema = new Schema(
     {
-        date: { type: Date, required: true },
-        timeSlot: { type: String, required: true },
+        startDateTime: { type: Date, required: true }, // Combined date + start time
+        endDateTime: { type: Date, required: true }, // Combined date + end time
         reason: { type: String, trim: true },
     },
     { _id: false }
@@ -110,10 +144,15 @@ const serviceAgentProfileSchema = new Schema(
     { _id: false }
 );
 
-// Worker Profile Schema (Nested)
+// Worker Profile Schema (Nested) - UPDATED
 const workerProfileSchema = new Schema(
     {
         preferredLanguage: { type: String, trim: true },
+        availabilityStatus: {
+            type: String,
+            enum: ["available", "busy", "off-duty"],
+            default: "available",
+        },
         verification: verificationSchema,
         bankDetails: bankDetailsSchema,
         timetable: timetableSchema,

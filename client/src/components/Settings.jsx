@@ -1,293 +1,555 @@
-import React from 'react';
-import { Globe, Bell, Shield, CreditCard, User, Mail, Phone, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { User, MapPin, Navigation } from "lucide-react";
+import { useAuthStore } from "../store/auth.store";
 
-const Settings = ({ language, onSetLanguage, languages }) => {
-  const SettingSection = ({ title, icon: Icon, children, description }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
-      <div className="flex items-center space-x-3 mb-4">
-        <div className="p-2 bg-blue-100 rounded-lg" style={{ backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)' }}>
-          <Icon className="w-5 h-5 text-blue-600" style={{ color: 'var(--primary-color)' }} />
+const Settings = () => {
+    const { user, loading, error, getUser, updateProfile } = useAuthStore();
+
+    const [formData, setFormData] = useState({
+        name: "",
+        phone: "",
+        address: {
+            houseNo: "",
+            street: "",
+            area: "",
+            city: "",
+            state: "",
+            pincode: "",
+            coordinates: {
+                latitude: "",
+                longitude: "",
+            },
+        },
+    });
+
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+    const [saveLoading, setSaveLoading] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
+
+    // Initialize form data when user data is loaded
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || "",
+                phone: user.phone || "",
+                address: {
+                    houseNo: user.address?.houseNo || "",
+                    street: user.address?.street || "",
+                    area: user.address?.area || "",
+                    city: user.address?.city || "",
+                    state: user.address?.state || "",
+                    pincode: user.address?.pincode || "",
+                    coordinates: {
+                        latitude: user.address?.coordinates?.latitude || "",
+                        longitude: user.address?.coordinates?.longitude || "",
+                    },
+                },
+            });
+        }
+    }, [user]);
+
+    // Fetch profile on component mount
+    useEffect(() => {
+        getUser();
+    }, [getUser]);
+
+    const handleInputChange = (field, value) => {
+        if (field.startsWith("address.")) {
+            const addressField = field.replace("address.", "");
+            if (addressField.startsWith("coordinates.")) {
+                const coordField = addressField.replace("coordinates.", "");
+                setFormData((prev) => ({
+                    ...prev,
+                    address: {
+                        ...prev.address,
+                        coordinates: {
+                            ...prev.address.coordinates,
+                            [coordField]: value,
+                        },
+                    },
+                }));
+            } else {
+                setFormData((prev) => ({
+                    ...prev,
+                    address: {
+                        ...prev.address,
+                        [addressField]: value,
+                    },
+                }));
+            }
+        } else {
+            setFormData((prev) => ({ ...prev, [field]: value }));
+        }
+    };
+
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by this browser.");
+            return;
+        }
+
+        setIsLoadingLocation(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const { latitude, longitude } = position.coords;
+
+                    // Update coordinates in form
+                    setFormData((prev) => ({
+                        ...prev,
+                        address: {
+                            ...prev.address,
+                            coordinates: {
+                                latitude: latitude.toString(),
+                                longitude: longitude.toString(),
+                            },
+                        },
+                    }));
+
+                    // Reverse geocoding to get address details
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                    );
+                    const data = await response.json();
+
+                    if (data.address) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            address: {
+                                ...prev.address,
+                                houseNo:
+                                    data.address.house_number ||
+                                    prev.address.houseNo,
+                                street:
+                                    data.address.road || prev.address.street,
+                                area:
+                                    data.address.suburb ||
+                                    data.address.neighbourhood ||
+                                    prev.address.area,
+                                city:
+                                    data.address.city ||
+                                    data.address.town ||
+                                    data.address.village ||
+                                    prev.address.city,
+                                state: data.address.state || prev.address.state,
+                                pincode:
+                                    data.address.postcode ||
+                                    prev.address.pincode,
+                            },
+                        }));
+                    }
+
+                    setSuccessMessage("Location fetched successfully!");
+                    setTimeout(() => setSuccessMessage(""), 3000);
+                } catch (error) {
+                    console.error("Error fetching address:", error);
+                    setSuccessMessage(
+                        "Location coordinates fetched, but could not get address details."
+                    );
+                    setTimeout(() => setSuccessMessage(""), 3000);
+                } finally {
+                    setIsLoadingLocation(false);
+                }
+            },
+            (error) => {
+                console.error("Error getting location:", error);
+                let errorMessage = "Failed to get location: ";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += "Location permission denied.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += "Location information unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += "Location request timed out.";
+                        break;
+                    default:
+                        errorMessage += "An unknown error occurred.";
+                        break;
+                }
+                alert(errorMessage);
+                setIsLoadingLocation(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        );
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaveLoading(true);
+        setSuccessMessage("");
+
+        try {
+            // Prepare data for API - only include fields that have values
+            const updateData = {};
+
+            if (formData.name.trim()) updateData.name = formData.name.trim();
+            if (formData.phone.trim()) updateData.phone = formData.phone.trim();
+
+            // Only include address if at least one field has value
+            const hasAddressData = Object.values(formData.address).some(
+                (value) => {
+                    if (typeof value === "object") {
+                        return Object.values(value).some((val) =>
+                            val.toString().trim()
+                        );
+                    }
+                    return value.toString().trim();
+                }
+            );
+
+            if (hasAddressData) {
+                updateData.address = {};
+
+                // Add address fields that have values
+                Object.entries(formData.address).forEach(([key, value]) => {
+                    if (key === "coordinates") {
+                        const hasCoords = Object.values(value).some((val) =>
+                            val.toString().trim()
+                        );
+                        if (hasCoords) {
+                            updateData.address.coordinates = {};
+                            Object.entries(value).forEach(
+                                ([coordKey, coordValue]) => {
+                                    if (coordValue.toString().trim()) {
+                                        updateData.address.coordinates[
+                                            coordKey
+                                        ] = coordValue.toString().trim();
+                                    }
+                                }
+                            );
+                        }
+                    } else if (value.toString().trim()) {
+                        updateData.address[key] = value.toString().trim();
+                    }
+                });
+            }
+
+            await updateProfile(updateData);
+            setSuccessMessage("Profile updated successfully!");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (error) {
+            console.error("Error updating profile:", error);
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const SettingSection = ({ title, icon: Icon, children, description }) => (
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                    <Icon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900 m-0">
+                        {title}
+                    </h3>
+                    {description && (
+                        <p className="text-sm text-gray-600 mt-1">
+                            {description}
+                        </p>
+                    )}
+                </div>
+            </div>
+            {children}
         </div>
-        <div>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', margin: '0' }}>{title}</h3>
-          {description && <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{description}</p>}
+    );
+
+    if (loading && !user) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 p-4">
+            <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                    Profile Settings
+                </h2>
+                <p className="text-base text-gray-600">
+                    Manage your personal information and address
+                </p>
+            </div>
+
+            {/* Error and Success Messages */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 text-sm">{error}</p>
+                </div>
+            )}
+
+            {successMessage && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800 text-sm">{successMessage}</p>
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        {/* Personal Information */}
+                        <SettingSection
+                            title="Personal Information"
+                            icon={User}
+                            description="Update your basic personal details"
+                        >
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Full Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.name}
+                                        onChange={(e) =>
+                                            handleInputChange(
+                                                "name",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter your full name"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Phone Number *
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={formData.phone}
+                                        onChange={(e) =>
+                                            handleInputChange(
+                                                "phone",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter 10-digit phone number"
+                                        pattern="[0-9]{10}"
+                                        maxLength="10"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        10-digit number without country code
+                                    </p>
+                                </div>
+                            </div>
+                        </SettingSection>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Address Information */}
+                        <SettingSection
+                            title="Address Information"
+                            icon={MapPin}
+                            description="Update your current address and location"
+                        >
+                            <div className="space-y-4">
+                                {/* Get Location Button */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Use current location
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={getCurrentLocation}
+                                        disabled={isLoadingLocation}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <Navigation className="w-4 h-4" />
+                                        <span>
+                                            {isLoadingLocation
+                                                ? "Getting Location..."
+                                                : "Get Location"}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            House/Apartment Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.houseNo}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.houseNo",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="House/Apartment number"
+                                        />
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Street
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.street}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.street",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Street name"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Area
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.area}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.area",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Area/Locality"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            City
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.city}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.city",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="City"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            State
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.state}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.state",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="State"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            PIN Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.address.pincode}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.pincode",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="PIN code"
+                                            maxLength="6"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Latitude
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={
+                                                formData.address.coordinates
+                                                    .latitude
+                                            }
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.coordinates.latitude",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Latitude"
+                                            readOnly
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Longitude
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={
+                                                formData.address.coordinates
+                                                    .longitude
+                                            }
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "address.coordinates.longitude",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Longitude"
+                                            readOnly
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </SettingSection>
+                    </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end mt-8">
+                    <button
+                        type="submit"
+                        disabled={saveLoading || loading}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                        {saveLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                </div>
+            </form>
         </div>
-      </div>
-      {children}
-    </div>
-  );
-
-  const LanguageOption = ({ lang, isSelected, onClick }) => (
-    <button
-      onClick={() => onClick(lang.code)}
-      style={{
-        width: '100%',
-        padding: '1rem',
-        borderRadius: 'var(--radius-md)',
-        border: '2px solid',
-        borderColor: isSelected ? 'var(--primary-color)' : 'var(--border-color)',
-        backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--surface-primary)',
-        textAlign: 'left',
-        transition: 'all var(--transition-normal)'
-      }}
-      onMouseOver={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'; }}
-      onMouseOut={e => { if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-primary)'; }}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)' }}>{lang.name}</div>
-          <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{lang.native}</div>
-        </div>
-        {isSelected && (
-          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--primary-color)' }}>
-            <div className="w-2 h-2 bg-white rounded-full"></div>
-          </div>
-        )}
-      </div>
-    </button>
-  );
-
-  const ToggleSwitch = ({ enabled, onChange, label, description }) => (
-    <div className="flex items-center justify-between py-3" style={{ padding: '0.75rem 0' }}>
-      <div className="flex-1">
-        <label style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>{label}</label>
-        {description && <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{description}</p>}
-      </div>
-      <button
-        onClick={() => onChange(!enabled)}
-        style={{
-          position: 'relative',
-          display: 'inline-flex',
-          height: '1.5rem',
-          width: '2.75rem',
-          flexShrink: '0',
-          cursor: 'pointer',
-          borderRadius: '9999px',
-          border: '2px solid transparent',
-          transition: 'background-color var(--transition-normal)',
-          backgroundColor: enabled ? 'var(--primary-color)' : 'var(--border-color)'
-        }}
-        onMouseOver={e => { if (!enabled) e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'; }}
-        onMouseOut={e => { if (!enabled) e.currentTarget.style.backgroundColor = 'var(--border-color)'; }}
-      >
-        <span
-          style={{
-            pointerEvents: 'none',
-            display: 'inline-block',
-            height: '1.25rem',
-            width: '1.25rem',
-            transform: enabled ? 'translateX(1.25rem)' : 'translateX(0)',
-            borderRadius: '9999px',
-            backgroundColor: 'white',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'transform var(--transition-normal)'
-          }}
-        />
-      </button>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
-      <div style={{ padding: '1rem' }}>
-        <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)', margin: '0 0 0.25rem 0' }}>Settings</h2>
-        <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-muted)', margin: '0' }}>Manage your account preferences and settings</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Language Preferences */}
-          <SettingSection
-            title="Language Preferences"
-            icon={Globe}
-            description="Choose your preferred language for the interface"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {languages.map(lang => (
-                <LanguageOption
-                  key={lang.code}
-                  lang={lang}
-                  isSelected={language === lang.code}
-                  onClick={onSetLanguage}
-                />
-              ))}
-            </div>
-          </SettingSection>
-
-          {/* Notification Settings */}
-          <SettingSection
-            title="Notification Preferences"
-            icon={Bell}
-            description="Control how and when you receive notifications"
-          >
-            <div className="space-y-1">
-              <ToggleSwitch
-                enabled={true}
-                onChange={() => {}}
-                label="Booking Requests"
-                description="Get notified when new booking requests arrive"
-              />
-              <ToggleSwitch
-                enabled={true}
-                onChange={() => {}}
-                label="Booking Reminders"
-                description="Receive reminders for upcoming appointments"
-              />
-              <ToggleSwitch
-                enabled={false}
-                onChange={() => {}}
-                label="Marketing Emails"
-                description="Receive updates about new features and promotions"
-              />
-              <ToggleSwitch
-                enabled={true}
-                onChange={() => {}}
-                label="SMS Notifications"
-                description="Get important updates via SMS"
-              />
-            </div>
-          </SettingSection>
-
-          {/* Profile Information */}
-          <SettingSection
-            title="Profile Information"
-            icon={User}
-            description="Update your personal and professional details"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Full Name</label>
-                <input
-                  type="text"
-                  defaultValue="Rajesh Kumar"
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Email</label>
-                <input
-                  type="email"
-                  defaultValue="rajesh.kumar@example.com"
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Phone</label>
-                <input
-                  type="tel"
-                  defaultValue="+91 98765 43210"
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)', marginBottom: '0.5rem', display: 'block' }}>Location</label>
-                <input
-                  type="text"
-                  defaultValue="Mumbai, Maharashtra"
-                  style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', outline: 'none', transition: 'border-color var(--transition-normal)' }}
-                  onFocus={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                />
-              </div>
-            </div>
-            <button style={{ background: 'var(--primary-gradient)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', fontWeight: 'var(--font-weight-medium)', marginTop: '1rem', transition: 'all var(--transition-normal)' }}
-              onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)'}
-              onMouseOut={e => e.currentTarget.style.background = 'var(--primary-gradient)'}
-            >
-              Update Profile
-            </button>
-          </SettingSection>
-        </div>
-
-        <div className="space-y-6">
-          {/* Account Security */}
-          <SettingSection
-            title="Account Security"
-            icon={Shield}
-            description="Manage your account security settings"
-          >
-            <div className="space-y-3">
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Change Password</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Update your account password</div>
-              </button>
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Two-Factor Authentication</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Add an extra layer of security</div>
-              </button>
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Login Activity</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Review recent account activity</div>
-              </button>
-            </div>
-          </SettingSection>
-
-          {/* Payment Settings */}
-          <SettingSection
-            title="Payment & Payouts"
-            icon={CreditCard}
-            description="Manage how you receive payments"
-          >
-            <div className="space-y-3">
-              <div style={{ padding: '0.75rem', backgroundColor: 'var(--surface-secondary)', borderRadius: 'var(--radius-md)' }}>
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Primary Payment Method</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>UPI: rajesh.kumar@okicici</div>
-              </div>
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Add Bank Account</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Link your bank account for payouts</div>
-              </button>
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface-primary)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-color)' }}>Payout Schedule</div>
-                <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Set how often you receive payments</div>
-              </button>
-            </div>
-          </SettingSection>
-
-          {/* Quick Actions */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6" style={{ backgroundColor: 'var(--primary-light)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-xl)', padding: '1.5rem' }}>
-            <h4 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', marginBottom: '0.5rem' }}>Need Help?</h4>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--primary-color)', marginBottom: '1rem' }}>Our support team is here to help you</p>
-            <div className="space-y-2">
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', backgroundColor: 'var(--surface-primary)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-md)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--primary-color)' }}>Contact Support</div>
-              </button>
-              <button style={{ width: '100%', textAlign: 'left', padding: '0.75rem', backgroundColor: 'var(--surface-primary)', border: '1px solid var(--primary-200)', borderRadius: 'var(--radius-md)', transition: 'background-color var(--transition-normal)' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'var(--surface-primary)'}
-              >
-                <div style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-medium)', color: 'var(--primary-color)' }}>View Help Center</div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Settings;

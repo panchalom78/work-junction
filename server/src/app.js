@@ -2,8 +2,9 @@ import express, { json, urlencoded } from "express";
 import { connect } from "mongoose";
 import cookieParser from "cookie-parser";
 import { config } from "dotenv";
-
 config();
+
+// Routes
 import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
