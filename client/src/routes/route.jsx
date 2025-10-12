@@ -9,6 +9,7 @@ import WorkJunctionLanding from "../pages/WorkJunctionLanding";
 import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customer";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
 
 const Routers = () => {
     return (
@@ -21,6 +22,10 @@ const Routers = () => {
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}
+                    />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPasswordPage />}
                     />
                     <Route
                         path="/worker/verification"

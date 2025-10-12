@@ -88,13 +88,20 @@ export const useAuthStore = create((set, get) => ({
             };
         }
     },
-    verifyOTP: async ({ otp, email }) => {
+    verifyOTP: async ({
+        otp,
+        email,
+        newPassword,
+        purpose = "REGISTRATION",
+    }) => {
         try {
             set({ loading: true, error: null, message: null });
 
             const res = await axiosInstance.post("/api/otp/verify", {
                 otp,
                 email,
+                purpose,
+                newPassword,
             });
 
             if (res.data.success) {
@@ -119,11 +126,14 @@ export const useAuthStore = create((set, get) => ({
             return { success: false };
         }
     },
-    resendOTP: async (email) => {
+    resendOTP: async (email, purpose = "REGISTRATION") => {
         try {
             set({ loading: true, error: null, message: null });
 
-            const res = await axiosInstance.post("/api/otp/resend", { email });
+            const res = await axiosInstance.post("/api/otp/resend", {
+                email,
+                purpose,
+            });
 
             if (res.data.success) {
                 set({
