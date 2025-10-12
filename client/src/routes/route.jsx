@@ -20,14 +20,6 @@ const Routers = () => {
                     <Route path="/" element={<WorkJunctionLanding />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Register />} />
-<<<<<<< HEAD
-                    <Route path="/otpVerification" element={<OTPVerificationPage />} />
-                    <Route path="/verification" element={<WorkerVerificationPage />} />
-                    <Route path="/workerDashboard" element={<WorkerDashboard />} />
-                    <Route path="/adminDashboard" element={<AdminDashboard />} />
-                   
-                    <Route path= "/customerDashboard" element={<CustomerDashboard/>}></Route>
-=======
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}
@@ -56,7 +48,6 @@ const Routers = () => {
                         path="/customer/dashboard"
                         element={<CustomerDashboard />}
                     ></Route>
->>>>>>> 5d6f7e771cd672ecc6f793cc9334ea86e4ecc8b2
 
                     {/* Service Agent */}
                     <Route

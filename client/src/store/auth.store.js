@@ -160,7 +160,6 @@ export const useAuthStore = create(
             message: res.data?.message || "User fetched successfully",
             loading: false,
             role: res.data?.data?.role || null,
-            is
           });
 
           return {
