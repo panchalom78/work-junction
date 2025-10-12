@@ -37,13 +37,15 @@ const LoginPage = () => {
     useEffect(() => {
         const navigateUser = async () => {
             const response = await getUser();
+            console.log(response);
             if (response.success) {
                 if (!response.user.isVerified) {
                     navigate("/otpVerification");
                 } else {
                     if (response.user.role == "WORKER") {
                         if (
-                            response.user?.workerProfile?.status == "APPROVED"
+                            response.user?.workerProfile?.verification
+                                ?.status == "APPROVED"
                         ) {
                             navigate("/worker/dashboard");
                         } else {
@@ -96,39 +98,44 @@ const LoginPage = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        try {
+            e.preventDefault();
 
-        const newErrors = {};
-        Object.keys(formData).forEach((key) => {
-            const error = validateField(key, formData[key]);
-            if (error) newErrors[key] = error;
-        });
+            const newErrors = {};
+            Object.keys(formData).forEach((key) => {
+                const error = validateField(key, formData[key]);
+                if (error) newErrors[key] = error;
+            });
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            toast.error("Please fill all required fields correctly!"); // ❌ Validation error toast
-            return;
-        }
-
-        setIsLoading(true);
-        const res = await login(formData);
-        setIsLoading(false);
-
-        if (res.success) {
-            toast.success("Login successful 🎉"); // ✅ Success toast
-            if (res?.user) {
-                if (res?.user?.role === "CUSTOMER") {
-                    navigate("/customer/dashboard");
-                } else if (res?.user?.role === "WORKER") {
-                    navigate("/worker/dashboard");
-                } else if (res?.user?.role === "SERVICE_AGENT") {
-                    navigate("/serviceAgentDashboard");
-                } else if (res?.user?.role === "ADMIN") {
-                    navigate("/adminDashboard");
-                }
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                toast.error("Please fill all required fields correctly!"); // ❌ Validation error toast
+                return;
             }
-        } else {
-            toast.error(res.message || "Invalid credentials"); // ❌ Error toast
+
+            setIsLoading(true);
+            const res = await login(formData);
+
+            if (res.success) {
+                toast.success("Login successful 🎉"); // ✅ Success toast
+                if (res?.user) {
+                    if (res?.user?.role === "CUSTOMER") {
+                        navigate("/customer/dashboard");
+                    } else if (res?.user?.role === "WORKER") {
+                        navigate("/worker/dashboard");
+                    } else if (res?.user?.role === "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (res?.user?.role === "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                toast.error(res.message || "Invalid credentials"); // ❌ Error toast
+            }
+        } catch (err) {
+            toast.error(err.message || "Invalid credentials"); // ❌ Error toast
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -188,6 +195,17 @@ const LoginPage = () => {
                             <span>Sign In</span>
                         )}
                     </motion.button>
+
+                    <p className="text-gray-600 text-sm flex justify-center gap-2">
+                        Forgot Password ?{" "}
+                        <button
+                            type="button"
+                            className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                            onClick={() => navigate("/reset-password")}
+                        >
+                            Reset Password
+                        </button>
+                    </p>
                 </motion.form>
             );
         }
@@ -215,7 +233,7 @@ const LoginPage = () => {
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => (window.location.href = "/dashboard")}
+                        onClick={() => navigate("/dashboard")}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                         Go to Dashboard
@@ -273,9 +291,7 @@ const LoginPage = () => {
                                     Don’t have an account?{" "}
                                     <button
                                         className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-                                        onClick={() =>
-                                            (window.location.href = "/signup")
-                                        }
+                                        onClick={() => navigate("/signup")}
                                     >
                                         Register Now
                                     </button>

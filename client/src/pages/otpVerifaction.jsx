@@ -122,7 +122,7 @@ const OTPVerificationPage = () => {
             const response = await getUser();
             if (response.success) {
                 if (response.user.role == "WORKER") {
-                    navigate("/worker/dashboard");
+                    navigate("/worker/verification");
                 } else if (response.user.role == "CUSTOMER") {
                     navigate("/customer/dashboard");
                 } else if (response.user.role == "SERVICE_AGENT") {

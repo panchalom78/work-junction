@@ -10,6 +10,9 @@ import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customerdahboard";
 import ServiceBooking from "../pages/servicebooking";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
+import ServiceAgentSetup from "../pages/ServiceAgentSetup";
+
 const Routers = () => {
     return (
         <div>
@@ -21,6 +24,10 @@ const Routers = () => {
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}
+                    />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPasswordPage />}
                     />
                     <Route
                         path="/worker/verification"
@@ -48,6 +55,15 @@ const Routers = () => {
                         element={<ServiceBooking/>}>
                     </Route>
                    
+                    {/* Service Agent */}
+                    <Route
+                        path="/serviceAgentDashboard"
+                        element={<ServiceAgentDashboard />}
+                    />
+                    <Route
+                        path="/serviceAgentSetup"
+                        element={<ServiceAgentSetup />}
+                    />
                 </Routes>
             </Router>
         </div>
