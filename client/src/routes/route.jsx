@@ -10,6 +10,7 @@ import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
 import CustomerDashboard from "../pages/customer";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
+import ServiceAgentSetup from "../pages/ServiceAgentSetup";
 
 const Routers = () => {
     return (
@@ -47,6 +48,16 @@ const Routers = () => {
                         path="/customer/dashboard"
                         element={<CustomerDashboard />}
                     ></Route>
+
+                    {/* Service Agent */}
+                    <Route
+                        path="/serviceAgentDashboard"
+                        element={<ServiceAgentDashboard />}
+                    />
+                    <Route
+                        path="/serviceAgentSetup"
+                        element={<ServiceAgentSetup />}
+                    />
                 </Routes>
             </Router>
         </div>
