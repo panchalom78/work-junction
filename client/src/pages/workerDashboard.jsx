@@ -59,7 +59,15 @@ const WorkerDashboard = () => {
                     } else {
                         navigate("/worker/verification");
                     }
+                } else if (response.user.role == "CUSTOMER") {
+                    navigate("/customer/dashboard");
+                } else if (response.user.role == "SERVICE_AGENT") {
+                    navigate("/serviceAgentDashboard");
+                } else if (response.user.role == "ADMIN") {
+                    navigate("/adminDashboard");
                 }
+            } else {
+                navigate("/login");
             }
         };
         getUserData();

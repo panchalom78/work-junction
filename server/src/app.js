@@ -11,6 +11,8 @@ import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
 import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
+import workerServiceRoutes from "./routes/worker-service.route.js";
+import workerScheduleRoutes from "./routes/worker-schedule.route.js";
 
 const app = express();
 
@@ -50,8 +52,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
-app.use("/api/skill", skillRoutes);
+app.use("/api/skills", skillRoutes);
 app.use("/api/service-agent", serviceAgentRoutes);
+app.use("/api/worker/services", workerServiceRoutes);
+app.use("/api/workers", workerScheduleRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {

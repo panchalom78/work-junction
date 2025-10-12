@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import { generateOTP, isValidOTPFormat } from "../utils/otp.js";
 import { sendOTPEmail, sendWelcomeEmail } from "../utils/email.js";
 import { successResponse, errorResponse } from "../utils/response.js";
+import { hashPassword, validatePasswordStrength } from "../utils/password.js";
 
 /**
  * @desc    Send OTP to email for verification
@@ -88,7 +89,12 @@ const sendOTP = async (req, res) => {
  */
 const verifyOTP = async (req, res) => {
     try {
-        const { email, otp, purpose = "REGISTRATION" } = req.body;
+        const {
+            email,
+            otp,
+            purpose = "REGISTRATION",
+            newPassword = "",
+        } = req.body;
 
         // Validation
         if (!email || !otp) {
@@ -97,6 +103,16 @@ const verifyOTP = async (req, res) => {
 
         if (!isValidOTPFormat(otp)) {
             return errorResponse(res, 400, "Invalid OTP format");
+        }
+
+        if (purpose === "PASSWORD_RESET") {
+            if (!newPassword) {
+                return errorResponse(res, 400, "New password is required");
+            }
+            const passwordStrength = validatePasswordStrength(newPassword);
+            if (!passwordStrength.isValid) {
+                return errorResponse(res, 400, passwordStrength.errors[0]);
+            }
         }
 
         // Find user
@@ -172,11 +188,15 @@ const verifyOTP = async (req, res) => {
                 }
             );
         } else if (purpose === "PASSWORD_RESET") {
+            const hashedPassword = await hashPassword(newPassword);
+            user.password = hashedPassword;
+            await user.clearOTP();
+            await user.save();
             // For password reset, mark OTP as verified but don't clear it yet
             return successResponse(
                 res,
                 200,
-                "OTP verified successfully. You can now reset your password.",
+                "Password reset successfully! Please login with your new password.",
                 {
                     verified: true,
                     email: user.email,

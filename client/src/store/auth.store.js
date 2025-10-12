@@ -10,7 +10,6 @@ export const useAuthStore = create(
       error: null,
       message: null,
       role: null,
-      isVerified: false,
 
       register: async (formData) => {
         try {
@@ -161,7 +160,7 @@ export const useAuthStore = create(
             message: res.data?.message || "User fetched successfully",
             loading: false,
             role: res.data?.data?.role || null,
-            isV
+            is
           });
 
           return {

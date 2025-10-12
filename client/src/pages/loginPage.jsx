@@ -195,6 +195,17 @@ const LoginPage = () => {
                             <span>Sign In</span>
                         )}
                     </motion.button>
+
+                    <p className="text-gray-600 text-sm flex justify-center gap-2">
+                        Forgot Password ?{" "}
+                        <button
+                            type="button"
+                            className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                            onClick={() => navigate("/reset-password")}
+                        >
+                            Reset Password
+                        </button>
+                    </p>
                 </motion.form>
             );
         }
@@ -222,7 +233,7 @@ const LoginPage = () => {
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => (window.location.href = "/dashboard")}
+                        onClick={() => navigate("/dashboard")}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                         Go to Dashboard
@@ -280,9 +291,7 @@ const LoginPage = () => {
                                     Don’t have an account?{" "}
                                     <button
                                         className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-                                        onClick={() =>
-                                            (window.location.href = "/signup")
-                                        }
+                                        onClick={() => navigate("/signup")}
                                     >
                                         Register Now
                                     </button>
