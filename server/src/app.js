@@ -13,6 +13,7 @@ import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
 import workerScheduleRoutes from "./routes/worker-schedule.route.js";
+import adminRoutes from "./routes/admin.route.js";
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/skills", skillRoutes);
 app.use("/api/service-agent", serviceAgentRoutes);
 app.use("/api/worker/services", workerServiceRoutes);
 app.use("/api/workers", workerScheduleRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {

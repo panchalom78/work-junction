@@ -124,34 +124,43 @@ const logout = async (req, res) => {
     }
 };
 
-/**
- * @desc    Get current user profile
- * @route   GET /api/auth/me
- * @access  Private
- */
+
  const getMe = async (req, res) => {
+  const userId = req.user._id; // From auth middleware
+
   try {
-    const user = await User.findById(req.user._id).select("-password -otp -otpExpires");
+    // Find user and populate address
+    const user = await User.findById(userId).select("name email role address isVerified");
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
+
+    // Prepare location string for TopNavigation
+    let location = "Location not set";
+    if (user.address?.city) {
+      location = user.address.area
+        ? `${user.address.city} , ${user.address.state}`
+        : user.address.city;
+    }
+
     return res.status(200).json({
       success: true,
-      message: "User fetched successfully",
-      data: { _id: user._id, email: user.email, name: user.name, role: user.role },
+      data: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isVerified: user.isVerified,
+        address: user.address || null,
+        location, // Formatted for TopNavigation
+      },
     });
   } catch (err) {
-    console.error("Get user error:", err);
-    return res.status(500).json({ success: false, message: "Server error." });
+    console.error("Error fetching user data:", err);
+    return res.status(500).json({ success: false, message: "Server error. Please try again later." });
   }
 };
 
-
-/**
- * @desc    Change password
- * @route   PUT /api/auth/change-password
- * @access  Private
- */
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -184,11 +193,6 @@ const changePassword = async (req, res) => {
     }
 };
 
-/**
- * Update user profile (name, phone, address)
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 const updateProfile = async (req, res) => {
     try {
         const { name, phone, address } = req.body;

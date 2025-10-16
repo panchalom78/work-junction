@@ -4,6 +4,16 @@ import {
   FileText, Send, Download, Upload 
 } from 'lucide-react';
 
+// Import your component views for each sidebar tab
+import VerificationTab from './tabs/VerificationTab';
+
+// Map tab id to the corresponding component
+const tabComponents = {
+  
+  verification: VerificationTab,
+  
+};
+
 const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
   if (!sidebarOpen) return null;
 
@@ -16,9 +26,12 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
     { id: 'messages', label: 'Messages', icon: Send }
   ];
 
+  // Find the component for the currently active tab
+  const ActiveComponent = tabComponents[activeTab];
+
   return (
-    <div className="w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 min-h-screen fixed h-full overflow-y-auto">
-      <div className="p-4 sm:p-6 space-y-8">
+    <div className="w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 min-h-screen fixed h-full overflow-y-auto flex flex-col">
+      <div className="p-4 sm:p-6 space-y-8 flex-1">
         {/* Navigation Menu */}
         <div className="space-y-2">
           {menuItems.map((item) => (
@@ -38,7 +51,7 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4">
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 mt-8">
           <h3 className="font-semibold text-blue-900 mb-3 text-sm sm:text-base">Quick Actions</h3>
           <div className="space-y-2">
             <button className="w-full flex items-center space-x-2 p-2 text-xs sm:text-sm bg-white rounded-xl hover:shadow-md transition-all">
@@ -51,6 +64,11 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Render the component for the active tab */}
+      <div className="p-4">
+        {ActiveComponent ? <ActiveComponent /> : null}
       </div>
     </div>
   );

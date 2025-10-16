@@ -144,38 +144,27 @@ export const useAuthStore = create(
       },
 
       getUser: async () => {
-        try {
-          const currentUser = get().user;
-          if (currentUser) {
-            return { success: true, user: currentUser, cached: true };
-          }
-
-          set({ loading: true, error: null, message: null });
-
-          const res = await axiosInstance.get("/api/auth/me");
-          console.log("Get user response:", res);
-
-          set({
-            user: res.data?.data || null,
-            message: res.data?.message || "User fetched successfully",
-            loading: false,
-            role: res.data?.data?.role || null,
-          });
-
-          return {
-            success: true,
-            user: res.data?.data || null,
-            cached: false,
-          };
-        } catch (err) {
-          console.error("Get user API error:", err);
-          set({
-            loading: false,
-            error: err.response?.data?.message || "Failed to fetch user",
-          });
-          return { success: false };
-        }
-      },
+    set({ isLoading: true, error: null });
+    try {
+      const response = await axiosInstance.get("/api/auth/me", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+    
+      set({
+        user: {
+          ...response.data.data,
+          location: response.data.data.location,
+        },
+        isLoading: false,
+        error: null,
+      });
+      return response.data.data;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to fetch user data";
+      set({ isLoading: false, error: errorMessage });
+      throw new Error(errorMessage);
+    }
+  },
 
       updateProfile: async (profileData) => {
         set({ loading: true, error: null });
