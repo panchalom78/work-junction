@@ -124,6 +124,7 @@ const logout = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 
  const getMe = async (req, res) => {
   const userId = req.user._id; // From auth middleware
@@ -161,6 +162,32 @@ const logout = async (req, res) => {
   }
 };
 
+=======
+/**
+ * @desc    Get current user profile
+ * @route   GET /api/auth/me
+ * @access  Private
+ */
+const getMe = async (req, res) => {
+    try {
+        return successResponse(
+            res,
+            200,
+            "User profile retrieved successfully",
+            formatUserResponse(req.user)
+        );
+    } catch (error) {
+        console.error("GetMe error:", error);
+        return errorResponse(res, 500, "Server error");
+    }
+};
+
+/**
+ * @desc    Change password
+ * @route   PUT /api/auth/change-password
+ * @access  Private
+ */
+>>>>>>> 049ce83df5a671db9684459ac75d3f1a585a9a8f
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;

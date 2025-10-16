@@ -8,9 +8,16 @@ import WorkerDashboard from "../pages/workerDashboard";
 import WorkJunctionLanding from "../pages/WorkJunctionLanding";
 import AdminDashboard from "../pages/AdminDashboard";
 import ServiceAgentDashboard from "../pages/ServiceAgentDashboard";
-import CustomerDashboard from "../pages/customer";
+import CustomerDashboard from "../pages/customerdahboard";
+import ServiceBooking from "../pages/servicebooking";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import ServiceAgentSetup from "../pages/ServiceAgentSetup";
+import WorkerChat from "../pages/WorkerChat";
+import Overview from "../components/Overview";
+import WorkerServiceManagement from "../components/ServiceManagement";
+import BookingManagement from "../components/BookingManagement";
+import AvailabilityManagement from "../components/AvailabilityManagement";
+import Settings from "../components/Settings";
 
 const Routers = () => {
     return (
@@ -29,14 +36,6 @@ const Routers = () => {
                         element={<ResetPasswordPage />}
                     />
                     <Route
-                        path="/worker/verification"
-                        element={<WorkerVerificationPage />}
-                    />
-                    <Route
-                        path="/worker/dashboard"
-                        element={<WorkerDashboard />}
-                    />
-                    <Route
                         path="/adminDashboard"
                         element={<AdminDashboard />}
                     />
@@ -49,6 +48,11 @@ const Routers = () => {
                         element={<CustomerDashboard />}
                     ></Route>
 
+                    <Route
+                        path="/servicebooking/:id"
+                        element={<ServiceBooking />}
+                    ></Route>
+
                     {/* Service Agent */}
                     <Route
                         path="/serviceAgentDashboard"
@@ -57,6 +61,32 @@ const Routers = () => {
                     <Route
                         path="/serviceAgentSetup"
                         element={<ServiceAgentSetup />}
+                    />
+                    <Route path="worker" element={<WorkerDashboard />}>
+                        <Route index element={<Overview />} />
+                        <Route
+                            path="services"
+                            element={<WorkerServiceManagement />}
+                        />
+                        <Route
+                            path="bookings"
+                            element={<BookingManagement />}
+                        />
+                        <Route
+                            path="availability"
+                            element={<AvailabilityManagement />}
+                        />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="chat" element={<WorkerChat />} />
+                        <Route path="chat/:chatId" element={<WorkerChat />} />
+                        <Route
+                            path="chat/with/:customerId"
+                            element={<WorkerChat />}
+                        />
+                    </Route>
+                    <Route
+                        path="/worker/verification"
+                        element={<WorkerVerificationPage />}
                     />
                 </Routes>
             </Router>

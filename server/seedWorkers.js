@@ -1,7 +1,6 @@
 // seedWorkers.js
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import bcrypt from "bcrypt";
 import User from "./src/models/user.model.js"; // Adjust path if needed
 import { hashPassword } from "./src/utils/password.js";
 
