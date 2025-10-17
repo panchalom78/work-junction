@@ -87,7 +87,7 @@ const OTPVerificationPage = () => {
             if (response.success) {
                 if (response.user.isVerified) {
                     if (response.user.role == "WORKER") {
-                        navigate("/worker/dashboard");
+                        navigate("/worker");
                     } else if (response.user.role == "CUSTOMER") {
                         navigate("/customer/dashboard");
                     } else if (response.user.role == "SERVICE_AGENT") {

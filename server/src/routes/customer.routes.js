@@ -8,7 +8,10 @@ import {
     updateLanguagePreference,
     getLanguagePreference,
 } from "../controllers/customer.controller.js";
-import { getWorkerById,getWorkers } from "../controllers/sreviceSearch.controller.js";
+import {
+    getWorkerById,
+    getWorkers,
+} from "../controllers/sreviceSearch.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 const router = Router();
 
@@ -18,10 +21,10 @@ const router = Router();
 router.route("/search").get(protect, getWorkers);
 router.route("/workers").get(protect, getWorkerById);
 // REQ-CU-002: Booking History
-router.route("/bookings/history").get( getBookingHistory);
+router.route("/bookings/history").get(getBookingHistory);
 
 // REQ-CU-003: Ratings and Reviews
-router.route("/review").post( submitReview);
+router.route("/review").post(submitReview);
 
 // REQ-CU-004: In-App Chat
 router.route("/chat/send").post(sendMessage);

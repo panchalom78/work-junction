@@ -47,7 +47,7 @@ const LoginPage = () => {
                             response.user?.workerProfile?.verification
                                 ?.status == "APPROVED"
                         ) {
-                            navigate("/worker/dashboard");
+                            navigate("/worker");
                         } else {
                             navigate("/worker/verification");
                         }
@@ -122,7 +122,7 @@ const LoginPage = () => {
                     if (res?.user?.role === "CUSTOMER") {
                         navigate("/customer/dashboard");
                     } else if (res?.user?.role === "WORKER") {
-                        navigate("/worker/dashboard");
+                        navigate("/worker");
                     } else if (res?.user?.role === "SERVICE_AGENT") {
                         navigate("/serviceAgentDashboard");
                     } else if (res?.user?.role === "ADMIN") {
