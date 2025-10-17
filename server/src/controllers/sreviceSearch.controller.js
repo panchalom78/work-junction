@@ -26,7 +26,7 @@ export const getWorkers = async (req, res) => {
         const workerMatchConditions = {
             role: "WORKER",
             isVerified: true,
-            "workerProfile.verification.status": "APPROVED",
+            //"workerProfile.verification.status": "APPROVED",
         };
 
         // Filter by worker name

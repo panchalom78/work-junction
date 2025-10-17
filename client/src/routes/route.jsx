@@ -18,6 +18,8 @@ import WorkerServiceManagement from "../components/ServiceManagement";
 import BookingManagement from "../components/BookingManagement";
 import AvailabilityManagement from "../components/AvailabilityManagement";
 import Settings from "../components/Settings";
+import CustomerBookingHostory from "../pages/Customer.bookingHistory";
+
 
 const Routers = () => {
     return (
@@ -88,6 +90,10 @@ const Routers = () => {
                         path="/worker/verification"
                         element={<WorkerVerificationPage />}
                     />
+
+                    <Route
+                    path="/customer/booking/history"
+                    element={<CustomerBookingHostory/>}></Route>
                 </Routes>
             </Router>
         </div>

@@ -10,7 +10,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useCustomerStore } from "../store/customer.store";
-
+import { Link } from "react-router-dom";
 const CustomerDashboard = () => {
   const {
     isFilterOpen,
@@ -53,12 +53,12 @@ const CustomerDashboard = () => {
       .filter((worker) => {
         if (selectedCategory !== "All Services") {
           const categoryMap = {
-            Carpenters: "Carpenter",
-            Painters: "Painter",
-            Electricians: "Electrician",
+            Carpentry: "Carpenter",
+            Painting: "Painter",
+            Electrical: "Electrician",
             Movers: "Mover",
-            Plumbers: "Plumber",
-            Cleaners: "Cleaner",
+            Plumbing: "Plumber",
+            Cleaning: "Cleaner",
           };
           const expectedSkill = categoryMap[selectedCategory];
           if (expectedSkill && worker.category !== expectedSkill) {
@@ -140,7 +140,21 @@ const CustomerDashboard = () => {
               </button>
               <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
                 <Calendar size={20} />
-                <span className="hidden sm:inline">My Bookings</span>
+                <Link
+                  to="/customer/booking/history"
+                  className="hidden sm:inline"
+                >
+                  My Bookings
+                </Link>
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token"); // or however you store auth
+                  navigate("/login");
+                }}
+                className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition"
+              >
+                <span className="hidden sm:inline font-medium">Logout</span>
               </button>
             </div>
           </div>
@@ -370,7 +384,9 @@ const CustomerDashboard = () => {
               {/* Price Range */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Min Price</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Min Price
+                  </h4>
                   <input
                     type="number"
                     placeholder="0"
@@ -380,7 +396,9 @@ const CustomerDashboard = () => {
                   />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Max Price</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Max Price
+                  </h4>
                   <input
                     type="number"
                     placeholder="1000"
@@ -394,7 +412,9 @@ const CustomerDashboard = () => {
               {/* Rating Range */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Min Rating</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Min Rating
+                  </h4>
                   <input
                     type="number"
                     min="0"
@@ -407,7 +427,9 @@ const CustomerDashboard = () => {
                   />
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-2">Max Rating</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Max Rating
+                  </h4>
                   <input
                     type="number"
                     min="0"

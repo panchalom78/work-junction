@@ -99,7 +99,7 @@ export const useBookingStore = create((set, get) => ({
     set({ loading: true, bookingError: null });
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) throw new Error('Please login to create a booking');
 
       const { data } = await axiosInstance.post(
@@ -131,7 +131,7 @@ export const useBookingStore = create((set, get) => ({
   getMyBookings: async (status = null, page = 1, limit = 10) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) throw new Error('Please login to view bookings');
 
       const { data } = await axiosInstance.get(`/api/bookings/my-bookings`, {
@@ -150,7 +150,7 @@ export const useBookingStore = create((set, get) => ({
   getBookingDetails: async (bookingId) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) throw new Error('Please login to view booking details');
 
       const { data } = await axiosInstance.get(`/api/bookings/${bookingId}`, {
@@ -168,7 +168,7 @@ export const useBookingStore = create((set, get) => ({
   cancelBooking: async (bookingId, cancellationReason) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) throw new Error('Please login to cancel booking');
 
       const { data } = await axiosInstance.patch(
