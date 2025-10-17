@@ -180,11 +180,6 @@ const changePassword = async (req, res) => {
     }
 };
 
-/**
- * Update user profile (name, phone, address)
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 const updateProfile = async (req, res) => {
     try {
         const { name, phone, address } = req.body;

@@ -49,7 +49,7 @@ router.use(protect);
 // Body: { workerId, workerServiceId, serviceId, bookingDate, bookingTime, customerName, customerEmail, customerPhone, address, pincode, additionalNotes }
 router.post(
     "/",
-    authorize(["CUSTOMER"]),
+    authorize("CUSTOMER"),
     createBooking
 );
 
@@ -57,7 +57,7 @@ router.post(
 // GET /api/bookings/my-bookings?status=PENDING&page=1&limit=10
 router.get(
     "/my-bookings",
-    authorize(["CUSTOMER"]),
+    authorize("CUSTOMER"),
     getCustomerBookings
 );
 
@@ -74,7 +74,7 @@ router.get(
 // Body: { cancellationReason }
 router.patch(
     "/:bookingId/cancel",
-    authorize(["CUSTOMER"]),
+    authorize("CUSTOMER"),
     cancelBooking
 );
 

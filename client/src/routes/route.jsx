@@ -20,6 +20,7 @@ import AvailabilityManagement from "../components/AvailabilityManagement";
 import Settings from "../components/Settings";
 import CustomerHomePage from "../pages/CustomerHomePage";
 import SearchResultsPage from "../pages/SearchResultsPage";
+import CustomerBookingHostory from "../pages/Customer.bookingHistory";
 
 const Routers = () => {
     return (
@@ -94,6 +95,11 @@ const Routers = () => {
                         <Route index element={<CustomerHomePage />} />
                         <Route path="search" element={<SearchResultsPage />} />
                     </Route>
+
+                    <Route
+                        path="/customer/booking/history"
+                        element={<CustomerBookingHostory />}
+                    ></Route>
                 </Routes>
             </Router>
         </div>

@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MapPin, Bell, User, ChevronDown, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 
 const TopNavigation = ({ sidebarOpen, setSidebarOpen }) => {
- 
+  const { user, getUser } = useAuthStore();
+
+  useEffect(() => {
+    // Fetch user data on component mount
+    getUser();
+  }, [getUser]);
 
   return (
     <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
@@ -24,7 +29,7 @@ const TopNavigation = ({ sidebarOpen, setSidebarOpen }) => {
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Service Agent
                 </span>
-                <p className="text-xs text-gray-600">Mumbai Central Region</p>
+                <p className="text-xs text-gray-600">{user?.location || "Location not set"}</p>
               </div>
             </div>
           </div>
@@ -42,8 +47,8 @@ const TopNavigation = ({ sidebarOpen, setSidebarOpen }) => {
                 <User className="w-4 h-4 text-white" />
               </div>
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-600">{user?.role}</p>
+                <p className="text-sm font-semibold text-gray-900">{user?.name || "User"}</p>
+                <p className="text-xs text-gray-600">{user?.role || "Role"}</p>
               </div>
               <ChevronDown className="w-4 h-4 text-gray-600" />
             </div>

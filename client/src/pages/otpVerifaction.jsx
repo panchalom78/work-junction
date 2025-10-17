@@ -126,7 +126,7 @@ const OTPVerificationPage = () => {
                 } else if (response.user.role == "CUSTOMER") {
                     navigate("/customer/dashboard");
                 } else if (response.user.role == "SERVICE_AGENT") {
-                    navigate("/serviceAgentDashboard");
+                    navigate("/serviceAgentSetup");
                 } else if (response.user.role == "ADMIN") {
                     navigate("/adminDashboard");
                 }

@@ -15,6 +15,7 @@ import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
 import workerScheduleRoutes from "./routes/worker-schedule.route.js";
+
 import bookingRoutes from "./routes/booking.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import workerSearchRoutes from "./routes/workerSearch.routes.js";
@@ -36,7 +37,7 @@ app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
         "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
+        "GET, POST, PUT, DELETE, OPTIONS,PATCH"
     );
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -62,7 +63,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/service-agent", serviceAgentRoutes);
 app.use("/api/worker/services", workerServiceRoutes);
-app.use("/api/workers/", workerScheduleRoutes);
+app.use("/api/workers", workerScheduleRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
