@@ -154,30 +154,6 @@ export const useAuthStore = create((set, get) => ({
         }
     },
 
-<<<<<<< HEAD
-      getUser: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const response = await axiosInstance.get("/api/auth/me", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-    
-      set({
-        user: {
-          ...response.data.data,
-          location: response.data.data.location,
-        },
-        isLoading: false,
-        error: null,
-      });
-      return response.data.data;
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || "Failed to fetch user data";
-      set({ isLoading: false, error: errorMessage });
-      throw new Error(errorMessage);
-    }
-  },
-=======
     getUser: async () => {
         try {
             const currentUser = get().user;
@@ -211,7 +187,6 @@ export const useAuthStore = create((set, get) => ({
             return { success: false };
         }
     },
->>>>>>> 049ce83df5a671db9684459ac75d3f1a585a9a8f
 
     updateProfile: async (profileData) => {
         set({ loading: true, error: null });

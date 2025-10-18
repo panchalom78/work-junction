@@ -2,7 +2,31 @@ import mongoose from "mongoose";
 import User from "../models//user.model.js";
 import ServiceAgent from "../models/serviceAgent.model.js"
 
-// Setup or update service agent details
+// Setup or update service agent deta
+// Get weekly progress stats for the service agent
+export const getAgentStats = async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const agent = await ServiceAgent.findOne({ userId }).select("completedVerifications");
+    if (!agent) {
+      return res.status(404).json({ success: false, message: "Service agent not found." });
+    }
+    const weeklyTarget = 30;
+    const completedVerifications = agent.completedVerifications || 0;
+    const stats = {
+      verificationsCompleted: {
+        completed: completedVerifications,
+        target: weeklyTarget,
+        progress: Math.min((completedVerifications / weeklyTarget) * 100, 100).toFixed(0),
+      },
+    };
+    return res.status(200).json({ success: true, data: stats });
+  } catch (err) {
+    console.error("Error fetching agent stats:", err);
+    return res.status(500).json({ success: false, message: "Server error. Please try again later." });
+  }
+};
+// Helper function to get the start and eils
 export const setupServiceAgent = async (req, res) => {
   const { houseNo, address, area, city, state, pincode, location } = req.body;
   const userId = req.user._id; // From auth middleware
@@ -131,32 +155,6 @@ export const setupServiceAgent = async (req, res) => {
     session.endSession();
   }
 };
- 
-
-// Get weekly progress stats for the service agent
-export const getAgentStats = async (req, res) => {
-  const userId = req.user._id;
-  try {
-    const agent = await ServiceAgent.findOne({ userId }).select("completedVerifications");
-    if (!agent) {
-      return res.status(404).json({ success: false, message: "Service agent not found." });
-    }
-    const weeklyTarget = 30;
-    const completedVerifications = agent.completedVerifications || 0;
-    const stats = {
-      verificationsCompleted: {
-        completed: completedVerifications,
-        target: weeklyTarget,
-        progress: Math.min((completedVerifications / weeklyTarget) * 100, 100).toFixed(0),
-      },
-    };
-    return res.status(200).json({ success: true, data: stats });
-  } catch (err) {
-    console.error("Error fetching agent stats:", err);
-    return res.status(500).json({ success: false, message: "Server error. Please try again later." });
-  }
-};
-// Helper function to get the start and end of the current week (Monday to Sunday, IST)
 const getWeekRange = () => {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset() + 330); // Adjust to IST (+5:30)
@@ -164,11 +162,11 @@ const getWeekRange = () => {
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)); // Set to Monday
   startOfWeek.setHours(0, 0, 0, 0);
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6); // Set to Sunday
   endOfWeek.setHours(23, 59, 59, 999);
-  
+
   return { startOfWeek, endOfWeek };
 };
 
@@ -271,7 +269,7 @@ export const getWorkersForVerification = async (req, res) => {
     }).select(
       "name email phone address workerProfile.verification"
     ).sort({ "workerProfile.verification.verificationId": -1 });
-    
+
     const total = await User.countDocuments({
       role: "WORKER",
       "workerProfile.verification.status": "PENDING",
@@ -284,3 +282,423 @@ export const getWorkersForVerification = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+/**
+ * Get details of a worker (for verification by Service Agent)
+ */
+export const getWorkerDetails = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+
+    // Find worker by ID and role
+    const worker = await User.findOne({
+      _id: workerId,
+      role: "WORKER",
+    }).select("name email phone address workerProfile createdAt");
+
+    if (!worker) {
+      return errorResponse(res, 404, "Worker not found");
+    }
+
+    // If the requester is a service agent, check if the area matches with worker
+    if (req.user.role === "SERVICE_AGENT") {
+      // Get the service agent document (linked with user)
+      const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
+      // agent may have one or more areas assigned (usually an array, fallback to string if your model differs)
+      let agentArea = null;
+      if (serviceAgent) {
+        agentArea =
+          (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
+            ? serviceAgent.areasAssigned[0]
+            : serviceAgent.areasAssigned;
+      }
+      if (agentArea && worker.address?.area !== agentArea) {
+        return errorResponse(res, 403, "Access denied for this worker’s area");
+      }
+    }
+
+    return successResponse(res, 200, "Worker details fetched", { worker });
+  } catch (error) {
+    console.error("Error fetching worker details:", error);
+    return errorResponse(res, 500, "Failed to fetch worker details");
+  }
+};
+
+/**
+ * @desc Approve worker verification
+ */
+export const approveWorkerVerification = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+
+    // Find worker by ID
+    const worker = await User.findOne({ _id: workerId, role: "WORKER" });
+    if (!worker) {
+      return errorResponse(res, 404, "Worker not found");
+    }
+
+    // Area check - only allow service agent for their area
+    if (req.user.role === "SERVICE_AGENT") {
+      const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
+      let agentArea = null;
+      if (serviceAgent) {
+        agentArea =
+          (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
+            ? serviceAgent.areasAssigned[0]
+            : serviceAgent.areasAssigned;
+      }
+      if (agentArea && worker.address?.area !== agentArea) {
+        return errorResponse(res, 403, "Access denied for this worker’s area");
+      }
+    }
+
+    // Approve verification (status: "APPROVED", keep other fields intact)
+    worker.workerProfile.verification.status = "APPROVED";
+    worker.workerProfile.verification.verifiedBy = req.user._id;
+    worker.workerProfile.verification.verifiedAt = new Date();
+
+    await worker.save();
+
+    return successResponse(res, 200, "Worker approved successfully", { worker });
+  } catch (error) {
+    console.error("Approve error:", error);
+    return errorResponse(res, 500, "Failed to approve worker");
+  }
+};
+
+/**
+ * @desc Reject worker verification
+ */
+export const rejectWorkerVerification = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { reason } = req.body;
+
+    // Find worker by ID
+    const worker = await User.findOne({ _id: workerId, role: "WORKER" });
+    if (!worker) {
+      return errorResponse(res, 404, "Worker not found");
+    }
+
+    // Area check - only allow service agent for their area
+    if (req.user.role === "SERVICE_AGENT") {
+      const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
+      let agentArea = null;
+      if (serviceAgent) {
+        agentArea =
+          (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
+            ? serviceAgent.areasAssigned[0]
+            : serviceAgent.areasAssigned;
+      }
+      if (agentArea && worker.address?.area !== agentArea) {
+        return errorResponse(res, 403, "Access denied for this worker’s area");
+      }
+    }
+
+    // Reject verification
+    worker.workerProfile.verification.status = "REJECTED";
+    worker.workerProfile.verification.rejectionReason = reason || "Not specified";
+    worker.workerProfile.verification.rejectedBy = req.user._id;
+    worker.workerProfile.verification.rejectedAt = new Date();
+
+    await worker.save();
+
+    return successResponse(res, 200, "Worker rejected successfully", { worker });
+  } catch (error) {
+    console.error("Reject error:", error);
+    return errorResponse(res, 500, "Failed to reject worker");
+  }
+};
+
+// ==================== GET ALL WORKERS ====================
+export const getAllWorkers = async (req, res) => {
+  try {
+    const { search, status, service, page = 1, limit = 10 } = req.query;
+    const serviceAgentId = req.user.id; // From auth middleware
+
+    // Build query
+    const query = { role: "WORKER" };
+
+    // Search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { "address.city": { $regex: search, $options: "i" } },
+        { "address.area": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Status filter
+    if (status && status !== "all") {
+      if (status === "active") {
+        query["workerProfile.availabilityStatus"] = "available";
+        query["workerProfile.verification.status"] = "APPROVED";
+      } else if (status === "suspended") {
+        query.$or = [
+          { "serviceAgentProfile.isSuspended": true },
+          {
+            "serviceAgentProfile.suspendedUntil": { $gt: new Date() },
+          },
+        ];
+      } else if (status === "pending") {
+        query["workerProfile.verification.status"] = "PENDING";
+      }
+    }
+
+    // Pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const workers = await User.find(query)
+      .select("-password -otp")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const totalWorkers = await User.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: workers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalWorkers / parseInt(limit)),
+        totalWorkers,
+        limit: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching workers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching workers",
+      error: error.message,
+    });
+  }
+};
+
+// ==================== GET WORKER BY ID ====================
+export const getWorkerById = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID",
+      });
+    }
+
+    const worker = await User.findOne({
+      _id: workerId,
+      role: "WORKER",
+    })
+      .select("-password -otp")
+      .lean();
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: worker,
+    });
+  } catch (error) {
+    console.error("Error fetching worker:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching worker details",
+      error: error.message,
+    });
+  }
+};
+
+// ==================== SUSPEND WORKER ====================
+export const suspendWorker = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { reason, suspendedUntil } = req.body;
+    const serviceAgentId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID",
+      });
+    }
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Suspension reason is required",
+      });
+    }
+
+    const worker = await User.findOne({
+      _id: workerId,
+      role: "WORKER",
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found",
+      });
+    }
+
+    // Initialize serviceAgentProfile if it doesn't exist
+    if (!worker.serviceAgentProfile) {
+      worker.serviceAgentProfile = {};
+    }
+
+    worker.serviceAgentProfile.isSuspended = true;
+    worker.serviceAgentProfile.suspendedUntil = suspendedUntil
+      ? new Date(suspendedUntil)
+      : null;
+
+    // Store suspension reason in worker notes or custom field
+    if (!worker.workerProfile) {
+      worker.workerProfile = {};
+    }
+
+    await worker.save();
+
+    // Update service agent stats
+    await ServiceAgent.findOneAndUpdate(
+      { userId: serviceAgentId },
+      {
+        $inc: { inactiveWorkers: 1, activeWorkers: -1 },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Worker suspended successfully",
+      data: {
+        workerId: worker._id,
+        isSuspended: true,
+        suspendedUntil: worker.serviceAgentProfile.suspendedUntil,
+        reason,
+      },
+    });
+  } catch (error) {
+    console.error("Error suspending worker:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error suspending worker",
+      error: error.message,
+    });
+  }
+};
+
+// ==================== ACTIVATE WORKER ====================
+export const activateWorker = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const serviceAgentId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID",
+      });
+    }
+
+    const worker = await User.findOne({
+      _id: workerId,
+      role: "WORKER",
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found",
+      });
+    }
+
+    // Check if worker has serviceAgentProfile
+    if (!worker.serviceAgentProfile) {
+      worker.serviceAgentProfile = {};
+    }
+
+    worker.serviceAgentProfile.isSuspended = false;
+    worker.serviceAgentProfile.suspendedUntil = null;
+
+    await worker.save();
+
+    // Update service agent stats
+    await ServiceAgent.findOneAndUpdate(
+      { userId: serviceAgentId },
+      {
+        $inc: { activeWorkers: 1, inactiveWorkers: -1 },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Worker activated successfully",
+      data: {
+        workerId: worker._id,
+        isSuspended: false,
+      },
+    });
+  } catch (error) {
+    console.error("Error activating worker:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error activating worker",
+      error: error.message,
+    });
+  }
+};
+
+// export const requestMissingDocuments = async (req, res) => {
+//   try {
+//     const { workerId } = req.params;
+//     const { missingDocs } = req.body; // array of missing doc names
+
+//     // Find worker by ID
+//     const worker = await User.findOne({ _id: workerId, role: "WORKER" });
+//     if (!worker) {
+//       return errorResponse(res, 404, "Worker not found");
+//     }
+
+//     // Area check - only allow service agent for their area
+//     if (req.user.role === "SERVICE_AGENT") {
+//       const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
+//       let agentArea = null;
+//       if (serviceAgent) {
+//         agentArea =
+//           (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
+//             ? serviceAgent.areasAssigned[0]
+//             : serviceAgent.areasAssigned;
+//       }
+//       if (agentArea && worker.address?.area !== agentArea) {
+//         return errorResponse(res, 403, "Access denied for this worker’s area");
+//       }
+//     }
+
+//     if (!Array.isArray(missingDocs) || missingDocs.length === 0) {
+//       return errorResponse(res, 400, "Missing documents list required");
+//     }
+
+//     worker.workerProfile.verification.status = "DOCUMENTS_REQUESTED";
+//     worker.workerProfile.verification.missingDocuments = missingDocs;
+//     worker.workerProfile.verification.requestedBy = req.user._id;
+//     worker.workerProfile.verification.requestedAt = new Date();
+
+//     await worker.save();
+
+//     return successResponse(res, 200, "Missing documents requested", { worker });
+//   } catch (error) {
+//     console.error("Request documents error:", error);
+//     return errorResponse(res, 500, "Failed to request missing documents");
+//   }
+// };

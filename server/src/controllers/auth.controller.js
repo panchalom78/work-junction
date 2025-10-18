@@ -124,45 +124,6 @@ const logout = async (req, res) => {
     }
 };
 
-<<<<<<< HEAD
-
- const getMe = async (req, res) => {
-  const userId = req.user._id; // From auth middleware
-
-  try {
-    // Find user and populate address
-    const user = await User.findById(userId).select("name email role address isVerified");
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found." });
-    }
-
-    // Prepare location string for TopNavigation
-    let location = "Location not set";
-    if (user.address?.city) {
-      location = user.address.area
-        ? `${user.address.city} , ${user.address.state}`
-        : user.address.city;
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        _id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isVerified: user.isVerified,
-        address: user.address || null,
-        location, // Formatted for TopNavigation
-      },
-    });
-  } catch (err) {
-    console.error("Error fetching user data:", err);
-    return res.status(500).json({ success: false, message: "Server error. Please try again later." });
-  }
-};
-
-=======
 /**
  * @desc    Get current user profile
  * @route   GET /api/auth/me
@@ -187,7 +148,6 @@ const getMe = async (req, res) => {
  * @route   PUT /api/auth/change-password
  * @access  Private
  */
->>>>>>> 049ce83df5a671db9684459ac75d3f1a585a9a8f
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;

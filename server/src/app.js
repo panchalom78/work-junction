@@ -15,13 +15,8 @@ import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
 import workerScheduleRoutes from "./routes/worker-schedule.route.js";
-<<<<<<< HEAD
-import adminRoutes from "./routes/admin.route.js";
-
-=======
 import bookingRoutes from "./routes/booking.route.js";
 import chatRoutes from "./routes/chat.route.js";
->>>>>>> 049ce83df5a671db9684459ac75d3f1a585a9a8f
 const app = express();
 
 // Middleware
@@ -65,14 +60,9 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
 app.use("/api/service-agent", serviceAgentRoutes);
 app.use("/api/worker/services", workerServiceRoutes);
-<<<<<<< HEAD
-app.use("/api/workers", workerScheduleRoutes);
-app.use("/api/admin", adminRoutes);
-=======
 app.use("/api/workers/", workerScheduleRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
->>>>>>> 049ce83df5a671db9684459ac75d3f1a585a9a8f
 
 // Health check route
 app.get("/health", (req, res) => {
