@@ -19,7 +19,7 @@ const Routers = () => {
                     <Route path="/otpVerifaction" element={<OTPVerificationPage />} />
                     <Route path="/verification" element={<WorkerVerificationPage />} />
                     <Route path="/workerDashboard" element={<WorkerDashboard />} />
-                    <Route path="/adminDashboard" element={<AdminDashboard />} />
+                    <Route path="/admin/*" element={<AdminDashboard />} />
                     <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
                 </Routes>
             </Router>

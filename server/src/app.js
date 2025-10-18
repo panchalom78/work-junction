@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
+import adminRoutes from "./routes/admin.route.js";
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {
