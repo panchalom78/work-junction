@@ -30,6 +30,12 @@ const Routers = () => {
                     <Route path="/" element={<WorkJunctionLanding />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Register />} />
+
+                    <Route path="/otpVerifaction" element={<OTPVerificationPage />} />
+                    <Route path="/verification" element={<WorkerVerificationPage />} />
+                    <Route path="/workerDashboard" element={<WorkerDashboard />} />
+                    <Route path="/admin/*" element={<AdminDashboard />} />
+                    <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}
@@ -100,6 +106,7 @@ const Routers = () => {
                         path="/customer/booking/history"
                         element={<CustomerBookingHostory />}
                     ></Route>
+
                 </Routes>
             </Router>
         </div>
