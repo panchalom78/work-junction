@@ -47,75 +47,80 @@ const CustomerDashboard = () => {
   const toggleFilter = (key, value) => {
     setFilter(key, value);
   };
+const getFilteredWorkers = () => {
+  return workers
+    .filter((worker) => {
+      // ✅ Filter by selected category
+      if (selectedCategory !== "All Services") {
+        const categoryMap = {
+          Carpenters: "Carpenter",
+          Painters: "Painter",
+          Electricians: "Electrician",
+          Movers: "Mover",
+          Plumbers: "Plumber",
+          Cleaners: "Cleaner",
+          "Appliance Repair": "Appliance Repair",
+        };
 
-  const getFilteredWorkers = () => {
-    return workers
-      .filter((worker) => {
-        if (selectedCategory !== "All Services") {
-          const categoryMap = {
-            Carpentry: "Carpenter",
-            Painting: "Painter",
-            Electrical: "Electrician",
-            Movers: "Mover",
-            Plumbing: "Plumber",
-            Cleaning: "Cleaner",
-          };
-          const expectedSkill = categoryMap[selectedCategory];
-          if (expectedSkill && worker.category !== expectedSkill) {
-            return false;
-          }
+        const expectedCategory = categoryMap[selectedCategory] || selectedCategory;
+
+        // ✅ Match worker.category instead of worker.services.skill
+        if (
+          worker.category &&
+          !worker.category.toLowerCase().includes(expectedCategory.toLowerCase())
+        ) {
+          return false;
         }
+      }
 
-        if (filters.skill && worker.category !== filters.skill) return false;
+      // ✅ Now filter based on sidebar filters
+      if (filters.skill && worker.category?.toLowerCase() !== filters.skill.toLowerCase())
+        return false;
 
-        if (
-          filters.service &&
-          !worker.title?.toLowerCase().includes(filters.service.toLowerCase())
-        )
-          return false;
+      if (
+        filters.service &&
+        !worker.title?.toLowerCase().includes(filters.service.toLowerCase())
+      )
+        return false;
 
-        if (
-          filters.workerName &&
-          !worker.name?.toLowerCase().includes(filters.workerName.toLowerCase())
-        )
-          return false;
+      if (
+        filters.workerName &&
+        !worker.name?.toLowerCase().includes(filters.workerName.toLowerCase())
+      )
+        return false;
 
-        if (filters.workerPhone && !worker.phone?.includes(filters.workerPhone))
-          return false;
+      if (filters.workerPhone && !worker.phone?.includes(filters.workerPhone))
+        return false;
 
-        if (filters.ratingMin && worker.rating < Number(filters.ratingMin))
-          return false;
-        if (filters.ratingMax && worker.rating > Number(filters.ratingMax))
-          return false;
+      if (filters.ratingMin && worker.rating < Number(filters.ratingMin)) return false;
+      if (filters.ratingMax && worker.rating > Number(filters.ratingMax)) return false;
 
-        if (filters.priceMin && worker.priceAmount < Number(filters.priceMin))
-          return false;
-        if (filters.priceMax && worker.priceAmount > Number(filters.priceMax))
-          return false;
+      if (filters.priceMin && worker.priceAmount < Number(filters.priceMin)) return false;
+      if (filters.priceMax && worker.priceAmount > Number(filters.priceMax)) return false;
 
-        if (
-          filters.location &&
-          !worker.location
-            ?.toLowerCase()
-            .includes(filters.location.toLowerCase())
-        )
-          return false;
+      if (
+        filters.location &&
+        !worker.location?.toLowerCase().includes(filters.location.toLowerCase())
+      )
+        return false;
 
-        return true;
-      })
-      .sort((a, b) => {
-        switch (filters.sortBy) {
-          case "rating":
-            return b.rating - a.rating;
-          case "price":
-            return (a.priceAmount || 0) - (b.priceAmount || 0);
-          case "name":
-            return a.name.localeCompare(b.name);
-          default:
-            return 0;
-        }
-      });
-  };
+      return true;
+    })
+    .sort((a, b) => {
+      switch (filters.sortBy) {
+        case "rating":
+          return (b.rating || 0) - (a.rating || 0);
+        case "price":
+          return (a.priceAmount || 0) - (b.priceAmount || 0);
+        case "name":
+          return a.name.localeCompare(b.name);
+        default:
+          return 0;
+      }
+    });
+};
+
+
 
   const filteredWorkers = getFilteredWorkers();
   const activeFilterCount = Object.values(filters).filter((v) => v).length;
