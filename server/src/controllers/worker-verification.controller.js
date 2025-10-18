@@ -323,7 +323,7 @@ const getVerificationStatus = async (req, res) => {
         const verification = user.workerProfile?.verification || {};
 
         const status = {
-            overallStatus: verification.status || "PENDING",
+            verificationStatus: verification.status || "UNVERIFIED",
             documents: {
                 selfie: {
                     uploaded: !!verification.selfieUrl,

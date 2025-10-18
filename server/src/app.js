@@ -2,13 +2,27 @@ import express, { json, urlencoded } from "express";
 import { connect } from "mongoose";
 import cookieParser from "cookie-parser";
 import { config } from "dotenv";
+import customerRoutes from "./routes/customer.routes.js";
 
 config();
+
+// Routes
 import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
+<<<<<<< HEAD
 import adminRoutes from "./routes/admin.route.js";
+=======
+import skillRoutes from "./routes/skill.route.js";
+import serviceAgentRoutes from "./routes/serviceAgent.route.js";
+import workerServiceRoutes from "./routes/worker-service.route.js";
+import workerScheduleRoutes from "./routes/worker-schedule.route.js";
+
+import bookingRoutes from "./routes/booking.route.js";
+import chatRoutes from "./routes/chat.route.js";
+import workerSearchRoutes from "./routes/workerSearch.routes.js";
+>>>>>>> b4a6625e5795f80efb0b52b87b75af6bea89c3b4
 
 const app = express();
 
@@ -16,6 +30,7 @@ const app = express();
 app.use(json());
 app.use(urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(express.json());
 
 // CORS configuration (if needed)
 app.use((req, res, next) => {
@@ -26,7 +41,7 @@ app.use((req, res, next) => {
     res.header("Access-Control-Allow-Credentials", "true");
     res.header(
         "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
+        "GET, POST, PUT, DELETE, OPTIONS,PATCH"
     );
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -47,7 +62,19 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
+<<<<<<< HEAD
 app.use("/api/admin", adminRoutes);
+=======
+app.use("/api/skill", skillRoutes);
+app.use("/api/customer", customerRoutes);
+app.use("/api/skills", skillRoutes);
+app.use("/api/service-agent", serviceAgentRoutes);
+app.use("/api/worker/services", workerServiceRoutes);
+app.use("/api/workers", workerScheduleRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api/customers", workerSearchRoutes);
+>>>>>>> b4a6625e5795f80efb0b52b87b75af6bea89c3b4
 
 // Health check route
 app.get("/health", (req, res) => {

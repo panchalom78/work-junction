@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import lottie from "lottie-web";
+import toast from "react-hot-toast"; // ✅ Toast library
+
 import {
     FiUser,
     FiMail,
@@ -19,6 +22,7 @@ import { useAuthStore } from "../store/auth.store";
 
 import workerAnim from "../assets/tool.json";
 import InputField from "../components/InputField";
+
 const RegisterPage = () => {
     const [formData, setFormData] = useState({
         role: "",
@@ -28,13 +32,17 @@ const RegisterPage = () => {
         password: "",
         confirmPassword: "",
     });
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const navigate = useNavigate();
     const lottieRef = useRef(null);
     const loadingRef = useRef(null);
+
+    const { register, getUser, loading, error, message } = useAuthStore();
 
     const roles = [
         {
@@ -103,43 +111,45 @@ const RegisterPage = () => {
     const handleRoleSelect = (roleId) => {
         setFormData((prev) => ({ ...prev, role: roleId }));
         setCurrentStep(2);
+        toast.success(`Role "${roleId}" selected!`); // ✅ Toast when role selected
     };
 
-    const { register, loading, error, message } = useAuthStore();
-
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        const newErrors = {};
+        try {
+            e.preventDefault();
+            const newErrors = {};
 
-        Object.keys(formData).forEach((key) => {
-            const error = validateField(key, formData[key]);
-            if (error) newErrors[key] = error;
-        });
+            Object.keys(formData).forEach((key) => {
+                const error = validateField(key, formData[key]);
+                if (error) newErrors[key] = error;
+            });
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                toast.error("Please fill all required fields correctly!"); // ✅ Toast for validation error
+                return;
+            }
 
-        setIsLoading(true);
+            setIsLoading(true);
+            const res = await register({
+                email: formData.email,
+                password: formData.password,
+                name: formData.fullName,
+                phone: formData.phone,
+                role: formData.role,
+            });
+            setIsLoading(false);
+            console.log();
 
-        const res = await register({
-            email: formData.email,
-            password: formData.password,
-            name: formData.fullName,
-            phone: formData.phone,
-            role: formData.role,
-        });
-
-        setIsLoading(false);
-
-        if (res.success) {
-            setCurrentStep(3);
-        } else {
-            setErrors((prev) => ({
-                ...prev,
-                submit: "Registration failed. Try again.",
-            }));
+            if (res.success) {
+                toast.success("Account created successfully! 🎉");
+                navigate("/otpVerification");
+                setCurrentStep(3);
+            } else {
+                toast.error(res.message);
+            }
+        } catch (error) {
+            toast.error(error.message || "Registration failed. Try again.");
         }
     };
 
@@ -153,11 +163,36 @@ const RegisterPage = () => {
                 autoplay: true,
                 animationData: workerAnim,
             });
-
-            return () => {
-                animation.destroy();
-            };
+            return () => animation.destroy();
         }
+    }, []);
+
+    useEffect(() => {
+        const navigateUser = async () => {
+            const response = await getUser();
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.status == "APPROVED"
+                        ) {
+                            navigate("/worker");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "CUSTOMER") {
+                        navigate("/customer/dashboard");
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            }
+        };
+        navigateUser();
     }, []);
 
     // Loading animation
@@ -170,10 +205,7 @@ const RegisterPage = () => {
                 autoplay: true,
                 path: "https://lottie.host/5f7b0c2e-ffd9-4a29-b9b1-0c262e875f8b/5kI5pE1c5p.json",
             });
-
-            return () => {
-                animation.destroy();
-            };
+            return () => animation.destroy();
         }
     }, [isLoading]);
 
@@ -260,16 +292,6 @@ const RegisterPage = () => {
                             Fill in your details to get started
                         </p>
                     </div>
-                    {error && (
-                        <p className="text-red-500 text-sm text-center">
-                            {error}
-                        </p>
-                    )}
-                    {message && (
-                        <p className="text-green-600 text-sm text-center">
-                            {message}
-                        </p>
-                    )}
 
                     <InputField
                         icon={FiUser}

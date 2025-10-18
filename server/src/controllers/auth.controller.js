@@ -8,6 +8,7 @@ import {
 } from "../utils/response.js";
 import { generateOTP } from "../utils/otp.js";
 import { sendOTPEmail } from "../utils/email.js";
+import mongoose from "mongoose";
 
 /**
  * @desc    Register new user
@@ -143,47 +144,6 @@ const getMe = async (req, res) => {
 };
 
 /**
- * @desc    Update user profile
- * @route   PUT /api/auth/profile
- * @access  Private
- */
-const updateProfile = async (req, res) => {
-    try {
-        const { name, phone, address } = req.body;
-
-        const updateData = {};
-        if (name) updateData.name = name;
-        if (phone) {
-            const existingUser = await User.findOne({
-                phone,
-                _id: { $ne: req.user._id },
-            });
-
-            if (existingUser) {
-                return errorResponse(res, 400, "Phone number already in use");
-            }
-            updateData.phone = phone;
-        }
-        if (address) updateData.address = address;
-
-        const user = await User.findByIdAndUpdate(req.user._id, updateData, {
-            new: true,
-            runValidators: true,
-        }).select("-password");
-
-        return successResponse(
-            res,
-            200,
-            "Profile updated successfully",
-            formatUserResponse(user)
-        );
-    } catch (error) {
-        console.error("Update profile error:", error);
-        return errorResponse(res, 500, "Server error during profile update");
-    }
-};
-
-/**
  * @desc    Change password
  * @route   PUT /api/auth/change-password
  * @access  Private
@@ -220,4 +180,240 @@ const changePassword = async (req, res) => {
     }
 };
 
-export { register, login, logout, getMe, updateProfile, changePassword };
+const updateProfile = async (req, res) => {
+    try {
+        const { name, phone, address } = req.body;
+        const userId = req.user._id;
+
+        // Validate user ID
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid user ID",
+            });
+        }
+
+        // Build update object with only provided fields
+        const updateFields = {};
+
+        if (name !== undefined) {
+            if (typeof name !== "string" || name.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Name must be a non-empty string",
+                });
+            }
+            updateFields.name = name.trim();
+        }
+
+        if (phone !== undefined) {
+            const phoneRegex = /^[0-9]{10}$/;
+            if (!phoneRegex.test(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please enter a valid 10-digit phone number",
+                });
+            }
+            updateFields.phone = phone;
+        }
+
+        if (address !== undefined) {
+            if (typeof address !== "object" || address === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Address must be a valid object",
+                });
+            }
+
+            // Validate address structure
+            const addressFields = {};
+
+            if (address.houseNo !== undefined) {
+                addressFields.houseNo =
+                    typeof address.houseNo === "string"
+                        ? address.houseNo.trim()
+                        : "";
+            }
+
+            if (address.street !== undefined) {
+                addressFields.street =
+                    typeof address.street === "string"
+                        ? address.street.trim()
+                        : "";
+            }
+
+            if (address.area !== undefined) {
+                addressFields.area =
+                    typeof address.area === "string" ? address.area.trim() : "";
+            }
+
+            if (address.city !== undefined) {
+                addressFields.city =
+                    typeof address.city === "string" ? address.city.trim() : "";
+            }
+
+            if (address.state !== undefined) {
+                addressFields.state =
+                    typeof address.state === "string"
+                        ? address.state.trim()
+                        : "";
+            }
+
+            if (address.pincode !== undefined) {
+                addressFields.pincode =
+                    typeof address.pincode === "string"
+                        ? address.pincode.trim()
+                        : "";
+            }
+
+            if (address.coordinates !== undefined) {
+                if (
+                    typeof address.coordinates === "object" &&
+                    address.coordinates !== null
+                ) {
+                    addressFields.coordinates = {};
+                    if (address.coordinates.latitude !== undefined) {
+                        addressFields.coordinates.latitude = String(
+                            address.coordinates.latitude
+                        );
+                    }
+                    if (address.coordinates.longitude !== undefined) {
+                        addressFields.coordinates.longitude = String(
+                            address.coordinates.longitude
+                        );
+                    }
+                }
+            }
+
+            updateFields.address = addressFields;
+        }
+
+        // Check if at least one field is being updated
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No valid fields provided for update",
+            });
+        }
+
+        // Check if phone number already exists (if phone is being updated)
+        if (phone) {
+            const existingUser = await User.findOne({
+                phone: phone,
+                _id: { $ne: userId },
+            });
+
+            if (existingUser) {
+                return res.status(409).json({
+                    success: false,
+                    message:
+                        "Phone number is already registered with another account",
+                });
+            }
+        }
+
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateFields },
+            {
+                new: true, // Return updated document
+                runValidators: true, // Run schema validators
+            }
+        ).select("-password -otp"); // Exclude sensitive fields
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: updatedUser,
+        });
+    } catch (error) {
+        console.error("Error updating profile:", error);
+
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+            const errors = Object.values(error.errors).map(
+                (err) => err.message
+            );
+            return res.status(400).json({
+                success: false,
+                message: "Validation error",
+                errors: errors,
+            });
+        }
+
+        // Handle duplicate key error (phone)
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "Phone number is already registered",
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
+};
+
+/**
+ * Get user profile
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const user = await User.findById(userId)
+            .select("-password -otp")
+            .populate(
+                "workerProfile.verification.serviceAgentId",
+                "name email phone"
+            );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: user,
+        });
+    } catch (error) {
+        console.error("Error fetching profile:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error:
+                process.env.NODE_ENV === "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
+};
+
+export {
+    register,
+    login,
+    logout,
+    getMe,
+    updateProfile,
+    getProfile,
+    changePassword,
+};

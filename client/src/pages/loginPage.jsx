@@ -1,33 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import lottie from "lottie-web";
-import {
-    FiMail,
-    FiLock,
-    FiEye,
-    FiEyeOff,
-    FiArrowLeft,
-    FiCheck,
-} from "react-icons/fi";
+import toast from "react-hot-toast"; // ✅ Toast import
+import { FiMail, FiLock, FiEye, FiEyeOff, FiCheck } from "react-icons/fi";
 import { useAuthStore } from "../store/auth.store";
 import InputField from "../components/InputField";
 import workManagementAnim from "../assets/workmanagemnt.json";
+import { useNavigate } from "react-router-dom";
+
 const LoginPage = () => {
-    const [formData, setFormData] = useState({
-        email: "",
-        password: "",
-    });
+    const [formData, setFormData] = useState({ email: "", password: "" });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [currentStep, setCurrentStep] = useState(1);
+    const navigate = useNavigate();
 
     const lottieRef = useRef(null);
     const loadingRef = useRef(null);
+    const { login, getUser } = useAuthStore();
 
-    const { login, error, message } = useAuthStore();
-
-    // Lottie for hero animation
+    // Hero Lottie animation
     useEffect(() => {
         if (lottieRef.current) {
             const animation = lottie.loadAnimation({
@@ -41,7 +34,36 @@ const LoginPage = () => {
         }
     }, []);
 
-    // Lottie for loading spinner
+    useEffect(() => {
+        const navigateUser = async () => {
+            const response = await getUser();
+            console.log(response);
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.verification
+                                ?.status == "APPROVED"
+                        ) {
+                            navigate("/worker");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "CUSTOMER") {
+                        navigate("/customer/dashboard");
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            }
+        };
+        navigateUser();
+    }, []);
+    // Loading spinner animation
     useEffect(() => {
         if (isLoading && loadingRef.current) {
             const animation = lottie.loadAnimation({
@@ -72,32 +94,48 @@ const LoginPage = () => {
 
     const handleInputChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors((prev) => ({ ...prev, [field]: "" }));
-        }
+        if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        const newErrors = {};
-        Object.keys(formData).forEach((key) => {
-            const error = validateField(key, formData[key]);
-            if (error) newErrors[key] = error;
-        });
+        try {
+            e.preventDefault();
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
+            const newErrors = {};
+            Object.keys(formData).forEach((key) => {
+                const error = validateField(key, formData[key]);
+                if (error) newErrors[key] = error;
+            });
 
-        setIsLoading(true);
-        const res = await login(formData);
-        setIsLoading(false);
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors);
+                toast.error("Please fill all required fields correctly!"); // ❌ Validation error toast
+                return;
+            }
 
-        if (res.success) {
-            setCurrentStep(2);
-        } else {
-            setErrors({ submit: res.message || "Invalid credentials" });
+            setIsLoading(true);
+            const res = await login(formData);
+
+            if (res.success) {
+                toast.success("Login successful 🎉"); // ✅ Success toast
+                if (res?.user) {
+                    if (res?.user?.role === "CUSTOMER") {
+                        navigate("/customer/dashboard");
+                    } else if (res?.user?.role === "WORKER") {
+                        navigate("/worker");
+                    } else if (res?.user?.role === "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (res?.user?.role === "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                toast.error(res.message || "Invalid credentials"); // ❌ Error toast
+            }
+        } catch (err) {
+            toast.error(err.message || "Invalid credentials"); // ❌ Error toast
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -118,22 +156,6 @@ const LoginPage = () => {
                             Login to continue using WorkJunction
                         </p>
                     </div>
-
-                    {error && (
-                        <p className="text-red-500 text-sm text-center">
-                            {error}
-                        </p>
-                    )}
-                    {message && (
-                        <p className="text-green-600 text-sm text-center">
-                            {message}
-                        </p>
-                    )}
-                    {errors.submit && (
-                        <p className="text-red-500 text-sm text-center">
-                            {errors.submit}
-                        </p>
-                    )}
 
                     <InputField
                         icon={FiMail}
@@ -173,6 +195,17 @@ const LoginPage = () => {
                             <span>Sign In</span>
                         )}
                     </motion.button>
+
+                    <p className="text-gray-600 text-sm flex justify-center gap-2">
+                        Forgot Password ?{" "}
+                        <button
+                            type="button"
+                            className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                            onClick={() => navigate("/reset-password")}
+                        >
+                            Reset Password
+                        </button>
+                    </p>
                 </motion.form>
             );
         }
@@ -200,7 +233,7 @@ const LoginPage = () => {
                     <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => (window.location.href = "/dashboard")}
+                        onClick={() => navigate("/dashboard")}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                         Go to Dashboard
@@ -258,9 +291,7 @@ const LoginPage = () => {
                                     Don’t have an account?{" "}
                                     <button
                                         className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-                                        onClick={() =>
-                                            (window.location.href = "/register")
-                                        }
+                                        onClick={() => navigate("/signup")}
                                     >
                                         Register Now
                                     </button>

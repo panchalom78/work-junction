@@ -1,17 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { TrendingUp } from 'lucide-react';
 import StatsCard from './StatsCard';
 import QuickAction from './QuickAction';
 import { DollarSign, CheckCircle, Star, Clock, User, Plus } from 'lucide-react';
+import axiosInstance from '../utils/axiosInstance';
 
-const Overview = ({ 
-  workerData, 
-  earningsData, 
-  bookings, 
-  onShowServiceModal, 
-  onSetActiveTab 
-}) => {
-  const maxEarning = Math.max(...earningsData.map(item => item.amount));
+const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
+  const [workerData, setWorkerData] = useState({
+    name: '',
+    earnings: 0,
+    completedJobs: 0,
+    upcomingJobs: 0,
+    rating: 0,
+    earningsData: []
+  });
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axiosInstance("/api/worker/overview"); 
+        const { worker, bookings } = response.data;
+        setWorkerData(worker);
+        setBookings(bookings);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch data');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const maxEarning = workerData.earningsData.length > 0 
+    ? Math.max(...workerData.earningsData.map(item => item.amount)) 
+    : 1; // Fallback to 1 to avoid division by zero
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
 
   return (
     <div className="space-y-8 p-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
@@ -69,23 +104,27 @@ const Overview = ({
               <TrendingUp className="w-5 h-5 text-success-color" />
             </div>
             
-            <div className="flex items-end justify-between h-48 mt-8">
-              {earningsData.map((item, index) => {
-                const height = (item.amount / maxEarning) * 100;
-                return (
-                  <div key={index} className="flex flex-col items-center flex-1">
-                    <div className="text-center mb-2">
-                      <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>₹{(item.amount / 1000).toFixed(0)}k</span>
+            {workerData.earningsData.length === 0 ? (
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', textAlign: 'center' }}>No earnings data available.</p>
+            ) : (
+              <div className="flex items-end justify-between h-48 mt-8">
+                {workerData.earningsData.map((item, index) => {
+                  const height = (item.amount / maxEarning) * 100;
+                  return (
+                    <div key={index} className="flex flex-col items-center flex-1">
+                      <div className="text-center mb-2">
+                        <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>₹{(item.amount / 1000).toFixed(0)}k</span>
+                      </div>
+                      <div
+                        className="w-8 bg-primary-color rounded-t-lg transition-all duration-300 hover:bg-primary-hover cursor-pointer"
+                        style={{ height: `${height}%` }}
+                      ></div>
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{item.month}</span>
                     </div>
-                    <div
-                      className="w-8 bg-primary-color rounded-t-lg transition-all duration-300 hover:bg-primary-hover cursor-pointer"
-                      style={{ height: `${height}%` }}
-                    ></div>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{item.month}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -126,23 +165,27 @@ const Overview = ({
             </div>
             <div className="card-body" style={{ padding: '1rem' }}>
               <div className="space-y-4">
-                {bookings.slice(0, 3).map((booking) => (
-                  <div key={booking.id} className="flex items-start space-x-3 p-3 border border-border-color rounded-lg hover:bg-surface-secondary transition-colors" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
-                    <div className="w-10 h-10 bg-primary-light rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--primary-light)' }}>
-                      <User className="w-5 h-5 text-primary-color" style={{ color: 'var(--primary-color)' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>{booking.customer}</h4>
-                        <span className={`text-xs px-2 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-success-light text-success-color' : 'bg-warning-light text-warning-color'}`} style={{ backgroundColor: booking.status === 'confirmed' ? 'var(--success-light)' : 'var(--warning-light)', color: booking.status === 'confirmed' ? 'var(--success-color)' : 'var(--warning-color)' }}>
-                          {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                        </span>
+                {bookings.length === 0 ? (
+                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>No recent bookings available.</p>
+                ) : (
+                  bookings.slice(0, 3).map((booking) => (
+                    <div key={booking.id} className="flex items-start space-x-3 p-3 border border-border-color rounded-lg hover:bg-surface-secondary transition-colors" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
+                      <div className="w-10 h-10 bg-primary-light rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--primary-light)' }}>
+                        <User className="w-5 h-5 text-primary-color" style={{ color: 'var(--primary-color)' }} />
                       </div>
-                      <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{booking.service}</p>
-                      <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-light)', marginTop: '0.25rem' }}>{booking.date}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>{booking.customer}</h4>
+                          <span className={`text-xs px-2 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-success-light text-success-color' : 'bg-warning-light text-warning-color'}`} style={{ backgroundColor: booking.status === 'confirmed' ? 'var(--success-light)' : 'var(--warning-light)', color: booking.status === 'confirmed' ? 'var(--success-color)' : 'var(--warning-color)' }}>
+                            {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{booking.service}</p>
+                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-light)', marginTop: '0.25rem' }}>{booking.date}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
