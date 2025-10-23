@@ -528,7 +528,7 @@ export const cancelBooking = async (req, res) => {
         }
 
         // Update booking status
-        booking.status = "CANCELLED";
+        booking.status = "cancelled";
         booking.cancellationReason = cancellationReason || "Cancelled by customer";
         await booking.save();
 
