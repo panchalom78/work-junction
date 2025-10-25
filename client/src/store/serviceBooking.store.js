@@ -25,7 +25,8 @@ export const useBookingStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await axiosInstance.get(
-        `/api/bookings/worker/${workerId}/service/${workerServiceId}`
+        `/api/bookings/worker/${workerId}/service/${workerServiceId}`,
+        { withCredentials: true }
       );
       set({ worker: data.data, loading: false });
     } catch (error) {
@@ -39,7 +40,7 @@ export const useBookingStore = create((set, get) => ({
     try {
       const { data } = await axiosInstance.get(
         `/api/bookings/worker/${workerId}/available-slots`,
-        { params: { date } }
+        { params: { date }, withCredentials: true }
       );
       set({ availableSlots: data.data.availableSlots, bookedSlots: data.data.bookedSlots });
     } catch (error) {
@@ -51,7 +52,8 @@ export const useBookingStore = create((set, get) => ({
     try {
       const { data } = await axiosInstance.post(
         `/api/bookings/worker/${workerId}/check-availability`,
-        { bookingDate, bookingTime }
+        { bookingDate, bookingTime },
+        { withCredentials: true }
       );
       return data;
     } catch (error) {
@@ -99,9 +101,6 @@ export const useBookingStore = create((set, get) => ({
     set({ loading: true, bookingError: null });
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Please login to create a booking');
-
       const { data } = await axiosInstance.post(
         `/api/bookings`,
         {
@@ -117,7 +116,7 @@ export const useBookingStore = create((set, get) => ({
           pincode: bookingData.pincode,
           additionalNotes: bookingData.additionalNotes,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { withCredentials: true }
       );
 
       set({ bookingSuccess: true, loading: false, createdBooking: data.data });
@@ -131,11 +130,8 @@ export const useBookingStore = create((set, get) => ({
   getMyBookings: async (status = null, page = 1, limit = 10) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Please login to view bookings');
-
       const { data } = await axiosInstance.get(`/api/bookings/my-bookings`, {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
         params: { status, page, limit },
       });
 
@@ -150,11 +146,8 @@ export const useBookingStore = create((set, get) => ({
   getBookingDetails: async (bookingId) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Please login to view booking details');
-
       const { data } = await axiosInstance.get(`/api/bookings/${bookingId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
 
       set({ loading: false });
@@ -168,13 +161,10 @@ export const useBookingStore = create((set, get) => ({
   cancelBooking: async (bookingId, cancellationReason) => {
     set({ loading: true, error: null });
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('Please login to cancel booking');
-
       const { data } = await axiosInstance.patch(
         `/api/bookings/${bookingId}/cancel`,
         { cancellationReason },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { withCredentials: true }
       );
 
       set({ loading: false });

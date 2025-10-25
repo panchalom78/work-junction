@@ -11,7 +11,10 @@ import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
+<<<<<<< HEAD
 import adminRoutes from "./routes/admin.route.js";
+=======
+>>>>>>> ef95ea0055c78faab20b6519e79865ed7df18c9c
 import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
@@ -58,8 +61,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
+<<<<<<< HEAD
 
 app.use("/api/admin", adminRoutes);
+=======
+>>>>>>> ef95ea0055c78faab20b6519e79865ed7df18c9c
 app.use("/api/skill", skillRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
@@ -69,7 +75,10 @@ app.use("/api/workers", workerScheduleRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
+<<<<<<< HEAD
 
+=======
+>>>>>>> ef95ea0055c78faab20b6519e79865ed7df18c9c
 
 // Health check route
 app.get("/health", (req, res) => {
