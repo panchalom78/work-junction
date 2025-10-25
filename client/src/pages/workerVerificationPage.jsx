@@ -37,7 +37,7 @@ const WorkerVerificationPage = () => {
             const timer = setTimeout(() => {
                 // Uncomment this in your actual project to enable navigation
                 navigate("/worker/dashboard");
-                console.log("Worker verified! Navigate to /worker/dashboard");
+                console.log("Worker verified! Navigate to /worker");
             }, 2000);
             return () => clearTimeout(timer);
         }

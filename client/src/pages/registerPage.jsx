@@ -178,7 +178,7 @@ const RegisterPage = () => {
                         if (
                             response.user?.workerProfile?.status == "APPROVED"
                         ) {
-                            navigate("/worker/dashboard");
+                            navigate("/worker");
                         } else {
                             navigate("/worker/verification");
                         }

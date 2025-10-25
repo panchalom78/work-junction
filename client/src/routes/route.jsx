@@ -18,6 +18,9 @@ import WorkerServiceManagement from "../components/ServiceManagement";
 import BookingManagement from "../components/BookingManagement";
 import AvailabilityManagement from "../components/AvailabilityManagement";
 import Settings from "../components/Settings";
+import CustomerHomePage from "../pages/CustomerHomePage";
+import SearchResultsPage from "../pages/SearchResultsPage";
+import CustomerBookingHostory from "../pages/Customer.bookingHistory";
 
 const Routers = () => {
     return (
@@ -27,6 +30,12 @@ const Routers = () => {
                     <Route path="/" element={<WorkJunctionLanding />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Register />} />
+
+                    <Route path="/otpVerifaction" element={<OTPVerificationPage />} />
+                    <Route path="/verification" element={<WorkerVerificationPage />} />
+                    <Route path="/workerDashboard" element={<WorkerDashboard />} />
+                    <Route path="/admin/*" element={<AdminDashboard />} />
+                    <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}
@@ -88,6 +97,16 @@ const Routers = () => {
                         path="/worker/verification"
                         element={<WorkerVerificationPage />}
                     />
+                    <Route path="customer">
+                        <Route index element={<CustomerHomePage />} />
+                        <Route path="search" element={<SearchResultsPage />} />
+                    </Route>
+
+                    <Route
+                        path="/customer/booking/history"
+                        element={<CustomerBookingHostory />}
+                    ></Route>
+
                 </Routes>
             </Router>
         </div>

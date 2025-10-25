@@ -33,11 +33,11 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
 
         // Mock data
         setQueue([
-          { 
-            id: 1, 
-            name: 'Sanjay Verma', 
-            service: 'Plumber', 
-            submitted: '2 hours ago', 
+          {
+            id: 1,
+            name: 'Sanjay Verma',
+            service: 'Plumber',
+            submitted: '2 hours ago',
             priority: 'high',
             documents: { aadhaar: true, selfie: true, police: true },
             location: 'Andheri East'
@@ -63,21 +63,21 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
         return (
           <>
             <StatsGrid stats={areaStats} loading={loading} />
-            
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <VerificationQueue 
-                queue={queue} 
+              <VerificationQueue
+                queue={queue}
                 setSelectedWorker={setSelectedWorker}
               />
-              
+
               <div className="space-y-6">
                 <WorkerRequests requests={workerRequests} />
-                <ProgressStats progressData={progressStats} loading={loading}/>
+                <ProgressStats progressData={progressStats} loading={loading} />
               </div>
             </div>
           </>
         );
-      
+
       case 'verification':
         return (
           <div className="space-y-6">
@@ -85,16 +85,16 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
               <h2 className="text-xl font-bold text-gray-800 mb-4">Verification Dashboard</h2>
               <VerificationTab />
             </div>
-    
+
           </div>
         );
-      
+
       case 'workers':
         return <WorkerManagement />;
-      
+
       case 'non-smartphone-workers':
         return <NonSmartphoneWorkers />;
-      
+
       case 'analytics':
         return (
           <div className="bg-white rounded-lg shadow p-6">
@@ -102,7 +102,7 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
             <p className="text-gray-600">Analytics content will be displayed here.</p>
           </div>
         );
-      
+
       case 'settings':
         return (
           <div className="bg-white rounded-lg shadow p-6">
@@ -110,21 +110,21 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
             <p className="text-gray-600">Settings content will be displayed here.</p>
           </div>
         );
-      
+
       default:
         return (
           <>
             <StatsGrid stats={areaStats} loading={loading} />
-            
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <VerificationQueue 
-                queue={queue} 
+              <VerificationQueue
+                queue={queue}
                 setSelectedWorker={setSelectedWorker}
               />
-              
+
               <div className="space-y-6">
                 <WorkerRequests requests={workerRequests} />
-                <ProgressStats progressData={progressStats} loading={loading}/>
+                <ProgressStats progressData={progressStats} loading={loading} />
               </div>
             </div>
           </>
