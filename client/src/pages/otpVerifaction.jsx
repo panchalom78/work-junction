@@ -89,7 +89,7 @@ const OTPVerificationPage = () => {
                     if (response.user.role == "WORKER") {
                         navigate("/worker");
                     } else if (response.user.role == "CUSTOMER") {
-                        navigate("/customer/dashboard");
+                        navigate("/customer");
                     } else if (response.user.role == "SERVICE_AGENT") {
                         navigate("/serviceAgentDashboard");
                     } else if (response.user.role == "ADMIN") {
@@ -124,7 +124,7 @@ const OTPVerificationPage = () => {
                 if (response.user.role == "WORKER") {
                     navigate("/worker/verification");
                 } else if (response.user.role == "CUSTOMER") {
-                    navigate("/customer/dashboard");
+                    navigate("/customer");
                 } else if (response.user.role == "SERVICE_AGENT") {
                     navigate("/serviceAgentSetup");
                 } else if (response.user.role == "ADMIN") {

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     MapPin,
     Star,
@@ -6,107 +7,97 @@ import {
     MessageCircle,
     Clock,
     Award,
+    Loader2,
+    RefreshCw,
 } from "lucide-react";
+import { useWorkerSearchStore } from "../../store/workerSearch.store";
+import ChatInitiateButton from "../ChatInitiateButton";
 
 const FeaturedWorkers = () => {
-    const featuredWorkers = [
-        {
-            id: 1,
-            name: "Amit Sharma",
-            skill: "Plumbing",
-            service: "Pipe Repair",
-            rating: 4.8,
-            totalRatings: 127,
-            price: 500,
-            distance: "2.1 km",
-            verified: true,
-            available: true,
-            experience: "5 years",
-            responseTime: "15 min",
-            completedJobs: 234,
-            badge: "Top Rated",
-        },
-        {
-            id: 2,
-            name: "Priya Singh",
-            skill: "Electrical",
-            service: "Fan Installation",
-            rating: 4.9,
-            totalRatings: 89,
-            price: 300,
-            distance: "1.5 km",
-            verified: true,
-            available: true,
-            experience: "3 years",
-            responseTime: "10 min",
-            completedJobs: 156,
-            badge: "Fast Responder",
-        },
-        {
-            id: 3,
-            name: "Rahul Verma",
-            skill: "Cleaning",
-            service: "Home Cleaning",
-            rating: 4.7,
-            totalRatings: 203,
-            price: 800,
-            distance: "3.2 km",
-            verified: true,
-            available: false,
-            experience: "4 years",
-            responseTime: "25 min",
-            completedJobs: 189,
-            badge: "Professional",
-        },
-        {
-            id: 4,
-            name: "Suresh Patel",
-            skill: "Carpentry",
-            service: "Furniture Repair",
-            rating: 4.6,
-            totalRatings: 78,
-            price: 450,
-            distance: "1.8 km",
-            verified: true,
-            available: true,
-            experience: "6 years",
-            responseTime: "20 min",
-            completedJobs: 312,
-            badge: "Expert",
-        },
-        {
-            id: 5,
-            name: "Anita Desai",
-            skill: "Painting",
-            service: "Wall Painting",
-            rating: 4.9,
-            totalRatings: 145,
-            price: 1200,
-            distance: "2.5 km",
-            verified: true,
-            available: true,
-            experience: "4 years",
-            responseTime: "30 min",
-            completedJobs: 198,
-            badge: "Quality Pro",
-        },
-        {
-            id: 6,
-            name: "Raj Kumar",
-            skill: "AC Repair",
-            service: "AC Service",
-            rating: 4.8,
-            totalRatings: 112,
-            price: 600,
-            distance: "2.8 km",
-            verified: true,
-            available: false,
-            experience: "5 years",
-            responseTime: "45 min",
-            completedJobs: 267,
-            badge: "Specialist",
-        },
-    ];
+    const navigate = useNavigate();
+    const { workers, searchWorkers, loading } = useWorkerSearchStore();
+    const [featuredWorkers, setFeaturedWorkers] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Fetch featured workers from API
+    const fetchFeaturedWorkers = async () => {
+        setIsLoading(true);
+        try {
+            // Search for workers with featured criteria (highly rated, verified, available)
+            await searchWorkers({
+                skill: "",
+                service: "",
+                minPrice: "",
+                maxPrice: "",
+                minRating: "4",
+                maxRating: "",
+                location: "",
+                workerName: "",
+                workerPhone: "",
+                sortBy: "rating",
+                page: 1,
+                limit: 6,
+                // You might want to add more filters for "featured" workers
+            });
+        } catch (error) {
+            console.error("Failed to fetch featured workers:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFeaturedWorkers();
+    }, []);
+
+    // Transform API workers to featured workers format
+    useEffect(() => {
+        if (workers && workers.length > 0) {
+            const transformedWorkers = workers.map((worker, index) => ({
+                id: worker._id || worker.workerId || `worker-${index}`,
+                name: worker.workerName || worker.name || "Unknown Worker",
+                skill:
+                    worker.skillName ||
+                    worker.primarySkill?.name ||
+                    "General Service",
+                service:
+                    worker.serviceName ||
+                    worker.primaryService?.details ||
+                    "Service",
+                rating: worker.avgRating || worker.rating || 4.5,
+                totalRatings:
+                    worker.totalRatings || Math.floor(Math.random() * 200) + 50,
+                price: worker.price || worker.minServicePrice || 500,
+                verified:
+                    worker.isVerified ||
+                    worker.workerProfile?.verification?.status === "APPROVED",
+                available: worker.availabilityStatus !== "off-duty",
+                completedJobs:
+                    worker.totalJobsDone ||
+                    Math.floor(Math.random() * 300) + 100,
+                badge: getWorkerBadge(worker, index),
+            }));
+            setFeaturedWorkers(transformedWorkers);
+        }
+    }, [workers]);
+
+    // Determine badge based on worker properties
+    const getWorkerBadge = (worker, index) => {
+        const badges = [
+            "Top Rated",
+            "Fast Responder",
+            "Professional",
+            "Expert",
+            "Quality Pro",
+            "Specialist",
+        ];
+
+        if (worker.avgRating >= 4.8) return "Top Rated";
+        if (worker.totalRatings > 150) return "Professional";
+        if (worker.totalCompletedJobs > 250) return "Expert";
+
+        return badges[index % badges.length];
+    };
 
     const getBadgeColor = (badge) => {
         switch (badge) {
@@ -128,14 +119,106 @@ const FeaturedWorkers = () => {
     };
 
     const handleBookNow = (workerId) => {
-        // Navigate to booking page or open booking modal
-        console.log("Booking worker:", workerId);
+        navigate(`/booking/${workerId}`);
     };
 
     const handleMessage = (workerId) => {
         // Open chat with worker
         console.log("Message worker:", workerId);
+        // You can implement chat functionality here
+        navigate(`/chat/${workerId}`);
     };
+
+    const handleViewAll = () => {
+        navigate("/customer/search?sortBy=rating&minRating=4.0");
+    };
+
+    if (isLoading) {
+        return (
+            <section className="mb-12">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            Featured Workers
+                        </h2>
+                        <p className="text-gray-600 mt-1">
+                            Top-rated professionals in your area
+                        </p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((item) => (
+                        <div
+                            key={item}
+                            className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100 animate-pulse"
+                        >
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-gray-300 rounded-2xl"></div>
+                                    <div>
+                                        <div className="h-4 bg-gray-300 rounded w-24 mb-2"></div>
+                                        <div className="h-3 bg-gray-200 rounded w-16"></div>
+                                    </div>
+                                </div>
+                                <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                            </div>
+                            <div className="space-y-3 mb-4">
+                                {[1, 2, 3, 4].map((item) => (
+                                    <div
+                                        key={item}
+                                        className="flex justify-between"
+                                    >
+                                        <div className="h-3 bg-gray-200 rounded w-16"></div>
+                                        <div className="h-3 bg-gray-300 rounded w-20"></div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="h-10 bg-gray-200 rounded-2xl"></div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        );
+    }
+
+    if (!isLoading && featuredWorkers.length === 0) {
+        return (
+            <section className="mb-12">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            Featured Workers
+                        </h2>
+                        <p className="text-gray-600 mt-1">
+                            Top-rated professionals in your area
+                        </p>
+                    </div>
+                    <button
+                        onClick={fetchFeaturedWorkers}
+                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Retry</span>
+                    </button>
+                </div>
+                <div className="text-center py-12 bg-gray-50 rounded-3xl">
+                    <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No featured workers available
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                        Check back later for top-rated professionals
+                    </p>
+                    <button
+                        onClick={fetchFeaturedWorkers}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition-colors"
+                    >
+                        Refresh
+                    </button>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="mb-12">
@@ -148,9 +231,26 @@ const FeaturedWorkers = () => {
                         Top-rated professionals in your area
                     </p>
                 </div>
-                <button className="text-blue-600 hover:text-blue-700 font-medium">
-                    View All
-                </button>
+                <div className="flex items-center space-x-4">
+                    <button
+                        onClick={fetchFeaturedWorkers}
+                        disabled={isLoading}
+                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        <RefreshCw
+                            className={`w-4 h-4 ${
+                                isLoading ? "animate-spin" : ""
+                            }`}
+                        />
+                        <span>{isLoading ? "Refreshing..." : "Refresh"}</span>
+                    </button>
+                    <button
+                        onClick={handleViewAll}
+                        className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        View All
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -204,27 +304,10 @@ const FeaturedWorkers = () => {
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">
-                                    Experience:
-                                </span>
-                                <span className="font-semibold text-gray-900">
-                                    {worker.experience}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">
-                                    Response Time:
-                                </span>
-                                <span className="font-semibold text-gray-900 flex items-center space-x-1">
-                                    <Clock className="w-4 h-4" />
-                                    <span>{worker.responseTime}</span>
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">
                                     Completed Jobs:
                                 </span>
                                 <span className="font-semibold text-gray-900">
-                                    {worker.completedJobs}+
+                                    {worker.completedJobs}
                                 </span>
                             </div>
                         </div>
@@ -235,7 +318,7 @@ const FeaturedWorkers = () => {
                                 <div className="flex items-center space-x-1">
                                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
                                     <span className="font-semibold text-gray-900">
-                                        {worker.rating}
+                                        {worker.rating.toFixed(1)}
                                     </span>
                                 </div>
                                 <span className="text-gray-500 text-sm">
@@ -265,24 +348,19 @@ const FeaturedWorkers = () => {
 
                             <div className="flex space-x-3">
                                 <button
-                                    onClick={() => handleBookNow(worker.id)}
-                                    disabled={!worker.available}
-                                    className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 ${
-                                        worker.available
-                                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
-                                            : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                    }`}
+                                    onClick={() => {
+                                        navigate(
+                                            `/customer/worker/profile/${worker.id}`
+                                        );
+                                    }}
+                                    className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg`}
                                 >
-                                    {worker.available
-                                        ? "Book Now"
-                                        : "Not Available"}
+                                    View Profile
                                 </button>
-                                <button
-                                    onClick={() => handleMessage(worker.id)}
-                                    className="w-12 h-12 border border-gray-300 rounded-2xl flex items-center justify-center hover:border-blue-600 hover:text-blue-600 transition-colors"
-                                >
-                                    <MessageCircle className="w-5 h-5" />
-                                </button>
+                                <ChatInitiateButton
+                                    workerId={worker.id}
+                                    className="py-3 px-2 rounded-2xl font-semibold transition-all duration-300"
+                                />
                             </div>
                         </div>
                     </div>

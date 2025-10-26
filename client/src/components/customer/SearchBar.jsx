@@ -21,24 +21,43 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
         clearFilters,
         availableFilters,
         loadAvailableFilters,
+        loading,
     } = useWorkerSearchStore();
 
     const [showFilters, setShowFilters] = useState(false);
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [locationType, setLocationType] = useState("address");
+    const [errors, setErrors] = useState({});
 
     // Load available filters on component mount
     useEffect(() => {
         loadAvailableFilters();
-    }, []);
+        console.log(availableFilters);
+    }, []); // Remove availableFilters from dependencies to avoid infinite loop
 
     // Get services for selected skill
     const getServicesForSkill = () => {
-        if (!filters.skill) return [];
+        if (!filters.skill || !availableFilters.skills) return []; // Add null check
         const skill = availableFilters.skills.find(
             (s) => s.name === filters.skill
         );
         return skill ? skill.services : [];
+    };
+
+    // Validate form before submission
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!filters.skill || filters.skill.trim() === "") {
+            newErrors.skill = "Please select a skill";
+        }
+
+        if (!filters.location || filters.location.trim() === "") {
+            newErrors.location = "Please enter or select a location";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const getCurrentLocation = () => {
@@ -66,10 +85,9 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             data.principalSubdivision ||
                             "Current Location";
 
-                        setFilter(
-                            "location",
-                            `${locationName} (Current Location)`
-                        );
+                        setFilter("location", `${locationName}`);
+                        // Clear location error if any
+                        setErrors((prev) => ({ ...prev, location: "" }));
                     } else {
                         setFilter(
                             "location",
@@ -77,6 +95,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 4
                             )}`
                         );
+                        setErrors((prev) => ({ ...prev, location: "" }));
                     }
                 } catch (error) {
                     console.error("Error getting location:", error);
@@ -84,6 +103,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         "location",
                         `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
                     );
+                    setErrors((prev) => ({ ...prev, location: "" }));
                 } finally {
                     setIsGettingLocation(false);
                 }
@@ -125,16 +145,32 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
     const handleUseAddress = () => {
         setLocationType("address");
         setFilter("location", "");
+        setErrors((prev) => ({ ...prev, location: "" }));
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Validate form before submission
+        if (!validateForm()) {
+            // Scroll to first error
+            const firstErrorField = Object.keys(errors)[0];
+            const element = document.querySelector(
+                `[name="${firstErrorField}"]`
+            );
+            if (element) {
+                element.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+            return;
+        }
+
         onSearch(filters);
     };
 
     const handleClearFilters = () => {
         clearFilters();
         setLocationType("address");
+        setErrors({});
         onSearch({
             skill: "",
             service: "",
@@ -154,7 +190,34 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
     const clearLocation = () => {
         setFilter("location", "");
         setLocationType("address");
+        setErrors((prev) => ({ ...prev, location: "" }));
     };
+
+    // Update error state when fields change
+    const handleSkillChange = (value) => {
+        setFilter("skill", value);
+        if (value && value.trim() !== "") {
+            setErrors((prev) => ({ ...prev, skill: "" }));
+        }
+    };
+
+    const handleLocationChange = (value) => {
+        setFilter("location", value);
+        if (value && value.trim() !== "") {
+            setErrors((prev) => ({ ...prev, location: "" }));
+        }
+    };
+
+    // Check if search button should be disabled
+    const isSearchDisabled = () => {
+        return (
+            !filters.skill ||
+            !filters.location ||
+            (locationType === "current" && !filters.location)
+        );
+    };
+
+    if (loading) return <div>Loading filters...</div>;
 
     return (
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
@@ -168,20 +231,31 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                     {/* Skill Selection */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Skill
+                            Skill *
                         </label>
                         <select
                             value={filters.skill}
-                            onChange={(e) => setFilter("skill", e.target.value)}
-                            className="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500"
+                            onChange={(e) => handleSkillChange(e.target.value)}
+                            className={`w-full border rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500 ${
+                                errors.skill
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                            }`}
                         >
                             <option value="">Select Skill</option>
-                            {availableFilters.skills.map((skill) => (
-                                <option key={skill._id} value={skill.name}>
-                                    {skill.name}
-                                </option>
-                            ))}
+                            {/* Add null check for availableFilters.skills */}
+                            {availableFilters.skills &&
+                                availableFilters.skills.map((skill) => (
+                                    <option key={skill._id} value={skill.name}>
+                                        {skill.name}
+                                    </option>
+                                ))}
                         </select>
+                        {errors.skill && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.skill}
+                            </p>
+                        )}
                     </div>
 
                     {/* Service Selection */}
@@ -212,7 +286,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                     {/* Location */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Location
+                            Location *
                         </label>
 
                         {/* Location Type Toggle */}
@@ -269,13 +343,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                         type="text"
                                         value={filters.location}
                                         onChange={(e) =>
-                                            setFilter(
-                                                "location",
-                                                e.target.value
-                                            )
+                                            handleLocationChange(e.target.value)
                                         }
                                         placeholder="Enter your address (street, area, city)"
-                                        className="w-full border border-gray-300 rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-500"
+                                        className={`w-full border rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-500 ${
+                                            errors.location
+                                                ? "border-red-500"
+                                                : "border-gray-300"
+                                        }`}
                                     />
                                     {filters.location && (
                                         <button
@@ -288,9 +363,21 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     )}
                                 </>
                             ) : (
-                                <div className="w-full border border-green-200 bg-green-50 rounded-2xl pl-10 pr-4 py-3">
+                                <div
+                                    className={`w-full border rounded-2xl pl-10 pr-4 py-3 ${
+                                        errors.location
+                                            ? "border-red-500 bg-red-50"
+                                            : "border-green-200 bg-green-50"
+                                    }`}
+                                >
                                     <div className="flex items-center justify-between">
-                                        <span className="text-green-800 font-medium">
+                                        <span
+                                            className={`font-medium ${
+                                                errors.location
+                                                    ? "text-red-800"
+                                                    : "text-green-800"
+                                            }`}
+                                        >
                                             {filters.location ||
                                                 'Click "Current Location" to detect your location'}
                                         </span>
@@ -298,7 +385,11 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                             <button
                                                 type="button"
                                                 onClick={clearLocation}
-                                                className="p-1 text-green-600 hover:text-green-800 transition-colors"
+                                                className={`p-1 transition-colors ${
+                                                    errors.location
+                                                        ? "text-red-600 hover:text-red-800"
+                                                        : "text-green-600 hover:text-green-800"
+                                                }`}
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
@@ -314,6 +405,11 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 ? "Enter your complete address for accurate service matching"
                                 : "We'll use your current location to find nearby professionals"}
                         </p>
+                        {errors.location && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.location}
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -343,11 +439,9 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         </button>
                         <button
                             type="submit"
-                            disabled={
-                                !filters.location && locationType === "current"
-                            }
+                            disabled={isSearchDisabled()}
                             className={`px-8 py-3 rounded-2xl hover:shadow-lg transition-all duration-300 font-semibold flex items-center space-x-2 ${
-                                !filters.location && locationType === "current"
+                                isSearchDisabled()
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                     : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
                             }`}
@@ -365,15 +459,22 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Price Range (₹
-                                {availableFilters.priceRange.minPrice} - ₹
-                                {availableFilters.priceRange.maxPrice})
+                                {availableFilters.priceRange?.minPrice || 0} - ₹
+                                {availableFilters.priceRange?.maxPrice || 10000}
+                                )
                             </label>
                             <div className="flex space-x-2">
                                 <input
                                     type="number"
                                     placeholder="Min"
-                                    min={availableFilters.priceRange.minPrice}
-                                    max={availableFilters.priceRange.maxPrice}
+                                    min={
+                                        availableFilters.priceRange?.minPrice ||
+                                        0
+                                    }
+                                    max={
+                                        availableFilters.priceRange?.maxPrice ||
+                                        10000
+                                    }
                                     value={filters.minPrice}
                                     onChange={(e) =>
                                         setFilter("minPrice", e.target.value)
@@ -383,8 +484,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 <input
                                     type="number"
                                     placeholder="Max"
-                                    min={availableFilters.priceRange.minPrice}
-                                    max={availableFilters.priceRange.maxPrice}
+                                    min={
+                                        availableFilters.priceRange?.minPrice ||
+                                        0
+                                    }
+                                    max={
+                                        availableFilters.priceRange?.maxPrice ||
+                                        10000
+                                    }
                                     value={filters.maxPrice}
                                     onChange={(e) =>
                                         setFilter("maxPrice", e.target.value)
@@ -397,15 +504,22 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         {/* Rating Range */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Rating ({availableFilters.ratingRange.minRating}{" "}
-                                - {availableFilters.ratingRange.maxRating})
+                                Rating (
+                                {availableFilters.ratingRange?.minRating || 0} -{" "}
+                                {availableFilters.ratingRange?.maxRating || 5})
                             </label>
                             <div className="flex space-x-2">
                                 <input
                                     type="number"
                                     placeholder="Min"
-                                    min={availableFilters.ratingRange.minRating}
-                                    max={availableFilters.ratingRange.maxRating}
+                                    min={
+                                        availableFilters.ratingRange
+                                            ?.minRating || 0
+                                    }
+                                    max={
+                                        availableFilters.ratingRange
+                                            ?.maxRating || 5
+                                    }
                                     step="0.1"
                                     value={filters.minRating}
                                     onChange={(e) =>
@@ -416,8 +530,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 <input
                                     type="number"
                                     placeholder="Max"
-                                    min={availableFilters.ratingRange.minRating}
-                                    max={availableFilters.ratingRange.maxRating}
+                                    min={
+                                        availableFilters.ratingRange
+                                            ?.minRating || 0
+                                    }
+                                    max={
+                                        availableFilters.ratingRange
+                                            ?.maxRating || 5
+                                    }
                                     step="0.1"
                                     value={filters.maxRating}
                                     onChange={(e) =>

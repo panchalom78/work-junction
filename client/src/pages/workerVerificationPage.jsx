@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useVerificationStore } from "../store/verification.store.js";
-// Import useNavigate from react-router-dom in your actual project
+import { useAuthStore } from "../store/auth.store.js";
 import { useNavigate } from "react-router-dom";
+import {
+    MapPin,
+    Navigation,
+    Home,
+    Loader2,
+    CheckCircle,
+    X,
+    Camera,
+    Upload,
+    FileText,
+} from "lucide-react";
 
 const WorkerVerificationPage = () => {
-    // Uncomment this in your actual project
     const navigate = useNavigate();
-
     const {
         status,
         loading,
@@ -17,139 +26,462 @@ const WorkerVerificationPage = () => {
         deleteDocument,
     } = useVerificationStore();
 
+    const { updateProfile, user, getUser } = useAuthStore();
+
     const [showRejectionDetails, setShowRejectionDetails] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showAddressModal, setShowAddressModal] = useState(true);
     const [uploadedDocuments, setUploadedDocuments] = useState({
         aadhar: null,
         selfie: null,
         policeVerification: null,
     });
+    const [addressData, setAddressData] = useState({
+        street: "",
+        area: "",
+        city: "",
+        state: "",
+        pincode: "",
+        landmark: "",
+        coordinates: {
+            latitude: null,
+            longitude: null,
+        },
+    });
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [addressLoading, setAddressLoading] = useState(false);
 
     // Fetch verification status on component mount
     useEffect(() => {
         fetchStatus();
     }, [fetchStatus]);
 
+    // Check if user already has address
+    useEffect(() => {
+        if (user?.address) {
+            setAddressData({
+                street: user.address.street || "",
+                area: user.address.area || "",
+                city: user.address.city || "",
+                state: user.address.state || "",
+                pincode: user.address.pincode || "",
+                landmark: user.address.landmark || "",
+                coordinates: user.address.coordinates || {
+                    latitude: null,
+                    longitude: null,
+                },
+            });
+            if (user.address.street && user.address.city) {
+                setShowAddressModal(false);
+            }
+        }
+    }, [user]);
+
+    useEffect(() => {
+        getUser();
+    }, []);
+
     // Navigate to worker landing page when verified
     useEffect(() => {
         if (status?.verificationStatus === "APPROVED") {
-            // Optional: Add a small delay to show success state
             const timer = setTimeout(() => {
-                // Uncomment this in your actual project to enable navigation
                 navigate("/worker/dashboard");
-                console.log("Worker verified! Navigate to /worker");
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [status?.verificationStatus]); // Add navigate to deps in actual project
+    }, [status?.verificationStatus, navigate]);
 
-    // Map backend status to UI status
-    const getCurrentStatus = () => {
-        if (!status) return "unverified";
-        switch (status.verificationStatus) {
-            case "VERIFIED":
-                return "verified";
-            case "PENDING":
-                return "pending";
-            case "REJECTED":
-                return "rejected";
-            default:
-                return "unverified";
+    // Get current location using browser geolocation
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsGettingLocation(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+
+                try {
+                    const response = await fetch(
+                        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        setAddressData((prev) => ({
+                            ...prev,
+                            street:
+                                data.localityInfo?.informative?.[0]?.name ||
+                                data.locality ||
+                                "",
+                            area:
+                                data.localityInfo?.informative?.[1]?.name ||
+                                data.locality ||
+                                "",
+                            city:
+                                data.city ||
+                                data.locality ||
+                                data.principalSubdivision ||
+                                "",
+                            state: data.principalSubdivision || "",
+                            coordinates: {
+                                latitude,
+                                longitude,
+                            },
+                        }));
+                    }
+                } catch (error) {
+                    console.error("Error getting location:", error);
+                    setAddressData((prev) => ({
+                        ...prev,
+                        coordinates: {
+                            latitude,
+                            longitude,
+                        },
+                    }));
+                } finally {
+                    setIsGettingLocation(false);
+                }
+            },
+            (error) => {
+                setIsGettingLocation(false);
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert(
+                            "Location access denied. Please allow location access to use this feature."
+                        );
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Location information unavailable.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("Location request timed out.");
+                        break;
+                    default:
+                        alert(
+                            "An unknown error occurred while getting location."
+                        );
+                        break;
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        );
+    };
+
+    // Handle address input changes
+    const handleAddressChange = (field, value) => {
+        setAddressData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    // Validate address form
+    const validateAddress = () => {
+        const { street, area, city, state, pincode } = addressData;
+
+        if (!street.trim()) {
+            alert("Please enter your street address");
+            return false;
+        }
+        if (!area.trim()) {
+            alert("Please enter your area/locality");
+            return false;
+        }
+        if (!city.trim()) {
+            alert("Please enter your city");
+            return false;
+        }
+        if (!state.trim()) {
+            alert("Please enter your state");
+            return false;
+        }
+        if (!pincode.trim() || pincode.length !== 6) {
+            alert("Please enter a valid 6-digit pincode");
+            return false;
+        }
+
+        return true;
+    };
+
+    // Save address to profile
+    const handleSaveAddress = async () => {
+        if (!validateAddress()) return;
+
+        setAddressLoading(true);
+        try {
+            const response = await updateProfile({
+                address: addressData,
+            });
+
+            if (response.success) {
+                setShowAddressModal(false);
+            } else {
+                alert("Failed to save address. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error saving address:", error);
+            alert("Failed to save address. Please try again.");
+        } finally {
+            setAddressLoading(false);
         }
     };
 
-    const currentStatus = getCurrentStatus();
+    // Address Collection Modal
+    const AddressCollectionModal = () => (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                            Add Your Service Address
+                        </h3>
+                        <p className="text-gray-600 text-sm mt-1">
+                            This address will be used for service verification
+                            and customer bookings
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => {
+                            if (!user?.address?.street) {
+                                alert(
+                                    "Address is required to continue with verification"
+                                );
+                                return;
+                            }
+                            setShowAddressModal(false);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 text-2xl"
+                    >
+                        ×
+                    </button>
+                </div>
 
-    // Get status data based on current verification status
-    const getStatusData = () => {
-        const baseData = {
-            unverified: {
-                status: "Unverified",
-                description:
-                    "Please upload required documents to start verification",
-                icon: "⏳",
-                color: "gray",
-                actions: ["upload_documents"],
-            },
-            pending: {
-                status: "Pending Review",
-                description:
-                    "Your documents are under review by our verification team",
-                icon: "🔍",
-                color: "purple",
-                actions: ["view_details"],
-            },
-            verified: {
-                status: "Verified",
-                description: "Your account has been successfully verified",
-                icon: "✅",
-                color: "green",
-                actions: ["view_certificate"],
-            },
-            rejected: {
-                status: "Rejected",
-                description:
-                    "Your verification request requires additional information",
-                icon: "❌",
-                color: "red",
-                actions: ["resubmit"],
-            },
-        };
+                <div className="p-6 space-y-6">
+                    {/* Current Location Button */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <Navigation className="w-6 h-6 text-blue-600" />
+                                <div>
+                                    <h4 className="font-semibold text-blue-900">
+                                        Use Current Location
+                                    </h4>
+                                    <p className="text-blue-700 text-sm">
+                                        Automatically fill address using your
+                                        current location
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={getCurrentLocation}
+                                disabled={isGettingLocation}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center space-x-2"
+                            >
+                                {isGettingLocation ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <MapPin className="w-4 h-4" />
+                                )}
+                                <span>
+                                    {isGettingLocation
+                                        ? "Detecting..."
+                                        : "Get Location"}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
 
-        return baseData[currentStatus];
-    };
+                    {/* Address Form */}
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Street Address *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.street}
+                                    onChange={(e) =>
+                                        handleAddressChange(
+                                            "street",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="House no., Building, Street"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    required
+                                />
+                            </div>
 
-    const statusData = getStatusData();
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Area/Locality *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.area}
+                                    onChange={(e) =>
+                                        handleAddressChange(
+                                            "area",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="Area or Locality name"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    required
+                                />
+                            </div>
+                        </div>
 
-    const getStatusColor = (color) => {
-        const colors = {
-            green: "bg-green-100 text-green-800 border-green-200",
-            purple: "bg-purple-100 text-purple-800 border-purple-200",
-            red: "bg-red-100 text-red-800 border-red-200",
-            gray: "bg-gray-100 text-gray-800 border-gray-200",
-        };
-        return colors[color] || colors.gray;
-    };
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    City *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.city}
+                                    onChange={(e) =>
+                                        handleAddressChange(
+                                            "city",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="City"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    required
+                                />
+                            </div>
 
-    const getStatusSteps = () => {
-        const steps = [
-            { id: 1, name: "Document Upload", status: "pending" },
-            { id: 2, name: "Under Review", status: "pending" },
-            { id: 3, name: "Verification Complete", status: "pending" },
-        ];
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    State *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.state}
+                                    onChange={(e) =>
+                                        handleAddressChange(
+                                            "state",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="State"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    required
+                                />
+                            </div>
+                        </div>
 
-        if (currentStatus === "unverified") {
-            steps[0].status = "current";
-            steps[1].status = "pending";
-            steps[2].status = "pending";
-        } else if (currentStatus === "pending") {
-            steps[0].status = "complete";
-            steps[1].status = "current";
-            steps[2].status = "pending";
-        } else if (currentStatus === "verified") {
-            steps[0].status = "complete";
-            steps[1].status = "complete";
-            steps[2].status = "complete";
-        } else if (currentStatus === "rejected") {
-            steps[0].status = "complete";
-            steps[1].status = "complete";
-            steps[2].status = "error";
-        }
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Pincode *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.pincode}
+                                    onChange={(e) => {
+                                        const value = e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 6);
+                                        handleAddressChange("pincode", value);
+                                    }}
+                                    placeholder="6-digit pincode"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    maxLength={6}
+                                    required
+                                />
+                            </div>
 
-        return steps;
-    };
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Landmark (Optional)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addressData.landmark}
+                                    onChange={(e) =>
+                                        handleAddressChange(
+                                            "landmark",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="Nearby landmark"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
 
-    const formatDate = (dateString) => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleDateString("en-IN", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    };
+                    {/* Location Status */}
+                    {addressData.coordinates.latitude && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex items-center space-x-2 text-green-800">
+                                <CheckCircle className="w-4 h-4" />
+                                <span className="text-sm font-medium">
+                                    Location captured:{" "}
+                                    {addressData.coordinates.latitude.toFixed(
+                                        4
+                                    )}
+                                    ,{" "}
+                                    {addressData.coordinates.longitude.toFixed(
+                                        4
+                                    )}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
+                <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                    <div className="flex space-x-4">
+                        <button
+                            onClick={() => {
+                                if (!user?.address?.street) {
+                                    alert(
+                                        "Address is required to continue with verification"
+                                    );
+                                    return;
+                                }
+                                setShowAddressModal(false);
+                            }}
+                            className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                        >
+                            {user?.address?.street ? "Skip" : "Cancel"}
+                        </button>
+                        <button
+                            onClick={handleSaveAddress}
+                            disabled={addressLoading}
+                            className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                        >
+                            {addressLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Home className="w-4 h-4" />
+                            )}
+                            <span>
+                                {addressLoading
+                                    ? "Saving..."
+                                    : "Save Address & Continue"}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Document Upload Functions
     const handleDocumentUpload = (documentType, file) => {
         setUploadedDocuments((prev) => ({
             ...prev,
@@ -180,7 +512,6 @@ const WorkerVerificationPage = () => {
 
         if (result.success) {
             setShowUploadModal(false);
-            getStatusSteps();
             setUploadedDocuments({
                 aadhar: null,
                 selfie: null,
@@ -189,105 +520,7 @@ const WorkerVerificationPage = () => {
         }
     };
 
-    const getVerificationHistory = () => {
-        if (!status) return [];
-
-        const history = [];
-
-        if (status.documentsUploadedAt) {
-            history.push({
-                action: "Documents Uploaded",
-                timestamp: status.documentsUploadedAt,
-                by: "You",
-                details: "All required documents submitted",
-            });
-        }
-
-        if (status.verificationStatus === "VERIFIED" && status.verifiedAt) {
-            history.push({
-                action: "Verification Approved",
-                timestamp: status.verifiedAt,
-                by: status.verifiedBy?.name || "Verification Agent",
-                details: "All documents verified successfully",
-            });
-        }
-
-        if (status.verificationStatus === "REJECTED" && status.rejectedAt) {
-            history.push({
-                action: "Verification Rejected",
-                timestamp: status.rejectedAt,
-                by: status.rejectedBy?.name || "Verification Agent",
-                details:
-                    status.rejectionReason || "Additional information required",
-                rejectionReason: status.rejectionReason,
-            });
-        }
-
-        return history;
-    };
-
-    const StatusStep = ({ step, isLast }) => {
-        const getStepColor = (status) => {
-            switch (status) {
-                case "complete":
-                    return "bg-purple-500";
-                case "current":
-                    return "bg-purple-300";
-                case "error":
-                    return "bg-red-500";
-                default:
-                    return "bg-gray-300";
-            }
-        };
-
-        const getTextColor = (status) => {
-            switch (status) {
-                case "complete":
-                    return "text-purple-600";
-                case "current":
-                    return "text-purple-700";
-                case "error":
-                    return "text-red-600";
-                default:
-                    return "text-gray-500";
-            }
-        };
-
-        return (
-            <div className="flex items-center flex-1">
-                <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${getStepColor(
-                        step.status
-                    )} text-white font-semibold`}
-                >
-                    {step.status === "complete"
-                        ? "✓"
-                        : step.status === "error"
-                        ? "✕"
-                        : step.id}
-                </div>
-                <div className="ml-3 flex-1 min-w-0">
-                    <div
-                        className={`text-sm font-medium ${getTextColor(
-                            step.status
-                        )}`}
-                    >
-                        {step.name}
-                    </div>
-                </div>
-                {!isLast && (
-                    <div
-                        className={`flex-1 h-1 mx-4 ${
-                            step.status === "complete"
-                                ? "bg-purple-500"
-                                : "bg-gray-200"
-                        }`}
-                    />
-                )}
-            </div>
-        );
-    };
-
+    // Document Upload Modal
     const DocumentUploadModal = () => {
         const [cameraStream, setCameraStream] = useState(null);
         const [capturedSelfie, setCapturedSelfie] = useState(null);
@@ -426,15 +659,17 @@ const WorkerVerificationPage = () => {
                                 <div className="flex space-x-4">
                                     <button
                                         onClick={captureSelfie}
-                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2"
                                     >
-                                        📸 Capture
+                                        <Camera className="w-4 h-4" />
+                                        <span>Capture</span>
                                     </button>
                                     <button
                                         onClick={stopCamera}
-                                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+                                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition flex items-center space-x-2"
                                     >
-                                        Stop Camera
+                                        <X className="w-4 h-4" />
+                                        <span>Stop Camera</span>
                                     </button>
                                 </div>
                                 {capturedSelfie && (
@@ -475,15 +710,240 @@ const WorkerVerificationPage = () => {
                             <button
                                 onClick={handleSubmitDocuments}
                                 disabled={loading}
-                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                             >
-                                {loading
-                                    ? "Uploading..."
-                                    : "Submit for Verification"}
+                                {loading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Upload className="w-4 h-4" />
+                                )}
+                                <span>
+                                    {loading
+                                        ? "Uploading..."
+                                        : "Submit for Verification"}
+                                </span>
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        );
+    };
+
+    // Map backend status to UI status
+    const getCurrentStatus = () => {
+        if (!status) return "unverified";
+        switch (status.verificationStatus) {
+            case "VERIFIED":
+                return "verified";
+            case "PENDING":
+                return "pending";
+            case "REJECTED":
+                return "rejected";
+            default:
+                return "unverified";
+        }
+    };
+
+    const currentStatus = getCurrentStatus();
+
+    // Get status data based on current verification status
+    const getStatusData = () => {
+        const baseData = {
+            unverified: {
+                status: "Unverified",
+                description:
+                    "Please upload required documents to start verification",
+                icon: "⏳",
+                color: "gray",
+                actions: ["upload_documents"],
+            },
+            pending: {
+                status: "Pending Review",
+                description:
+                    "Your documents are under review by our verification team",
+                icon: "🔍",
+                color: "purple",
+                actions: ["view_details"],
+            },
+            verified: {
+                status: "Verified",
+                description: "Your account has been successfully verified",
+                icon: "✅",
+                color: "green",
+                actions: ["view_certificate"],
+            },
+            rejected: {
+                status: "Rejected",
+                description:
+                    "Your verification request requires additional information",
+                icon: "❌",
+                color: "red",
+                actions: ["resubmit"],
+            },
+        };
+
+        return baseData[currentStatus];
+    };
+
+    const statusData = getStatusData();
+
+    const getStatusColor = (color) => {
+        const colors = {
+            green: "bg-green-100 text-green-800 border-green-200",
+            purple: "bg-purple-100 text-purple-800 border-purple-200",
+            red: "bg-red-100 text-red-800 border-red-200",
+            gray: "bg-gray-100 text-gray-800 border-gray-200",
+        };
+        return colors[color] || colors.gray;
+    };
+
+    const getStatusSteps = () => {
+        const steps = [
+            { id: 1, name: "Address Setup", status: "pending" },
+            { id: 2, name: "Document Upload", status: "pending" },
+            { id: 3, name: "Under Review", status: "pending" },
+            { id: 4, name: "Verification Complete", status: "pending" },
+        ];
+
+        const hasAddress = user?.address?.street && user?.address?.city;
+
+        if (!hasAddress) {
+            steps[0].status = "current";
+            steps[1].status = "pending";
+            steps[2].status = "pending";
+            steps[3].status = "pending";
+        } else if (currentStatus === "unverified") {
+            steps[0].status = "complete";
+            steps[1].status = "current";
+            steps[2].status = "pending";
+            steps[3].status = "pending";
+        } else if (currentStatus === "pending") {
+            steps[0].status = "complete";
+            steps[1].status = "complete";
+            steps[2].status = "current";
+            steps[3].status = "pending";
+        } else if (currentStatus === "verified") {
+            steps[0].status = "complete";
+            steps[1].status = "complete";
+            steps[2].status = "complete";
+            steps[3].status = "complete";
+        } else if (currentStatus === "rejected") {
+            steps[0].status = "complete";
+            steps[1].status = "complete";
+            steps[2].status = "complete";
+            steps[3].status = "error";
+        }
+
+        return steps;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString("en-IN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const getVerificationHistory = () => {
+        if (!status) return [];
+
+        const history = [];
+
+        if (status.documentsUploadedAt) {
+            history.push({
+                action: "Documents Uploaded",
+                timestamp: status.documentsUploadedAt,
+                by: "You",
+                details: "All required documents submitted",
+            });
+        }
+
+        if (status.verificationStatus === "VERIFIED" && status.verifiedAt) {
+            history.push({
+                action: "Verification Approved",
+                timestamp: status.verifiedAt,
+                by: status.verifiedBy?.name || "Verification Agent",
+                details: "All documents verified successfully",
+            });
+        }
+
+        if (status.verificationStatus === "REJECTED" && status.rejectedAt) {
+            history.push({
+                action: "Verification Rejected",
+                timestamp: status.rejectedAt,
+                by: status.rejectedBy?.name || "Verification Agent",
+                details:
+                    status.rejectionReason || "Additional information required",
+                rejectionReason: status.rejectionReason,
+            });
+        }
+
+        return history;
+    };
+
+    const StatusStep = ({ step, isLast }) => {
+        const getStepColor = (status) => {
+            switch (status) {
+                case "complete":
+                    return "bg-purple-500";
+                case "current":
+                    return "bg-purple-300";
+                case "error":
+                    return "bg-red-500";
+                default:
+                    return "bg-gray-300";
+            }
+        };
+
+        const getTextColor = (status) => {
+            switch (status) {
+                case "complete":
+                    return "text-purple-600";
+                case "current":
+                    return "text-purple-700";
+                case "error":
+                    return "text-red-600";
+                default:
+                    return "text-gray-500";
+            }
+        };
+
+        return (
+            <div className="flex items-center flex-1">
+                <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${getStepColor(
+                        step.status
+                    )} text-white font-semibold`}
+                >
+                    {step.status === "complete"
+                        ? "✓"
+                        : step.status === "error"
+                        ? "✕"
+                        : step.id}
+                </div>
+                <div className="ml-3 flex-1 min-w-0">
+                    <div
+                        className={`text-sm font-medium ${getTextColor(
+                            step.status
+                        )}`}
+                    >
+                        {step.name}
+                    </div>
+                </div>
+                {!isLast && (
+                    <div
+                        className={`flex-1 h-1 mx-4 ${
+                            step.status === "complete"
+                                ? "bg-purple-500"
+                                : "bg-gray-200"
+                        }`}
+                    />
+                )}
             </div>
         );
     };
@@ -528,6 +988,35 @@ const WorkerVerificationPage = () => {
                 {message && !error && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                         <p className="text-green-800">{message}</p>
+                    </div>
+                )}
+
+                {/* Address Status Card */}
+                {user?.address?.street && (
+                    <div className="bg-white rounded-2xl shadow-lg border-0 p-6 mb-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <Home className="w-6 h-6 text-green-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Service Address Added
+                                    </h3>
+                                    <p className="text-gray-600">
+                                        {user.address.street},{" "}
+                                        {user.address.area}, {user.address.city}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAddressModal(true)}
+                                className="text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-1"
+                            >
+                                <MapPin className="w-4 h-4" />
+                                <span>Edit Address</span>
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -590,32 +1079,47 @@ const WorkerVerificationPage = () => {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-4">
-                        {statusData.actions.includes("upload_documents") && (
+                        {!user?.address?.street && (
                             <button
-                                onClick={() => setShowUploadModal(true)}
-                                disabled={loading}
-                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
+                                onClick={() => setShowAddressModal(true)}
+                                className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform flex items-center space-x-2"
                             >
-                                📁 Upload Documents
+                                <Home className="w-4 h-4" />
+                                <span>Add Address First</span>
                             </button>
                         )}
-                        {statusData.actions.includes("resubmit") && (
-                            <button
-                                onClick={() => setShowUploadModal(true)}
-                                disabled={loading}
-                                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700  font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50"
-                            >
-                                🔄 Resubmit Documents
-                            </button>
-                        )}
+                        {statusData.actions.includes("upload_documents") &&
+                            user?.address?.street && (
+                                <button
+                                    onClick={() => setShowUploadModal(true)}
+                                    disabled={loading}
+                                    className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 flex items-center space-x-2"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    <span>Upload Documents</span>
+                                </button>
+                            )}
+                        {statusData.actions.includes("resubmit") &&
+                            user?.address?.street && (
+                                <button
+                                    onClick={() => setShowUploadModal(true)}
+                                    disabled={loading}
+                                    className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 flex items-center space-x-2"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    <span>Resubmit Documents</span>
+                                </button>
+                            )}
                         {statusData.actions.includes("view_details") && (
-                            <button className="bg-white text-purple-600 border-2 border-purple-200 px-8 py-3 rounded-lg hover:bg-purple-50 transition-colors font-semibold">
-                                👁️ View Details
+                            <button className="bg-white text-purple-600 border-2 border-purple-200 px-8 py-3 rounded-lg hover:bg-purple-50 transition-colors font-semibold flex items-center space-x-2">
+                                <FileText className="w-4 h-4" />
+                                <span>View Details</span>
                             </button>
                         )}
                         {statusData.actions.includes("view_certificate") && (
-                            <button className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform">
-                                📄 Download Certificate
+                            <button className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform flex items-center space-x-2">
+                                <FileText className="w-4 h-4" />
+                                <span>Download Certificate</span>
                             </button>
                         )}
                     </div>
@@ -839,6 +1343,9 @@ const WorkerVerificationPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Address Collection Modal */}
+            {showAddressModal && <AddressCollectionModal />}
 
             {/* Document Upload Modal */}
             {showUploadModal && <DocumentUploadModal />}

@@ -76,6 +76,26 @@ const bookingSchema = new Schema(
         // Nested Review (only after completion)
         review: reviewSchema,
 
+        serviceInitiated: {
+            type: Boolean,
+            default: false,
+        },
+        serviceInitiatedAt: {
+            type: Date,
+        },
+        serviceOtp: {
+            type: String,
+        },
+        serviceOtpExpires: {
+            type: Date,
+        },
+        serviceStartedAt: {
+            type: Date,
+        },
+        serviceCompletedAt: {
+            type: Date,
+        },
+
         cancellationReason: { type: String, trim: true },
         declineReason: { type: String, trim: true },
     },

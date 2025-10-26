@@ -183,7 +183,7 @@ const RegisterPage = () => {
                             navigate("/worker/verification");
                         }
                     } else if (response.user.role == "CUSTOMER") {
-                        navigate("/customer/dashboard");
+                        navigate("/customer");
                     } else if (response.user.role == "SERVICE_AGENT") {
                         navigate("/serviceAgentDashboard");
                     } else if (response.user.role == "ADMIN") {
@@ -487,9 +487,9 @@ const RegisterPage = () => {
                                     Already have an account?{" "}
                                     <button
                                         className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
-                                        onClick={() =>
-                                            (window.location.href = "/login")
-                                        }
+                                        onClick={() => {
+                                            navigate("/login");
+                                        }}
                                     >
                                         Sign In
                                     </button>

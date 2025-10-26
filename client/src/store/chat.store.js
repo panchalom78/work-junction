@@ -30,6 +30,49 @@ export const useChatStore = create((set, get) => ({
         }
     },
 
+    getUserChats: async () => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axiosInstance.get("/api/chats");
+            console.log("User chats response:", response.data);
+
+            set({
+                chats: response.data.data,
+                loading: false,
+            });
+            return response.data.data;
+        } catch (error) {
+            set({
+                error: error.response?.data?.message || "Failed to fetch chats",
+                loading: false,
+            });
+            throw error;
+        }
+    },
+    getOrCreateChatWithWorker: async (workerId) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axiosInstance.get(
+                `/api/chats/with/${workerId}`
+            );
+            console.log("Get/create chat with worker response:", response.data);
+
+            set({
+                currentChat: response.data.data,
+                loading: false,
+            });
+            return response.data;
+        } catch (error) {
+            set({
+                error:
+                    error.response?.data?.message ||
+                    "Failed to get/create chat",
+                loading: false,
+            });
+            throw error;
+        }
+    },
+
     // Get or create chat with customer (Worker initiating chat)
     getOrCreateChat: async (customerId) => {
         set({ loading: true, error: null });
@@ -54,8 +97,6 @@ export const useChatStore = create((set, get) => ({
             throw error;
         }
     },
-
-    // Send message
     sendMessage: async (chatId, content) => {
         set({ loading: true, error: null });
         try {
@@ -81,8 +122,6 @@ export const useChatStore = create((set, get) => ({
             throw error;
         }
     },
-
-    // Get chat messages
     getChatMessages: async (chatId, page = 1, limit = 50) => {
         set({ loading: true, error: null });
         try {
@@ -132,6 +171,15 @@ export const useChatStore = create((set, get) => ({
             chat._id === updatedChat._id ? updatedChat : chat
         );
         set({ chats: updatedChats });
+    },
+
+    // Mark messages as read
+    markMessagesAsRead: async (chatId) => {
+        try {
+            await axiosInstance.patch(`/api/chats/${chatId}/read`);
+        } catch (error) {
+            console.error("Failed to mark messages as read:", error);
+        }
     },
 
     // Clear error
