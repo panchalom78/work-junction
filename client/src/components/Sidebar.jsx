@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   MapPin, Shield, Users, MessageCircle, 
-  FileText, Send, Download, Upload 
+  FileText, Send, Download, Upload , 
+  Smartphone
 } from 'lucide-react';
 
 // Import your component views for each sidebar tab
@@ -23,7 +24,8 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
     { id: 'workers', label: 'Worker Management', icon: Users },
     { id: 'requests', label: 'Worker Requests', icon: MessageCircle },
     { id: 'reports', label: 'Area Reports', icon: FileText },
-    { id: 'messages', label: 'Messages', icon: Send }
+    { id: 'messages', label: 'Messages', icon: Send },
+    { id: 'non-smartphone-workers', label: 'Non Smartphone Workers', icon: Smartphone }
   ];
 
   // Find the component for the currently active tab
