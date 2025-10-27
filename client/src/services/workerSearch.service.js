@@ -1,3 +1,4 @@
+// workerSearch.service.js
 import axiosInstance from "../utils/axiosInstance";
 
 export const workerSearchService = {
@@ -5,7 +6,8 @@ export const workerSearchService = {
     searchWorkers: async (filters) => {
         console.log(filters);
 
-        const response = await axiosInstance.get("/api/customers/search", {
+        const response = await axiosInstance.get("/api/workers-search/search", {
+            // Changed from /api/customers/search
             params: filters,
         });
         return response.data;
@@ -13,14 +15,15 @@ export const workerSearchService = {
 
     // Get available filters
     getSearchFilters: async () => {
-        const response = await axiosInstance.get("/api/customers/filters");
+        const response = await axiosInstance.get("/api/workers-search/filters"); // Changed from /api/customers/filters
         return response.data;
     },
 
     // Get worker profile
+    // Get complete worker profile with portfolio and stats
     getWorkerProfile: async (workerId) => {
         const response = await axiosInstance.get(
-            `/api/customers/worker/${workerId}`
+            `/api/workers-search/profile/${workerId}`
         );
         return response.data;
     },

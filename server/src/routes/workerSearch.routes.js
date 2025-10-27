@@ -1,22 +1,20 @@
+// workerSearch.routes.js
 import express from "express";
 import {
-    searchWorkers,
+    getWorkerSearchResults,
     getSearchFilters,
-    getWorkerProfile,
-    getWorkerReviews,
+    getWorkerProfile, // Add this import
 } from "../controllers/workerSearch.controller.js";
 
 const router = express.Router();
 
 // Search workers with filters
-router.get("/search", searchWorkers);
+router.get("/search", getWorkerSearchResults);
 
 // Get available filters (skills, price range, etc.)
 router.get("/filters", getSearchFilters);
 
-// Get worker profile details
-router.get("/worker/:workerId", getWorkerProfile);
-
-router.get("/worker/:workerId/reviews", getWorkerReviews);
+// Get complete worker profile
+router.get("/profile/:workerId", getWorkerProfile);
 
 export default router;

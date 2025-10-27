@@ -61,19 +61,109 @@ const AvailabilityModal = ({ availability, onUpdateAvailability, onClose }) => {
     ];
 
     const addWeeklySlot = () => {
-        if (newWeeklySlot.startTime < newWeeklySlot.endTime) {
-            setWeeklySlots([
-                ...weeklySlots,
-                { ...newWeeklySlot, id: Date.now() },
-            ]);
-            setNewWeeklySlot({
-                day: "monday",
-                startTime: "09:00",
-                endTime: "17:00",
-            });
-        } else {
+        // Check if end time is after start time
+        if (newWeeklySlot.startTime >= newWeeklySlot.endTime) {
             toast.error("End time must be after start time");
+            return;
         }
+
+        // Check for overlapping slots on the same day
+        const hasOverlap = weeklySlots.some((slot) => {
+            if (slot.day !== newWeeklySlot.day) return false;
+
+            const newStart = newWeeklySlot.startTime;
+            const newEnd = newWeeklySlot.endTime;
+            const existingStart = slot.startTime;
+            const existingEnd = slot.endTime;
+
+            // Check for any overlap
+            return (
+                // New slot starts during existing slot
+                (newStart >= existingStart && newStart < existingEnd) ||
+                // New slot ends during existing slot
+                (newEnd > existingStart && newEnd <= existingEnd) ||
+                // New slot completely contains existing slot
+                (newStart <= existingStart && newEnd >= existingEnd) ||
+                // Existing slot completely contains new slot
+                (existingStart <= newStart && existingEnd >= newEnd)
+            );
+        });
+
+        if (hasOverlap) {
+            toast.error("Time slot overlaps with existing slot for this day");
+            return;
+        }
+
+        // Check if the new slot would create adjacent slots that could be merged
+        const adjacentSlots = weeklySlots.filter((slot) => {
+            if (slot.day !== newWeeklySlot.day) return false;
+
+            const newStart = newWeeklySlot.startTime;
+            const newEnd = newWeeklySlot.endTime;
+            const existingStart = slot.startTime;
+            const existingEnd = slot.endTime;
+
+            // Check if slots are adjacent (end of one equals start of another)
+            return (
+                newStart === existingEnd || // New slot starts exactly when existing ends
+                newEnd === existingStart // New slot ends exactly when existing starts
+            );
+        });
+
+        // If there are adjacent slots, suggest merging
+        if (adjacentSlots.length > 0) {
+            const canMerge = adjacentSlots.every((slot) => {
+                const newStart = newWeeklySlot.startTime;
+                const newEnd = newWeeklySlot.endTime;
+                const existingStart = slot.startTime;
+                const existingEnd = slot.endTime;
+
+                // Check if merging would create a valid time range
+                return (
+                    (newStart === existingEnd && newEnd > existingEnd) ||
+                    (newEnd === existingStart && newStart < existingStart)
+                );
+            });
+
+            if (canMerge && adjacentSlots.length === 1) {
+                // Auto-merge with the adjacent slot
+                const adjacentSlot = adjacentSlots[0];
+                const mergedSlot = {
+                    ...newWeeklySlot,
+                    startTime:
+                        newWeeklySlot.startTime === adjacentSlot.endTime
+                            ? adjacentSlot.startTime
+                            : newWeeklySlot.startTime,
+                    endTime:
+                        newWeeklySlot.endTime === adjacentSlot.startTime
+                            ? adjacentSlot.endTime
+                            : newWeeklySlot.endTime,
+                    id: Date.now(),
+                };
+
+                // Remove the adjacent slot and add the merged one
+                const filteredSlots = weeklySlots.filter(
+                    (slot) => slot.id !== adjacentSlot.id
+                );
+                setWeeklySlots([...filteredSlots, mergedSlot]);
+                setNewWeeklySlot({
+                    day: "monday",
+                    startTime: "09:00",
+                    endTime: "17:00",
+                });
+                toast.success("Time slots merged automatically");
+                return;
+            }
+        }
+
+        // Add the new slot if no overlaps and no auto-merge
+        setWeeklySlots([...weeklySlots, { ...newWeeklySlot, id: Date.now() }]);
+        setNewWeeklySlot({
+            day: "monday",
+            startTime: "09:00",
+            endTime: "17:00",
+        });
+        toast.success("Weekly slot added successfully");
     };
 
     const removeWeeklySlot = (id) => {
@@ -707,7 +797,7 @@ const AvailabilityModal = ({ availability, onUpdateAvailability, onClose }) => {
                                     disabled={loading}
                                     style={{
                                         width: "100%",
-                                        background: "var(--success-gradient)",
+                                        background: "var(--primary-gradient)",
                                         color: "white",
                                         padding: "0.5rem 1rem",
                                         borderRadius: "var(--radius-md)",
@@ -723,12 +813,12 @@ const AvailabilityModal = ({ availability, onUpdateAvailability, onClose }) => {
                                     onMouseOver={(e) =>
                                         !loading &&
                                         (e.currentTarget.style.background =
-                                            "linear-gradient(135deg, #10B981 0%, #34D399 100%)")
+                                            "linear-gradient(135deg, #6D28D9 0%, #A855F7 100%)")
                                     }
                                     onMouseOut={(e) =>
                                         !loading &&
                                         (e.currentTarget.style.background =
-                                            "var(--success-gradient)")
+                                            "var(--primary-gradient)")
                                     }
                                 >
                                     <Plus className="w-4 h-4" />

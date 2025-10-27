@@ -1,31 +1,58 @@
-import React from 'react';
+import React from "react";
 
-const StatsCard = ({ icon: Icon, label, value, color = "blue" }) => {
-  const colorClasses = {
-    blue: { bg: 'bg-primary-light', text: 'text-primary-color' },
-    green: { bg: 'bg-success-light', text: 'text-success-color' },
-    yellow: { bg: 'bg-warning-light', text: 'text-warning-color' },
-    orange: { bg: 'bg-warning-light', text: 'text-warning-color' },
-    purple: { bg: 'bg-info-light', text: 'text-info-color' }
-  };
+const StatsCard = ({ icon: Icon, label, value, color }) => {
+    const colorClasses = {
+        green: {
+            bg: "bg-green-50",
+            border: "border-green-200",
+            icon: "text-green-600",
+            value: "text-green-900",
+            label: "text-green-700",
+        },
+        blue: {
+            bg: "bg-blue-50",
+            border: "border-blue-200",
+            icon: "text-blue-600",
+            value: "text-blue-900",
+            label: "text-blue-700",
+        },
+        yellow: {
+            bg: "bg-yellow-50",
+            border: "border-yellow-200",
+            icon: "text-yellow-600",
+            value: "text-yellow-900",
+            label: "text-yellow-700",
+        },
+        purple: {
+            bg: "bg-purple-50",
+            border: "border-purple-200",
+            icon: "text-purple-600",
+            value: "text-purple-900",
+            label: "text-purple-700",
+        },
+    };
 
-  const { bg, text } = colorClasses[color] || colorClasses.blue;
+    const colors = colorClasses[color] || colorClasses.blue;
 
-  return (
-    <div style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)', transition: 'box-shadow var(--transition-normal)' }} 
-         onMouseOver={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
-         onMouseOut={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{label}</p>
-          <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)' }}>{value}</p>
+    return (
+        <div
+            className={`p-6 rounded-2xl border-2 ${colors.bg} ${colors.border} transition-all duration-300 hover:shadow-lg`}
+        >
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className={`text-sm font-medium ${colors.label} mb-1`}>
+                        {label}
+                    </p>
+                    <p className={`text-3xl font-bold ${colors.value}`}>
+                        {value}
+                    </p>
+                </div>
+                <div className={`p-3 rounded-xl ${colors.bg}`}>
+                    <Icon className={`w-6 h-6 ${colors.icon}`} />
+                </div>
+            </div>
         </div>
-        <div style={{ padding: '0.75rem', borderRadius: '9999px', backgroundColor: bg }}>
-          <Icon style={{ width: '1.5rem', height: '1.5rem', color: text }} />
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default StatsCard;

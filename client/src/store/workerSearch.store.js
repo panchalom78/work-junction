@@ -17,8 +17,8 @@ export const useWorkerSearchStore = create((set, get) => ({
         workerName: "",
         workerPhone: "",
         sortBy: "relevance",
-        page: 1,
-        limit: 10,
+        page: "1",
+        limit: "10",
     },
     pagination: {
         page: 1,
@@ -73,7 +73,8 @@ export const useWorkerSearchStore = create((set, get) => ({
         if (
             !searchFilters.skill &&
             !searchFilters.location &&
-            !searchFilters.workerName
+            !searchFilters.workerName &&
+            !searchFilters.minRating
         ) {
             set({ workers: [], loading: false });
             return {
@@ -88,14 +89,17 @@ export const useWorkerSearchStore = create((set, get) => ({
             const response = await workerSearchService.searchWorkers(
                 searchFilters
             );
+            console.log(response);
 
             set({
-                workers: response.data || [],
-                pagination: response.pagination || {
-                    page: 1,
-                    limit: 10,
-                    total: 0,
-                    pages: 0,
+                workers: response.results || [], // Changed from response.data to response.results
+                pagination: {
+                    page: response.page || 1,
+                    limit: response.limit || 10,
+                    total: response.total || 0,
+                    pages: Math.ceil(
+                        (response.total || 0) / (response.limit || 10)
+                    ),
                 },
                 loading: false,
             });
@@ -120,10 +124,9 @@ export const useWorkerSearchStore = create((set, get) => ({
             const response = await workerSearchService.getSearchFilters();
 
             set({
-                availableFilters: response.data,
+                availableFilters: response.filters,
                 loading: false,
             });
-
             return response.data;
         } catch (error) {
             set({
@@ -170,6 +173,7 @@ export const useWorkerSearchStore = create((set, get) => ({
     },
 
     // Get worker profile
+    // Get complete worker profile
     getWorkerProfile: async (workerId) => {
         set({ loading: true });
 
@@ -178,7 +182,7 @@ export const useWorkerSearchStore = create((set, get) => ({
                 workerId
             );
             set({ loading: false });
-            return response.data;
+            return response;
         } catch (error) {
             set({
                 error:

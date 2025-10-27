@@ -1,20 +1,18 @@
 import { createTransport } from "nodemailer";
 
-
-
 const createTransporter = () => {
-  return createTransport({
-    host: process.env.EMAIL_HOST || "smtp.gmail.com",
-    port: 465,        // SSL port for Gmail
-    secure: true,     // true for port 465
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD, // Gmail App password
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
+    return createTransport({
+        host: process.env.EMAIL_HOST || "smtp.gmail.com",
+        port: 465, // SSL port for Gmail
+        secure: true, // true for port 465
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASSWORD, // Gmail App password
+        },
+        tls: {
+            rejectUnauthorized: false,
+        },
+    });
 };
 
 /**
@@ -27,7 +25,6 @@ const createTransporter = () => {
 const sendOTPEmail = async (email, otp, name, purpose = "REGISTRATION") => {
     try {
         const transporter = createTransporter();
-
 
         let subject, htmlContent;
 
@@ -214,4 +211,84 @@ const sendWelcomeEmail = async (email, name) => {
     }
 };
 
-export { sendOTPEmail, sendWelcomeEmail };
+/**
+ * Send Service OTP email to customer
+ * @param {String} email - Customer email
+ * @param {String} otp - OTP code
+ * @param {String} customerName - Customer name
+ * @param {String} workerName - Worker name
+ */
+const sendServiceOTPEmail = async (email, otp, customerName, workerName) => {
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || "Service App"}" <${
+                process.env.EMAIL_USER
+            }>`,
+            to: email,
+            subject: "Service OTP - Your Professional is Here",
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .otp-box { background: white; border: 2px dashed #10b981; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+                        .otp-code { font-size: 32px; font-weight: bold; color: #10b981; letter-spacing: 8px; }
+                        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                        .info-box { background: #d1fae5; border-left: 4px solid #10b981; padding: 12px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🛠️ Service Professional Arrived</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${customerName}</strong>,</p>
+                            <p>Your service professional <strong>${workerName}</strong> has arrived and is ready to start the service.</p>
+                            
+                            <div class="info-box">
+                                <strong>Please share this OTP with the professional to begin the service:</strong>
+                            </div>
+                            
+                            <div class="otp-box">
+                                <p style="margin: 0; color: #666;">Service Start OTP</p>
+                                <div class="otp-code">${otp}</div>
+                                <p style="margin: 10px 0 0 0; color: #999; font-size: 14px;">Valid for 10 minutes</p>
+                            </div>
+
+                            <div class="info-box">
+                                <strong>Service Details:</strong><br>
+                                • Do not share this OTP with anyone else<br>
+                                • The professional will enter this OTP to start the service<br>
+                                • This ensures your service starts only with your consent
+                            </div>
+
+                            <p>If you didn't request this service or have any concerns, please contact us immediately.</p>
+                            
+                            <p>Best regards,<br>The Team</p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply to this message.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log("Service OTP email sent successfully:", info.messageId);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error("Error sending service OTP email:", error);
+        throw new Error("Failed to send service OTP email");
+    }
+};
+
+export { sendOTPEmail, sendWelcomeEmail, sendServiceOTPEmail };

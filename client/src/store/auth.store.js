@@ -193,14 +193,7 @@ export const useAuthStore = create((set, get) => ({
         try {
             const response = await axiosInstance.put(
                 "/api/auth/profile",
-                profileData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                        )}`,
-                    },
-                }
+                profileData
             );
             set({
                 user: { ...get().user, ...response.data.data },
@@ -220,18 +213,7 @@ export const useAuthStore = create((set, get) => ({
     logout: async () => {
         try {
             set({ loading: true, error: null, message: null });
-            await axiosInstance.post(
-                "/api/auth/logout",
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                        )}`,
-                    },
-                }
-            );
-            localStorage.removeItem("token");
+            await axiosInstance.post("/api/auth/logout", {});
             set({
                 user: null,
                 role: null,
