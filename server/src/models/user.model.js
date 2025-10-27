@@ -150,13 +150,15 @@ const workerProfileSchema = new Schema(
         preferredLanguage: { type: String, trim: true },
         availabilityStatus: {
             type: String,
-            enum: ["available", "busy", "off-duty"],
+            enum: ["available", "busy", "off-duty"], 
             default: "available",
         },
         verification: verificationSchema,
         bankDetails: bankDetailsSchema,
         timetable: timetableSchema,
         nonAvailability: [nonAvailabilitySchema],
+        createdByAgent: { type: Boolean, default: false },
+        createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     },
     { _id: false }
 );
