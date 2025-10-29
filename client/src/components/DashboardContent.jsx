@@ -6,6 +6,7 @@ import ProgressStats from './ProgressStats';
 import WorkerManagement from '../components/tabs/WorkerManagement';
 import NonSmartphoneWorkers from '../components/tabs/nonSmartPhone'; // New import
 import VerificationTab from '../components/tabs/VerificationTab';
+import CustomerRequests from '../components/tabs/request';
 import axiosInstance from '../utils/axiosInstance';
 
 const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
@@ -95,13 +96,8 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
       case 'non-smartphone-workers':
         return <NonSmartphoneWorkers />;
 
-      case 'analytics':
-        return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Analytics</h2>
-            <p className="text-gray-600">Analytics content will be displayed here.</p>
-          </div>
-        );
+      case 'requests':
+        return <CustomerRequests />
 
       case 'settings':
         return (

@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import { deleteFromCloudinary, extractPublicId } from "../config/cloudinary.js";
 import { errorResponse, successResponse } from "../utils/response.js";
 import {cloudinary } from "../config/cloudinary.js";
+import  { WorkerService} from "../models/workerService.model.js";
 
 export const createWorker = async (req, res) => {
   try {
@@ -83,7 +84,6 @@ export const createWorker = async (req, res) => {
     });
   }
 }
-
 export const uploadAllDocuments = async (req, res) => {
   try {
     const { workerId } = req.params;
@@ -170,13 +170,6 @@ export const uploadAllDocuments = async (req, res) => {
     return errorResponse(res, 500, "Failed to upload documents");
   }
 };
-
-/**
- * @route   POST /api/workers/:workerId/bank-details
- * @desc    Add or Update bank details for a worker
- * @access  Private (only for WORKER or Admin)
- */
-
 export const addBankDetails = async (req, res) => {
   try {
     const workerId = req.params.workerId;
@@ -194,6 +187,95 @@ export const addBankDetails = async (req, res) => {
   } catch (error) {
     console.error("Error adding bank details:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const addSkillAndService = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { services, workType, dailyAvailability } = req.body;
+
+    // 🔍 Validate input
+    if (!workerId) {
+      return errorResponse(res, 400, "Worker ID is required");
+    }
+
+    if (!services || !Array.isArray(services) || services.length === 0) {
+      return errorResponse(res, 400, "Services array is required");
+    }
+
+    // 🧾 Find the worker
+    const worker = await User.findById(workerId);
+    if (!worker || worker.role !== "WORKER") {
+      return errorResponse(res, 404, "Worker not found or invalid role");
+    }
+
+    const results = [];
+    const errors = [];
+
+    // Process each service
+    for (const serviceData of services) {
+      const { skillId, serviceId, details, pricingType, price } = serviceData;
+
+      // Validate individual service data
+      if (!skillId || !serviceId) {
+        errors.push(`Missing skillId or serviceId for service: ${JSON.stringify(serviceData)}`);
+        continue;
+      }
+
+      try {
+        // 🧩 Check if this skill-service combination already exists for this worker
+        const existing = await WorkerService.findOne({
+          workerId,
+          skillId,
+          serviceId,
+        });
+        
+        if (existing) {
+          errors.push(`Skill ${skillId} and service ${serviceId} already added for this worker`);
+          continue;
+        }
+
+        // 💼 Create new WorkerService entry
+        const newWorkerService = new WorkerService({
+          workerId,
+          skillId,
+          serviceId,
+          details: details?.trim() || "",
+          pricingType: pricingType || "FIXED",
+          price: price || 0,
+          portfolioImages: [],
+        });
+
+        await newWorkerService.save();
+        results.push(newWorkerService);
+
+      } catch (error) {
+        errors.push(`Error adding service ${serviceId}: ${error.message}`);
+      }
+    }
+
+    // Update worker's work type and availability if provided
+    if (workType || dailyAvailability) {
+      const updateData = {};
+      if (workType) updateData.workType = workType;
+      if (dailyAvailability) updateData.dailyAvailability = dailyAvailability;
+      
+      await User.findByIdAndUpdate(workerId, updateData);
+    }
+
+    // ✅ Success with warnings if any errors occurred
+    if (errors.length > 0) {
+      return successResponse(res, 207, "Some services were added successfully with warnings", {
+        addedServices: results,
+        errors: errors
+      });
+    }
+
+    return successResponse(res, 201, "All skills and services added successfully", results);
+    
+  } catch (error) {
+    console.error("Error adding skill and service:", error);
+    return errorResponse(res, 500, "Internal server error", error.message);
   }
 };
 export const addOrUpdateBankDetails = async (req, res) => {
@@ -285,4 +367,50 @@ export const updateWorkerSkillsAndAvailability = async (req, res) => {
     console.error('Error updating skills and availability:', error);
     return errorResponse(res, 500, 'Internal server error');
   }
+};
+export const getAgentWorkers = async (req, res) => {
+  const workers = await User.find({
+    role: "WORKER",
+    "workerProfile.createdByAgent": true,
+  })
+    .select("name phone address workerProfile.availabilityStatus")
+    .populate("workerProfile.skills.skillId", "name")
+    .populate({
+      path: "workerProfile.services",
+      populate: [
+        { path: "skillId", select: "name" },
+        { path: "serviceId", select: "name" },
+      ],
+    });
+
+  res.json({ success: true, data: workers });
+};
+export const updateAvailability =async (req, res) => {
+  const { availabilityStatus } = req.body;
+  const { id } = req.params;
+
+  // VALIDATE AGAINST YOUR ENUM
+  const validStatuses = ["available", "busy", "off-duty"];
+  if (!validStatuses.includes(availabilityStatus)) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid status. Must be: ${validStatuses.join(", ")}`,
+    });
+  }
+
+  const worker = await User.findById(id);
+  if (!worker || worker.role !== "WORKER") {
+    return res.status(404).json({ success: false, message: "Worker not found" });
+  }
+
+  if (!worker.workerProfile) worker.workerProfile = {};
+  worker.workerProfile.availabilityStatus = availabilityStatus;
+
+  await worker.save();
+
+  res.json({
+    success: true,
+    message: "Availability updated",
+    data: { availabilityStatus: worker.workerProfile.availabilityStatus },
+  });
 };

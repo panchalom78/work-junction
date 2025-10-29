@@ -11,10 +11,7 @@ import authRoutes from "./routes/auth.route.js";
 import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
-<<<<<<< HEAD
-=======
 import adminRoutes from "./routes/admin.route.js";
->>>>>>> b6a6d6114559f2beab2530a824e9004d72d8a5b0
 import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
@@ -64,11 +61,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
-<<<<<<< HEAD
-=======
 
 app.use("/api/admin", adminRoutes);
->>>>>>> b6a6d6114559f2beab2530a824e9004d72d8a5b0
 app.use("/api/skill", skillRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
@@ -77,13 +71,9 @@ app.use("/api/worker/services", workerServiceRoutes);
 app.use("/api/workers", workerScheduleRoutes);
 // app.use("/api/bookings", bookingRoutes);
 app.use("/api/bookings", bookingRoutes);
-<<<<<<< HEAD
-app.use("/api/chats", chatRoutes);
-=======
 
 app.use("/api/chats", chatRoutes);
 app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
->>>>>>> b6a6d6114559f2beab2530a824e9004d72d8a5b0
 app.use("/api/customers", workerSearchRoutes);
 
 // Health check route

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../utils/axiosInstance';
+import { toast } from 'react-hot-toast';
 
 const CreateWorkerProfile = () => {
   const [formData, setFormData] = useState({
@@ -16,8 +17,8 @@ const CreateWorkerProfile = () => {
       pincode: '',
     },
     workType: '',
-    selectedSkills: [], // Array of skill IDs
-    selectedServices: [], // Array of service IDs
+    selectedSkills: [],
+    selectedServices: [],
     dailyAvailability: {
       Monday: [{ start: '', end: '' }],
       Tuesday: [{ start: '', end: '' }],
@@ -43,51 +44,54 @@ const CreateWorkerProfile = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [documentLoading, setDocumentLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [currentStep, setCurrentStep] = useState(1);
   const [imagePreview, setImagePreview] = useState(null);
   const [skillsList, setSkillsList] = useState([]);
-  const [servicesList, setServicesList] = useState([]);
-  const [filteredServices, setFilteredServices] = useState([]);
+  const [selectedSkillServices, setSelectedSkillServices] = useState([]);
+  const [createdWorkerId, setCreatedWorkerId] = useState(null);
+  const [workerCreated, setWorkerCreated] = useState(false);
+  const [serviceDetails, setServiceDetails] = useState({});
 
-  // Fetch skills and services on component mount
+  // Fetch skills on component mount
   useEffect(() => {
-    const fetchSkillsAndServices = async () => {
+    const fetchSkills = async () => {
       try {
-        // Fetch skills
-        const skillsResponse = await axiosInstance.get('/api/skills/');
+        const skillsResponse = await axiosInstance.get('/api/skills');
         if (skillsResponse.data.success) {
           setSkillsList(skillsResponse.data.data);
         }
-
-        // Fetch all services
-        const servicesResponse = await axiosInstance.get('/api/services');
-        if (servicesResponse.data.success) {
-          setServicesList(servicesResponse.data.data);
-        }
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setErrors(prev => ({ 
-          ...prev, 
-          skills: 'Failed to fetch skills and services' 
-        }));
+        console.error('Error fetching skills:', error);
+        toast.error('Failed to fetch skills');
       }
     };
     
-    fetchSkillsAndServices();
+    fetchSkills();
   }, []);
 
-  // Filter services based on selected skills
+  // Update services when skills selection changes
   useEffect(() => {
     if (formData.selectedSkills.length > 0) {
-      const filtered = servicesList.filter(service => 
-        formData.selectedSkills.includes(service.skillId)
-      );
-      setFilteredServices(filtered);
+      const services = [];
+      formData.selectedSkills.forEach(skillId => {
+        const skill = skillsList.find(s => s._id === skillId);
+        if (skill && skill.services) {
+          skill.services.forEach(service => {
+            services.push({
+              ...service,
+              skillId: skill._id,
+              skillName: skill.name
+            });
+          });
+        }
+      });
+      setSelectedSkillServices(services);
     } else {
-      setFilteredServices([]);
+      setSelectedSkillServices([]);
     }
-  }, [formData.selectedSkills, servicesList]);
+  }, [formData.selectedSkills, skillsList]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -125,17 +129,35 @@ const CreateWorkerProfile = () => {
     }
   };
 
+  // Handle service details change
+  const handleServiceDetailsChange = (serviceId, field, value) => {
+    setServiceDetails(prev => ({
+      ...prev,
+      [serviceId]: {
+        ...prev[serviceId],
+        [field]: value
+      }
+    }));
+  };
+
   // Handle skill selection
   const handleSkillChange = (skillId) => {
     setFormData(prev => {
       const isSelected = prev.selectedSkills.includes(skillId);
       if (isSelected) {
-        // Remove skill and its services
         const updatedSkills = prev.selectedSkills.filter(id => id !== skillId);
-        const updatedServices = prev.selectedServices.filter(serviceId => {
-          const service = servicesList.find(s => s._id === serviceId);
-          return service && service.skillId !== skillId;
-        });
+        const updatedServices = prev.selectedServices.filter(service => 
+          service.skillId !== skillId
+        );
+        
+        // Remove service details for deselected skill
+        const updatedServiceDetails = { ...serviceDetails };
+        selectedSkillServices
+          .filter(service => service.skillId === skillId)
+          .forEach(service => {
+            delete updatedServiceDetails[service.serviceId];
+          });
+        setServiceDetails(updatedServiceDetails);
         
         return {
           ...prev,
@@ -143,7 +165,6 @@ const CreateWorkerProfile = () => {
           selectedServices: updatedServices
         };
       } else {
-        // Add skill
         return {
           ...prev,
           selectedSkills: [...prev.selectedSkills, skillId]
@@ -153,18 +174,38 @@ const CreateWorkerProfile = () => {
   };
 
   // Handle service selection
-  const handleServiceChange = (serviceId) => {
+  const handleServiceChange = (service) => {
     setFormData(prev => {
-      const isSelected = prev.selectedServices.includes(serviceId);
+      const isSelected = prev.selectedServices.some(s => 
+        s.serviceId === service.serviceId
+      );
+      
       if (isSelected) {
+        // Remove service details when deselected
+        const updatedServiceDetails = { ...serviceDetails };
+        delete updatedServiceDetails[service.serviceId];
+        setServiceDetails(updatedServiceDetails);
+        
         return {
           ...prev,
-          selectedServices: prev.selectedServices.filter(id => id !== serviceId)
+          selectedServices: prev.selectedServices.filter(s => 
+            s.serviceId !== service.serviceId
+          )
         };
       } else {
+        // Initialize service details when selected
+        setServiceDetails(prevDetails => ({
+          ...prevDetails,
+          [service.serviceId]: {
+            details: '',
+            pricingType: 'fixed',
+            price: ''
+          }
+        }));
+        
         return {
           ...prev,
-          selectedServices: [...prev.selectedServices, serviceId]
+          selectedServices: [...prev.selectedServices, service]
         };
       }
     });
@@ -172,33 +213,66 @@ const CreateWorkerProfile = () => {
 
   // Select all services for a specific skill
   const selectAllServicesForSkill = (skillId) => {
-    const skillServices = servicesList.filter(service => service.skillId === skillId);
-    const serviceIds = skillServices.map(service => service._id);
+    const skillServices = selectedSkillServices.filter(service => service.skillId === skillId);
     
     setFormData(prev => ({
       ...prev,
-      selectedServices: [...new Set([...prev.selectedServices, ...serviceIds])]
+      selectedServices: [
+        ...prev.selectedServices.filter(service => service.skillId !== skillId),
+        ...skillServices
+      ]
     }));
+
+    // Initialize details for all selected services
+    const newServiceDetails = { ...serviceDetails };
+    skillServices.forEach(service => {
+      if (!newServiceDetails[service.serviceId]) {
+        newServiceDetails[service.serviceId] = {
+          details: '',
+          pricingType: 'fixed',
+          price: ''
+        };
+      }
+    });
+    setServiceDetails(newServiceDetails);
   };
 
   // Deselect all services for a specific skill
   const deselectAllServicesForSkill = (skillId) => {
-    const skillServices = servicesList.filter(service => service.skillId === skillId);
-    const serviceIds = skillServices.map(service => service._id);
-    
     setFormData(prev => ({
       ...prev,
-      selectedServices: prev.selectedServices.filter(id => !serviceIds.includes(id))
+      selectedServices: prev.selectedServices.filter(service => service.skillId !== skillId)
     }));
+
+    // Remove service details for deselected skill
+    const updatedServiceDetails = { ...serviceDetails };
+    selectedSkillServices
+      .filter(service => service.skillId === skillId)
+      .forEach(service => {
+        delete updatedServiceDetails[service.serviceId];
+      });
+    setServiceDetails(updatedServiceDetails);
   };
 
   // Select all services for all selected skills
   const selectAllServices = () => {
-    const allServiceIds = filteredServices.map(service => service._id);
     setFormData(prev => ({
       ...prev,
-      selectedServices: [...new Set([...prev.selectedServices, ...allServiceIds])]
+      selectedServices: [...selectedSkillServices]
     }));
+
+    // Initialize details for all services
+    const newServiceDetails = { ...serviceDetails };
+    selectedSkillServices.forEach(service => {
+      if (!newServiceDetails[service.serviceId]) {
+        newServiceDetails[service.serviceId] = {
+          details: '',
+          pricingType: 'fixed',
+          price: ''
+        };
+      }
+    });
+    setServiceDetails(newServiceDetails);
   };
 
   // Deselect all services
@@ -207,6 +281,7 @@ const CreateWorkerProfile = () => {
       ...prev,
       selectedServices: []
     }));
+    setServiceDetails({});
   };
 
   // Handle availability time changes
@@ -248,8 +323,292 @@ const CreateWorkerProfile = () => {
     }
   };
 
-  // Form validation
-  const validateForm = (step) => {
+  // Form validation for worker creation (steps 1-3)
+  const validateWorkerForm = () => {
+    const newErrors = {};
+
+    // Step 1 validation
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.phone.match(/^[0-9]{10}$/)) newErrors.phone = 'Valid 10-digit phone number is required';
+    if (!formData.password) newErrors.password = 'Password is required';
+    if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    if (!formData.address.city) newErrors['address.city'] = 'City is required';
+    if (!formData.address.pincode) newErrors['address.pincode'] = 'Pincode is required';
+
+    // Step 2 validation
+    if (!formData.workType) newErrors.workType = 'Work type is required';
+    if (formData.selectedSkills.length === 0) newErrors.skills = 'At least one skill is required';
+    if (formData.selectedServices.length === 0) newErrors.services = 'At least one service is required';
+
+    // Step 3 validation
+    if (!formData.bankDetails.accountNumber) newErrors.accountNumber = 'Account number is required';
+    if (!formData.bankDetails.accountHolderName) newErrors.accountHolderName = 'Account holder name is required';
+    if (!formData.bankDetails.IFSCCode) newErrors.IFSCCode = 'IFSC code is required';
+    if (!formData.bankDetails.bankName) newErrors.bankName = 'Bank name is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Form validation for documents (step 4)
+  const validateDocumentForm = () => {
+    const newErrors = {};
+
+    if (!formData.verification.documents.selfie) newErrors.selfie = 'Selfie is required';
+    if (!formData.verification.documents.aadhar) newErrors.aadhar = 'Aadhaar document is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Reset form completely
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      password: '',
+      address: {
+        houseNo: '',
+        street: '',
+        area: '',
+        city: '',
+        state: '',
+        pincode: '',
+      },
+      workType: '',
+      selectedSkills: [],
+      selectedServices: [],
+      dailyAvailability: {
+        Monday: [{ start: '', end: '' }],
+        Tuesday: [{ start: '', end: '' }],
+        Wednesday: [{ start: '', end: '' }],
+        Thursday: [{ start: '', end: '' }],
+        Friday: [{ start: '', end: '' }],
+        Saturday: [{ start: '', end: '' }],
+        Sunday: [{ start: '', end: '' }],
+      },
+      bankDetails: {
+        accountNumber: '',
+        accountHolderName: '',
+        IFSCCode: '',
+        bankName: '',
+      },
+      verification: {
+        documents: {
+          selfie: null,
+          aadhar: null,
+          policeVerification: null,
+        },
+      },
+    });
+    setCurrentStep(1);
+    setImagePreview(null);
+    setErrors({});
+    setCreatedWorkerId(null);
+    setWorkerCreated(false);
+    setServiceDetails({});
+  };
+
+  // Save Basic Information (Step 1)
+  const saveBasicInformation = async () => {
+    if (!validateStep(1)) {
+      toast.error('Please fix the validation errors before saving.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const basicData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || undefined,
+        password: formData.password,
+        address: formData.address,
+      };
+
+      const response = await axiosInstance.post('/api/service-agent/create-worker', basicData);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to save basic information');
+      }
+
+      const workerId = response.data.data.workerId || response.data.data._id;
+      setCreatedWorkerId(workerId);
+      toast.success('Basic information saved successfully!');
+      setCurrentStep(2);
+      
+    } catch (error) {
+      console.error('Error saving basic information:', error);
+      toast.error(error.response?.data?.message || 'Failed to save basic information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save Skills and Services (Step 2)
+  // Save Skills and Services (Step 2) - Single Request Version
+// Save Skills and Services (Step 2)
+const saveSkillsAndServices = async () => {
+  if (!validateStep(2)) {
+    toast.error('Please fix the validation errors before saving.');
+    return;
+  }
+
+  if (!createdWorkerId) {
+    toast.error('Please complete basic information first.');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Prepare services data in the format expected by the backend
+    const servicesData = formData.selectedServices.map(service => {
+      const serviceDetail = serviceDetails[service.serviceId] || {};
+      
+      // Convert pricingType to uppercase to match backend enum
+      const pricingType = (serviceDetail.pricingType || 'fixed').toUpperCase();
+      
+      return {
+        skillId: service.skillId,
+        serviceId: service.serviceId,
+        details: serviceDetail.details || '',
+        pricingType: pricingType,
+        price: parseFloat(serviceDetail.price) || 0
+      };
+    });
+
+    console.log('Sending services data:', {
+      services: servicesData,
+      workType: formData.workType,
+      dailyAvailability: formData.dailyAvailability
+    });
+
+    // Send all data in one request
+    const response = await axiosInstance.post(
+      `/api/service-agent/addSkillService/${createdWorkerId}`,
+      {
+        services: servicesData,
+        workType: formData.workType,
+        dailyAvailability: formData.dailyAvailability,
+      }
+    );
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to save skills and services');
+    }
+
+    // Check if there were any warnings
+    if (response.data.data?.errors && response.data.data.errors.length > 0) {
+      console.warn('Some services had issues:', response.data.data.errors);
+      toast.success(`Skills and services saved with ${response.data.data.errors.length} warnings`);
+    } else {
+      toast.success('Skills and services saved successfully!');
+    }
+
+    setCurrentStep(3);
+    
+  } catch (error) {
+    console.error('Error saving skills and services:', error);
+    console.error('Error response:', error.response?.data);
+    toast.error(error.response?.data?.message || 'Failed to save skills and services');
+  } finally {
+    setLoading(false);
+  }
+};  // Save Bank Details (Step 3)
+  const saveBankDetails = async () => {
+    if (!validateStep(3)) {
+      toast.error('Please fix the validation errors before saving.');
+      return;
+    }
+
+    if (!createdWorkerId) {
+      toast.error('Please complete previous steps first.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const bankData = {
+        workerId: createdWorkerId,
+        ...formData.bankDetails
+      };
+
+      const response = await axiosInstance.post(
+        `/api/service-agent/workers/${createdWorkerId}/bank-details`,
+        bankData
+      );
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to save bank details');
+      }
+
+      setWorkerCreated(true);
+      toast.success('Bank details saved successfully! Worker profile created.');
+      setCurrentStep(4);
+      
+    } catch (error) {
+      console.error('Error saving bank details:', error);
+      toast.error(error.response?.data?.message || 'Failed to save bank details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Upload documents separately (step 4)
+  const uploadDocuments = async () => {
+    if (!createdWorkerId) {
+      toast.error('Worker profile not created yet. Please complete previous steps first.');
+      return;
+    }
+
+    if (!validateDocumentForm()) {
+      toast.error('Please upload required documents before submitting.');
+      return;
+    }
+
+    setDocumentLoading(true);
+    
+    try {
+      const formDataToUpload = new FormData();
+      
+      if (formData.verification.documents.selfie) {
+        formDataToUpload.append('selfie', formData.verification.documents.selfie);
+      }
+      if (formData.verification.documents.aadhar) {
+        formDataToUpload.append('aadhar', formData.verification.documents.aadhar);
+      }
+      if (formData.verification.documents.policeVerification) {
+        formDataToUpload.append('policeVerification', formData.verification.documents.policeVerification);
+      }
+
+      const uploadResponse = await axiosInstance.post(
+        `/api/service-agent/upload-documents/${createdWorkerId}`,
+        formDataToUpload,
+        { 
+          headers: { 
+            'Content-Type': 'multipart/form-data',
+          } 
+        }
+      );
+      
+      if (!uploadResponse.data.success) {
+        throw new Error(uploadResponse.data.message || 'Failed to upload documents');
+      }
+      
+      toast.success('Documents uploaded successfully! Worker profile is complete.');
+      resetForm();
+      
+    } catch (error) {
+      console.error('Error uploading documents:', error);
+      toast.error(error.message || 'Failed to upload documents. Please try again.');
+    } finally {
+      setDocumentLoading(false);
+    }
+  };
+
+  // Validate individual steps
+  const validateStep = (step) => {
     const newErrors = {};
 
     if (step === 1) {
@@ -274,124 +633,8 @@ const CreateWorkerProfile = () => {
       if (!formData.bankDetails.bankName) newErrors.bankName = 'Bank name is required';
     }
 
-    if (step === 4) {
-      if (!formData.verification.documents.selfie) newErrors.selfie = 'Selfie is required';
-      if (!formData.verification.documents.aadhar) newErrors.aadhar = 'Aadhaar document is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm(currentStep)) return;
-
-    if (currentStep < 4) {
-      setCurrentStep(currentStep + 1);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Prepare data for submission
-      const submissionData = {
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email || undefined,
-        password: formData.password,
-        address: formData.address,
-        workType: formData.workType,
-        skills: formData.selectedSkills,
-        services: formData.selectedServices,
-        dailyAvailability: formData.dailyAvailability,
-        bankDetails: formData.bankDetails,
-      };
-
-      // Create worker with all data
-      const workerResponse = await axiosInstance.post('/api/service-agent/create-worker', submissionData);
-      if (!workerResponse.data.success) {
-        throw new Error(workerResponse.data.message || 'Failed to create worker');
-      }
-      const workerId = workerResponse.data.data._id;
-
-      // Upload documents if any
-      const formDataToUpload = new FormData();
-      if (formData.verification.documents.selfie) {
-        formDataToUpload.append('selfie', formData.verification.documents.selfie);
-      }
-      if (formData.verification.documents.aadhar) {
-        formDataToUpload.append('aadhar', formData.verification.documents.aadhar);
-      }
-      if (formData.verification.documents.policeVerification) {
-        formDataToUpload.append('policeVerification', formData.verification.documents.policeVerification);
-      }
-
-      if ([...formDataToUpload.entries()].length > 0) {
-        const uploadResponse = await axiosInstance.post(
-          `/api/service-agent//upload-documents/${workerId}`,
-          formDataToUpload,
-          { headers: { 'Content-Type': 'multipart/form-data' } }
-        );
-        if (!uploadResponse.data.success) {
-          throw new Error(uploadResponse.data.message || 'Failed to upload documents');
-        }
-      }
-
-      alert('Worker profile created successfully!');
-      
-      // Reset form
-      setFormData({
-        name: '',
-        phone: '',
-        email: '',
-        password: '',
-        address: {
-          houseNo: '',
-          street: '',
-          area: '',
-          city: '',
-          state: '',
-          pincode: '',
-        },
-        workType: '',
-        selectedSkills: [],
-        selectedServices: [],
-        dailyAvailability: {
-          Monday: [{ start: '', end: '' }],
-          Tuesday: [{ start: '', end: '' }],
-          Wednesday: [{ start: '', end: '' }],
-          Thursday: [{ start: '', end: '' }],
-          Friday: [{ start: '', end: '' }],
-          Saturday: [{ start: '', end: '' }],
-          Sunday: [{ start: '', end: '' }],
-        },
-        bankDetails: {
-          accountNumber: '',
-          accountHolderName: '',
-          IFSCCode: '',
-          bankName: '',
-        },
-        verification: {
-          documents: {
-            selfie: null,
-            aadhar: null,
-            policeVerification: null,
-          },
-        },
-      });
-      setCurrentStep(1);
-      setImagePreview(null);
-      setErrors({});
-      
-    } catch (error) {
-      console.error('Error creating worker profile:', error);
-      setErrors({ submit: error.message || 'Failed to create worker profile. Please try again.' });
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Step 1: Basic Information
@@ -559,12 +802,11 @@ const CreateWorkerProfile = () => {
   );
 
   // Step 2: Professional Information
-   const renderStep2 = () => (
+  const renderStep2 = () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-800">Professional Information</h3>
       
       <div className="grid grid-cols-1 gap-6">
-
         {/* Skills Selection */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -595,6 +837,9 @@ const CreateWorkerProfile = () => {
                   className="ml-3 text-sm font-medium text-gray-700 cursor-pointer flex-1"
                 >
                   {skill.name}
+                  <span className="block text-xs text-gray-500 mt-1">
+                    {skill.services?.length || 0} services available
+                  </span>
                 </label>
               </div>
             ))}
@@ -636,7 +881,7 @@ const CreateWorkerProfile = () => {
             
             {errors.services && <p className="text-red-500 text-sm mb-3">{errors.services}</p>}
             
-            {filteredServices.length === 0 ? (
+            {selectedSkillServices.length === 0 ? (
               <div className="text-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
                 <div className="text-gray-400 text-4xl mb-3">🔧</div>
                 <p className="text-gray-500">No services available for the selected skills</p>
@@ -648,14 +893,14 @@ const CreateWorkerProfile = () => {
                 {skillsList
                   .filter(skill => formData.selectedSkills.includes(skill._id))
                   .map(skill => {
-                    const skillServices = filteredServices.filter(service => service.skillId === skill._id);
+                    const skillServices = selectedSkillServices.filter(service => service.skillId === skill._id);
                     if (skillServices.length === 0) return null;
                     
                     const allServicesSelected = skillServices.every(service => 
-                      formData.selectedServices.includes(service._id)
+                      formData.selectedServices.some(s => s.serviceId === service.serviceId)
                     );
                     const someServicesSelected = skillServices.some(service => 
-                      formData.selectedServices.includes(service._id)
+                      formData.selectedServices.some(s => s.serviceId === service.serviceId)
                     );
 
                     return (
@@ -695,35 +940,91 @@ const CreateWorkerProfile = () => {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {skillServices.map(service => (
-                            <div 
-                              key={service._id} 
-                              className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
-                                formData.selectedServices.includes(service._id)
-                                  ? 'border-green-500 bg-green-50 shadow-sm'
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-white'
-                              }`}
-                              onClick={() => handleServiceChange(service._id)}
-                            >
-                              <input
-                                type="checkbox"
-                                id={`service-${service._id}`}
-                                checked={formData.selectedServices.includes(service._id)}
-                                onChange={() => handleServiceChange(service._id)}
-                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                              />
-                              <label
-                                htmlFor={`service-${service._id}`}
-                                className="ml-3 text-sm text-gray-700 cursor-pointer flex-1"
-                              >
-                                <div className="font-medium">{service.name}</div>
-                                {service.description && (
-                                  <div className="text-xs text-gray-500 mt-1">{service.description}</div>
+                        <div className="space-y-4">
+                          {skillServices.map(service => {
+                            const isSelected = formData.selectedServices.some(s => s.serviceId === service.serviceId);
+                            const serviceDetail = serviceDetails[service.serviceId] || {};
+                            
+                            return (
+                              <div key={service.serviceId}>
+                                <div 
+                                  className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                                    isSelected
+                                      ? 'border-green-500 bg-green-50 shadow-sm'
+                                      : 'border-gray-200 hover:border-gray-300 hover:bg-white'
+                                  }`}
+                                  onClick={() => handleServiceChange(service)}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    id={`service-${service.serviceId}`}
+                                    checked={isSelected}
+                                    onChange={() => handleServiceChange(service)}
+                                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                  />
+                                  <label
+                                    htmlFor={`service-${service.serviceId}`}
+                                    className="ml-3 text-sm text-gray-700 cursor-pointer flex-1"
+                                  >
+                                    <div className="font-medium">{service.name}</div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Skill: {skill.name}
+                                    </div>
+                                  </label>
+                                </div>
+
+                                {/* Service Details Form - Only show when service is selected */}
+                                {isSelected && (
+                                  <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg">
+                                    <h5 className="font-medium text-gray-800 mb-3">Service Details</h5>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Details
+                                        </label>
+                                        <textarea
+                                          value={serviceDetail.details || ''}
+                                          onChange={(e) => handleServiceDetailsChange(service.serviceId, 'details', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                          placeholder="Service description, expertise, etc."
+                                          rows="3"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Pricing Type
+                                        </label>
+                                        <select
+                                          value={serviceDetail.pricingType || 'fixed'}
+                                          onChange={(e) => handleServiceDetailsChange(service.serviceId, 'pricingType', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                          <option value="fixed">Fixed Price</option>
+                                          <option value="hourly">Hourly Rate</option>
+                                          <option value="squarefeet">Per Square Feet</option>
+                                          <option value="negotiable">Negotiable</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                          Price (₹)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={serviceDetail.price || ''}
+                                          onChange={(e) => handleServiceDetailsChange(service.serviceId, 'price', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                          placeholder="0.00"
+                                          min="0"
+                                          step="0.01"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
                                 )}
-                              </label>
-                            </div>
-                          ))}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -749,8 +1050,8 @@ const CreateWorkerProfile = () => {
               {skillsList
                 .filter(skill => formData.selectedSkills.includes(skill._id))
                 .map(skill => {
-                  const selectedSkillServices = filteredServices.filter(service => 
-                    service.skillId === skill._id && formData.selectedServices.includes(service._id)
+                  const selectedSkillServices = formData.selectedServices.filter(service => 
+                    service.skillId === skill._id
                   );
                   
                   if (selectedSkillServices.length === 0) return null;
@@ -764,22 +1065,35 @@ const CreateWorkerProfile = () => {
                           {selectedSkillServices.length} service(s)
                         </span>
                       </h5>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedSkillServices.map(service => (
-                          <span 
-                            key={service._id} 
-                            className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full border border-green-200"
-                          >
-                            {service.name}
-                            <button
-                              type="button"
-                              onClick={() => handleServiceChange(service._id)}
-                              className="ml-2 text-green-600 hover:text-green-800 text-xs"
-                            >
-                              ✕
-                            </button>
-                          </span>
-                        ))}
+                      <div className="space-y-2">
+                        {selectedSkillServices.map(service => {
+                          const serviceDetail = serviceDetails[service.serviceId] || {};
+                          return (
+                            <div key={service.serviceId} className="flex justify-between items-center p-3 bg-green-50 rounded border border-green-100">
+                              <div>
+                                <span className="font-medium text-green-800">{service.name}</span>
+                                {serviceDetail.details && (
+                                  <p className="text-sm text-green-600 mt-1">{serviceDetail.details}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span className="text-sm font-medium text-green-700">
+                                  {serviceDetail.pricingType === 'fixed' && '₹'}
+                                  {serviceDetail.price || '0'}
+                                  {serviceDetail.pricingType === 'hourly' && '/hour'}
+                                  {serviceDetail.pricingType === 'squarefeet' && '/sq ft'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleServiceChange(service)}
+                                  className="ml-3 text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -823,7 +1137,7 @@ const CreateWorkerProfile = () => {
 
       </div>
 
-      {/* Weekly Availability Section (keep this part the same) */}
+      {/* Weekly Availability Section */}
       <div className="border-t pt-6 mt-6">
         <h4 className="text-lg font-semibold text-gray-800 mb-4">Weekly Availability</h4>
         <div className="space-y-4">
@@ -876,7 +1190,8 @@ const CreateWorkerProfile = () => {
       </div>
     </div>
   );
-  // Step 3: Bank Details (same as before)
+
+  // Step 3: Bank Details
   const renderStep3 = () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-800">Bank Account Details</h3>
@@ -954,10 +1269,27 @@ const CreateWorkerProfile = () => {
     </div>
   );
 
-  // Step 4: Document Upload (same as before)
+  // Step 4: Document Upload
   const renderStep4 = () => (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-800">Document Verification</h3>
+      
+      {workerCreated && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                Worker profile created successfully! Now you can upload documents.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -1103,7 +1435,7 @@ const CreateWorkerProfile = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => e.preventDefault()}>
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
@@ -1113,9 +1445,9 @@ const CreateWorkerProfile = () => {
               <button
                 type="button"
                 onClick={() => setCurrentStep(currentStep - 1)}
-                disabled={currentStep === 1}
+                disabled={currentStep === 1 || loading}
                 className={`px-6 py-2 rounded-md ${
-                  currentStep === 1
+                  currentStep === 1 || loading
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-gray-600 text-white hover:bg-gray-700'
                 }`}
@@ -1123,32 +1455,92 @@ const CreateWorkerProfile = () => {
                 Previous
               </button>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </span>
-                ) : currentStep === 4 ? (
-                  'Create Worker Profile'
-                ) : (
-                  'Next'
+              <div className="flex space-x-3">
+                {currentStep === 1 && (
+                  <button
+                    type="button"
+                    onClick={saveBasicInformation}
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save & Continue'
+                    )}
+                  </button>
                 )}
-              </button>
-            </div>
 
-            {errors.submit && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{errors.submit}</p>
+                {currentStep === 2 && (
+                  <button
+                    type="button"
+                    onClick={saveSkillsAndServices}
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save & Continue'
+                    )}
+                  </button>
+                )}
+
+                {currentStep === 3 && (
+                  <button
+                    type="button"
+                    onClick={saveBankDetails}
+                    disabled={loading}
+                    className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save & Complete Profile'
+                    )}
+                  </button>
+                )}
+
+                {currentStep === 4 && (
+                  <button
+                    type="button"
+                    onClick={uploadDocuments}
+                    disabled={documentLoading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                  >
+                    {documentLoading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Uploading...
+                      </span>
+                    ) : (
+                      'Upload Documents'
+                    )}
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </form>
         </div>
       </div>
