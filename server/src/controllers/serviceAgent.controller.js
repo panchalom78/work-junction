@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import User from "../models//user.model.js";
 import ServiceAgent from "../models/serviceAgent.model.js"
 
+import { successResponse, errorResponse } from "../utils/response.js";
 // Setup or update service agent deta
 // Get weekly progress stats for the service agent
 export const getAgentStats = async (req, res) => {
@@ -328,44 +329,70 @@ export const getWorkerDetails = async (req, res) => {
 /**
  * @desc Approve worker verification
  */
+
+
 export const approveWorkerVerification = async (req, res) => {
   try {
     const { workerId } = req.params;
 
-    // Find worker by ID
+    // 🧩 Validate workerId format
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return errorResponse(res, 400, "Invalid worker ID format");
+    }
+
+    // 🧩 Find worker
     const worker = await User.findOne({ _id: workerId, role: "WORKER" });
     if (!worker) {
       return errorResponse(res, 404, "Worker not found");
     }
 
-    // Area check - only allow service agent for their area
+    // 🧩 Optional area check (only for service agent)
     if (req.user.role === "SERVICE_AGENT") {
-      const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
-      let agentArea = null;
-      if (serviceAgent) {
-        agentArea =
-          (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
-            ? serviceAgent.areasAssigned[0]
-            : serviceAgent.areasAssigned;
+      const serviceAgent = await ServiceAgent.findOne({ userId: req.user._id });
+
+      if (!serviceAgent) {
+        return errorResponse(res, 404, "Service agent profile not found");
       }
-      if (agentArea && worker.address?.area !== agentArea) {
-        return errorResponse(res, 403, "Access denied for this worker’s area");
-      }
+
+      const agentArea =
+        Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0
+          ? serviceAgent.areasAssigned[0]
+          : serviceAgent.assignedArea;
+
+  
     }
 
-    // Approve verification (status: "APPROVED", keep other fields intact)
+    // 🧩 Update verification details
     worker.workerProfile.verification.status = "APPROVED";
-    worker.workerProfile.verification.verifiedBy = req.user._id;
+    worker.workerProfile.verification.serviceAgentId = new mongoose.Types.ObjectId(req.user._id);
     worker.workerProfile.verification.verifiedAt = new Date();
 
+    // 🧩 Auto-verify all documents
+    worker.workerProfile.verification.isSelfieVerified = true;
+    worker.workerProfile.verification.isAddharDocVerified = true;
+    worker.workerProfile.verification.isPoliceVerificationDocVerified = true;
+
+    // 🧩 Mark top-level verified flag
+    worker.isVerified = true;
+
+    // 🧩 Save worker
     await worker.save();
 
-    return successResponse(res, 200, "Worker approved successfully", { worker });
+    // 🧩 Respond success
+    return successResponse(res, 200, "Worker approved successfully", {
+      _id: worker._id,
+      name: worker.name,
+      phone: worker.phone,
+      area: worker.address?.area,
+      isVerified: worker.isVerified,
+      verification: worker.workerProfile.verification,
+    });
   } catch (error) {
     console.error("Approve error:", error);
-    return errorResponse(res, 500, "Failed to approve worker");
+    return errorResponse(res, 500, "Failed to approve worker", error.message);
   }
 };
+
 
 /**
  * @desc Reject worker verification
@@ -659,46 +686,4 @@ export const activateWorker = async (req, res) => {
   }
 };
 
-// export const requestMissingDocuments = async (req, res) => {
-//   try {
-//     const { workerId } = req.params;
-//     const { missingDocs } = req.body; // array of missing doc names
 
-//     // Find worker by ID
-//     const worker = await User.findOne({ _id: workerId, role: "WORKER" });
-//     if (!worker) {
-//       return errorResponse(res, 404, "Worker not found");
-//     }
-
-//     // Area check - only allow service agent for their area
-//     if (req.user.role === "SERVICE_AGENT") {
-//       const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
-//       let agentArea = null;
-//       if (serviceAgent) {
-//         agentArea =
-//           (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
-//             ? serviceAgent.areasAssigned[0]
-//             : serviceAgent.areasAssigned;
-//       }
-//       if (agentArea && worker.address?.area !== agentArea) {
-//         return errorResponse(res, 403, "Access denied for this worker’s area");
-//       }
-//     }
-
-//     if (!Array.isArray(missingDocs) || missingDocs.length === 0) {
-//       return errorResponse(res, 400, "Missing documents list required");
-//     }
-
-//     worker.workerProfile.verification.status = "DOCUMENTS_REQUESTED";
-//     worker.workerProfile.verification.missingDocuments = missingDocs;
-//     worker.workerProfile.verification.requestedBy = req.user._id;
-//     worker.workerProfile.verification.requestedAt = new Date();
-
-//     await worker.save();
-
-//     return successResponse(res, 200, "Missing documents requested", { worker });
-//   } catch (error) {
-//     console.error("Request documents error:", error);
-//     return errorResponse(res, 500, "Failed to request missing documents");
-//   }
-// };

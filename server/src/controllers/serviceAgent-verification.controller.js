@@ -1,11 +1,8 @@
 import { successResponse, errorResponse } from "../utils/response.js";
 import User from "../models/user.model.js";
+import ServiceAgent from "../models/serviceAgent.model.js";
 
-/**
- * @desc    Get all pending verifications (filtered by assigned area for service agents)
- * @route   GET /api/service-agent/verifications/pending
- * @access  Private (Service Agent/Admin only)
- */
+
 const getPendingVerifications = async (req, res) => {
     try {
         const { page = 1, limit = 10 } = req.query;
@@ -71,72 +68,52 @@ const getPendingVerifications = async (req, res) => {
     }
 };
 
+const getPendingWorkerVerifications = async (req, res) => {
+  try {
+    const user = req.user;
 
-const getWorkerVerificationDetails = async (req, res) => {
-    try {
-        const { workerId } = req.params;
-
-        const worker = await User.findOne({
-            _id: workerId,
-            role: "WORKER",
-        }).select("name email phone address workerProfile createdAt");
-
-        if (!worker) {
-            return errorResponse(res, 404, "Worker not found");
-        }
-
-        // Check if service agent has access to this worker's area
-        if (req.user.role === "SERVICE_AGENT") {
-            const assignedArea = req.user.serviceAgentProfile?.assignedArea;
-
-            if (!assignedArea) {
-                return errorResponse(
-                    res,
-                    403,
-                    "No area assigned to you. Please contact admin."
-                );
-            }
-
-            const workerArea = worker.address?.area;
-            const workerCity = worker.address?.city;
-
-            // Check if worker is in the service agent's assigned area
-            if (workerArea !== assignedArea && workerCity !== assignedArea) {
-                return errorResponse(
-                    res,
-                    403,
-                    `Access denied. This worker is not in your assigned area (${assignedArea}). Worker location: ${
-                        workerCity || workerArea || "Unknown"
-                    }`
-                );
-            }
-        }
-        // ADMIN has access to all workers
-
-        return successResponse(
-            res,
-            200,
-            "Worker verification details retrieved successfully",
-            {
-                worker: {
-                    id: worker._id,
-                    name: worker.name,
-                    email: worker.email,
-                    phone: worker.phone,
-                    address: worker.address,
-                    registeredAt: worker.createdAt,
-                    verification: worker.workerProfile?.verification || {},
-                },
-            }
-        );
-    } catch (error) {
-        console.error("Get worker verification details error:", error);
-        return errorResponse(
-            res,
-            500,
-            "Failed to get worker verification details"
-        );
+    if (!user || user.role !== "SERVICE_AGENT") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service agents can view this.",
+      });
     }
+
+    const assignedArea = user?.serviceAgentProfile?.assignedArea?.trim()?.toLowerCase();
+    const assignedPincode = user?.address?.pincode?.trim();
+
+    if (!assignedArea || !assignedPincode) {
+      return res.status(400).json({
+        success: false,
+        message: "Agent does not have assigned area or pincode.",
+      });
+    }
+
+    // ✅ Find pending workers (case-insensitive area + exact pincode)
+    const pendingWorkers = await User.find({
+      role: "WORKER",
+      "workerProfile.verification.status": "PENDING",
+      "address.area": { $regex: new RegExp(`^${assignedArea}$`, "i") },
+      "address.pincode": assignedPincode,
+    })
+      .select("name phone address workerProfile.verification createdAt")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: pendingWorkers.length,
+      area: assignedArea,
+      pincode: assignedPincode,
+      data: pendingWorkers,
+    });
+  } catch (error) {
+    console.error("Error fetching pending workers:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching pending workers",
+      error: error.message,
+    });
+  }
 };
 
 /**
@@ -450,11 +427,418 @@ const getMyAreaWorkers = async (req, res) => {
     }
 };
 
+
+// Get all workers for verification
+export const getWorkersForVerification = async (req, res) => {
+  try {
+    const workers = await User.find({ 
+      role: 'WORKER',
+      'workerProfile.verification.status': { $in: ['PENDING', 'REJECTED'] }
+    })
+    .select('-password -otp')
+    .sort({ createdAt: -1 });
+
+    const formattedWorkers = workers.map(worker => ({
+      _id: worker._id,
+      name: worker.name,
+      phone: worker.phone,
+      email: worker.email,
+      address: worker.address,
+      workerProfile: worker.workerProfile,
+      createdAt: worker.createdAt,
+      updatedAt: worker.updatedAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formattedWorkers,
+      message: "Workers fetched successfully for verification"
+    });
+  } catch (error) {
+    console.error("Error fetching workers for verification:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Get single worker with full details for verification
+export const getWorkerVerificationDetails = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    const worker = await User.findOne({ 
+      _id: workerId, 
+      role: 'WORKER' 
+    }).select('-password -otp');
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: worker,
+      message: "Worker details fetched successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching worker details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Approve worker verific
+export const approveWorkerVerification = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const serviceAgentId = req.user?._id; // Ensure middleware sets req.user
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    const worker = await User.findOne({
+      _id: workerId,
+      role: "WORKER"
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    if (!worker.workerProfile || !worker.workerProfile.verification) {
+      return res.status(400).json({
+        success: false,
+        message: "Worker verification profile not found"
+      });
+    }
+
+    // ✅ Update worker verification details
+    worker.workerProfile.verification.status = "APPROVED";
+    worker.workerProfile.verification.verifiedAt = new Date();
+
+    // ✅ Properly store service agent ID (ensure it’s ObjectId)
+    if (serviceAgentId) {
+      worker.workerProfile.verification.serviceAgentId = new mongoose.Types.ObjectId(serviceAgentId);
+    }
+
+    // ✅ Auto-verify all documents
+    worker.workerProfile.verification.isSelfieVerified = true;
+    worker.workerProfile.verification.isAddharDocVerified = true;
+    worker.workerProfile.verification.isPoliceVerificationDocVerified = true;
+
+    // ✅ Clear rejection reason if it exists
+    worker.workerProfile.verification.rejectionReason = undefined;
+
+    // ✅ Mark worker as fully verified
+    worker.isVerified = true;
+
+    // ✅ Save updates
+    await worker.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Worker verification approved successfully",
+      data: {
+        _id: worker._id,
+        name: worker.name,
+        phone: worker.phone,
+        isVerified: worker.isVerified,
+        verification: worker.workerProfile.verification
+      }
+    });
+
+  } catch (error) {
+    console.error("Error approving worker verification:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+
+// Reject worker verification with reason
+export const rejectWorkerVerification = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { rejectionReason } = req.body;
+    const serviceAgentId = req.user._id; // From auth middleware
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    if (!rejectionReason || rejectionReason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required"
+      });
+    }
+
+    const worker = await User.findOne({ 
+      _id: workerId, 
+      role: 'WORKER' 
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    // Check if worker has verification profile
+    if (!worker.workerProfile || !worker.workerProfile.verification) {
+      return res.status(400).json({
+        success: false,
+        message: "Worker verification profile not found"
+      });
+    }
+
+    // Update verification status
+    worker.workerProfile.verification.status = 'REJECTED';
+    worker.workerProfile.verification.serviceAgentId = serviceAgentId;
+    worker.workerProfile.verification.rejectionReason = rejectionReason.trim();
+    worker.workerProfile.verification.verifiedAt = new Date();
+
+    await worker.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        _id: worker._id,
+        name: worker.name,
+        verification: worker.workerProfile.verification
+      },
+      message: "Worker verification rejected successfully"
+    });
+  } catch (error) {
+    console.error("Error rejecting worker verification:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Request additional documents from worker
+export const requestAdditionalDocuments = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { documentType, message } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    const worker = await User.findOne({ 
+      _id: workerId, 
+      role: 'WORKER' 
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    // Here you would typically:
+    // 1. Send notification to worker
+    // 2. Send email/SMS
+    // 3. Update verification status if needed
+
+    res.status(200).json({
+      success: true,
+      message: "Document request sent to worker successfully",
+      data: {
+        workerId: worker._id,
+        workerName: worker.name,
+        documentType,
+        message: message || `Please upload ${documentType} document for verification`
+      }
+    });
+  } catch (error) {
+    console.error("Error requesting documents:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Get worker documents for viewing
+export const getWorkerDocuments = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    const worker = await User.findOne({ 
+      _id: workerId, 
+      role: 'WORKER' 
+    }).select('name workerProfile.verification');
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    if (!worker.workerProfile || !worker.workerProfile.verification) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker verification data not found"
+      });
+    }
+
+    const documents = {
+      selfie: worker.workerProfile.verification.selfieUrl,
+      aadhar: worker.workerProfile.verification.addharDocUrl,
+      policeVerification: worker.workerProfile.verification.policeVerificationDocUrl
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        workerId: worker._id,
+        workerName: worker.name,
+        documents,
+        verificationStatus: worker.workerProfile.verification.status,
+        documentVerification: {
+          isSelfieVerified: worker.workerProfile.verification.isSelfieVerified,
+          isAddharDocVerified: worker.workerProfile.verification.isAddharDocVerified,
+          isPoliceVerificationDocVerified: worker.workerProfile.verification.isPoliceVerificationDocVerified
+        }
+      },
+      message: "Worker documents fetched successfully"
+    });
+  } catch (error) {
+    console.error("Error fetching worker documents:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
+
+// Update individual document verification status
+export const updateDocumentVerification = async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { documentType, isVerified } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(workerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worker ID format"
+      });
+    }
+
+    const validDocumentTypes = ['selfie', 'aadhar', 'policeVerification'];
+    if (!validDocumentTypes.includes(documentType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid document type. Must be one of: selfie, aadhar, policeVerification"
+      });
+    }
+
+    const worker = await User.findOne({ 
+      _id: workerId, 
+      role: 'WORKER' 
+    });
+
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
+      });
+    }
+
+    if (!worker.workerProfile || !worker.workerProfile.verification) {
+      return res.status(404).json({
+        success: false,
+        message: "Worker verification data not found"
+      });
+    }
+
+    // Update specific document verification status
+    const verificationField = `is${documentType.charAt(0).toUpperCase() + documentType.slice(1)}Verified`;
+    
+    if (documentType === 'aadhar') {
+      worker.workerProfile.verification.isAddharDocVerified = isVerified;
+    } else if (documentType === 'policeVerification') {
+      worker.workerProfile.verification.isPoliceVerificationDocVerified = isVerified;
+    } else {
+      worker.workerProfile.verification[verificationField] = isVerified;
+    }
+
+    await worker.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        workerId: worker._id,
+        workerName: worker.name,
+        documentType,
+        isVerified,
+        verification: worker.workerProfile.verification
+      },
+      message: `Document verification status updated successfully`
+    });
+  } catch (error) {
+    console.error("Error updating document verification:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
 export {
     getPendingVerifications,
-    getWorkerVerificationDetails,
     approveVerification,
     rejectVerification,
     getVerificationStats,
     getMyAreaWorkers,
+    getPendingWorkerVerifications,
 };
