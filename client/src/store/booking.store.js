@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { bookingService } from "../services/booking.service";
+import axiosInstance from "../utils/axiosInstance";
 
 export const useBookingStore = create((set, get) => ({
     // State
@@ -226,6 +227,38 @@ export const useBookingStore = create((set, get) => ({
                 error:
                     error.response?.data?.message ||
                     "Failed to complete service",
+                loading: false,
+            });
+            throw error;
+        }
+    },
+
+    // Add this to your store/booking.store.js
+
+    // Update booking price
+    updateBookingPrice: async (bookingId, updateData) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await axiosInstance.patch(
+                `/api/bookings/${bookingId}/price`,
+                updateData
+            );
+
+            // Update the local state
+            set((state) => ({
+                bookings: state.bookings.map((booking) =>
+                    booking._id === bookingId
+                        ? { ...booking, ...response.data.data }
+                        : booking
+                ),
+                loading: false,
+            }));
+
+            return response.data;
+        } catch (error) {
+            set({
+                error:
+                    error.response?.data?.message || "Failed to update price",
                 loading: false,
             });
             throw error;

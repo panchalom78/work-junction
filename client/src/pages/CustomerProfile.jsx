@@ -47,6 +47,7 @@ const CustomerProfile = () => {
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [searchTimeout, setSearchTimeout] = useState(null);
 
     const searchInputRef = useRef(null);
     const suggestionsRef = useRef(null);
@@ -280,7 +281,18 @@ const CustomerProfile = () => {
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setSearchQuery(query);
-        searchAddress(query);
+
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Set new timeout
+        const timeout = setTimeout(() => {
+            searchAddress(query);
+        }, 500);
+
+        setSearchTimeout(timeout);
     };
 
     const handleSuggestionSelect = (suggestion) => {
