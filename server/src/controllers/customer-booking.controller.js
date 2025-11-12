@@ -90,11 +90,6 @@ export const createBooking = async (req, res) => {
             bookingDate: new Date(bookingDate),
             bookingTime,
             price,
-            payment: {
-                amount: price,
-                status: paymentType === "CASH" ? "PENDING" : "PENDING",
-                paymentType,
-            },
         });
 
         await booking.save();
@@ -653,14 +648,8 @@ export const completeService = async (req, res) => {
         }
 
         // Update booking status to completed
-        booking.status = "COMPLETED";
+        booking.status = "PAYMENT_PENDING";
         booking.serviceCompletedAt = new Date();
-
-        // Update payment status if cash payment
-        if (booking.payment.paymentType === "CASH") {
-            booking.payment.status = "COMPLETED";
-            booking.payment.transactionDate = new Date();
-        }
 
         await booking.save();
 
@@ -679,6 +668,76 @@ export const completeService = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to complete service",
+            error: error.message,
+        });
+    }
+};
+
+// Add this to your booking controller
+
+/**
+ * @route PATCH /api/bookings/:bookingId/price
+ * @description Update booking price (for additional charges/discounts)
+ * @access Private (Worker)
+ */
+export const updateBookingPrice = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const { newPrice, reason = "" } = req.body;
+        const workerId = req.user._id;
+
+        if (!newPrice || newPrice <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid price is required",
+            });
+        }
+
+        const booking = await Booking.findOne({
+            _id: bookingId,
+            workerId: workerId,
+            status: { $in: ["ACCEPTED", "PAYMENT_PENDING"] },
+        });
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found or not authorized",
+            });
+        }
+
+        // // Store original price if this is the first update
+        // if (!booking.originalPrice) {
+        //     booking.originalPrice = booking.price;
+        // }
+
+        // Update price and reason
+        booking.price = newPrice;
+        // booking.priceUpdateReason = reason;
+
+        // If payment was already completed, reset payment status
+        if (booking.payment?.status === "COMPLETED") {
+            booking.payment.status = "PENDING";
+            booking.status = "PAYMENT_PENDING";
+        }
+
+        await booking.save();
+
+        const populatedBooking = await Booking.findById(booking._id)
+            .populate("customerId", "name phone email")
+            .populate("workerId", "name phone email")
+            .populate("workerServiceId");
+
+        res.status(200).json({
+            success: true,
+            message: "Booking price updated successfully",
+            data: populatedBooking,
+        });
+    } catch (error) {
+        console.error("Update Booking Price Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update booking price",
             error: error.message,
         });
     }

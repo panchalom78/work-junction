@@ -109,10 +109,11 @@ const OngoingBookings = () => {
                                     </div>
                                     <div
                                         className={`text-sm font-medium mt-1 ${getPaymentStatusColor(
-                                            booking.payment.status
+                                            booking.payment?.status || "Pending"
                                         )}`}
                                     >
-                                        Payment : {booking.payment.status}
+                                        Payment :{" "}
+                                        {booking?.payment?.status || "Pending"}
                                     </div>
                                 </div>
                             </div>

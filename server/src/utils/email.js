@@ -291,4 +291,296 @@ const sendServiceOTPEmail = async (email, otp, customerName, workerName) => {
     }
 };
 
-export { sendOTPEmail, sendWelcomeEmail, sendServiceOTPEmail };
+/**
+ * Send Cash Payment OTP email to worker
+ * @param {String} email - Worker email
+ * @param {String} otp - OTP code
+ * @param {String} workerName - Worker name
+ * @param {String} customerName - Customer name
+ * @param {Number} amount - Payment amount
+ * @param {String} bookingId - Booking ID
+ */
+const sendCashPaymentOTPEmail = async (
+    email,
+    otp,
+    workerName,
+    customerName,
+    amount,
+    bookingId
+) => {
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || "Workjunction"}" <${
+                process.env.EMAIL_USER
+            }>`,
+            to: email,
+            subject: "💰 Cash Payment OTP - Verify Payment Received",
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .otp-box { background: white; border: 2px dashed #f59e0b; padding: 25px; text-align: center; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                        .otp-code { font-size: 36px; font-weight: bold; color: #d97706; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+                        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                        .info-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                        .payment-details { background: white; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+                        .detail-row:last-child { border-bottom: none; }
+                        .detail-label { color: #6b7280; font-weight: 500; }
+                        .detail-value { color: #1f2937; font-weight: 600; }
+                        .amount-highlight { font-size: 24px; color: #065f46; font-weight: bold; }
+                        .steps { background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                        .step { display: flex; align-items: flex-start; margin-bottom: 15px; }
+                        .step-number { background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; margin-right: 12px; flex-shrink: 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>💰 Cash Payment Received</h1>
+                            <p>Verify your cash payment with OTP</p>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${workerName}</strong>,</p>
+                            <p>Great news! <strong>${customerName}</strong> has made a cash payment for your service.</p>
+                            
+                            <div class="payment-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Customer Name:</span>
+                                    <span class="detail-value">${customerName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Booking ID:</span>
+                                    <span class="detail-value">${bookingId}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Payment Amount:</span>
+                                    <span class="detail-value amount-highlight">₹${amount}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Payment Method:</span>
+                                    <span class="detail-value">Cash</span>
+                                </div>
+                            </div>
+
+                            <div class="info-box">
+                                <strong>📋 Next Steps:</strong> Please share this OTP with the customer to verify the payment.
+                            </div>
+                            
+                            <div class="otp-box">
+                                <p style="margin: 0 0 15px 0; color: #6b7280; font-size: 16px;">Cash Payment Verification OTP</p>
+                                <div class="otp-code">${otp}</div>
+                                <p style="margin: 15px 0 0 0; color: #9ca3af; font-size: 14px;">
+                                    ⏰ Valid for 30 minutes
+                                </p>
+                            </div>
+
+                            <div class="steps">
+                                <h3 style="margin-top: 0; color: #065f46;">How to complete payment verification:</h3>
+                                
+                                <div class="step">
+                                    <div class="step-number">1</div>
+                                    <div>
+                                        <strong>Receive Cash</strong><br>
+                                        Accept ₹${amount} cash payment from the customer
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">2</div>
+                                    <div>
+                                        <strong>Share OTP</strong><br>
+                                        Provide this OTP code to the customer
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">3</div>
+                                    <div>
+                                        <strong>Customer Verification</strong><br>
+                                        Customer will enter this OTP in the app
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">4</div>
+                                    <div>
+                                        <strong>Payment Confirmed</strong><br>
+                                        Payment status will update to "Completed"
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-box">
+                                <strong>⚠️ Important Security Notes:</strong><br>
+                                • Only share this OTP after receiving the cash payment<br>
+                                • Do not share this OTP with anyone else<br>
+                                • This OTP ensures secure payment verification<br>
+                                • If customer doesn't have the app, you can enter the OTP for them
+                            </div>
+
+                            <p style="text-align: center; margin: 25px 0 15px 0;">
+                                <strong>Need help?</strong> Contact our support team if you face any issues.
+                            </p>
+                            
+                            <p>Best regards,<br><strong>The Workjunction Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply to this message.</p>
+                            <p>© ${new Date().getFullYear()} Workjunction. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(
+            "Cash payment OTP email sent successfully to worker:",
+            info.messageId
+        );
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error("Error sending cash payment OTP email to worker:", error);
+        throw new Error("Failed to send cash payment OTP email");
+    }
+};
+
+/**
+ * Send Cash Payment Confirmation email to worker
+ * @param {String} email - Worker email
+ * @param {String} workerName - Worker name
+ * @param {String} customerName - Customer name
+ * @param {Number} amount - Payment amount
+ * @param {String} bookingId - Booking ID
+ * @param {String} transactionId - Transaction ID
+ */
+const sendCashPaymentConfirmationEmail = async (
+    email,
+    workerName,
+    customerName,
+    amount,
+    bookingId,
+    transactionId
+) => {
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || "Workjunction"}" <${
+                process.env.EMAIL_USER
+            }>`,
+            to: email,
+            subject: "✅ Cash Payment Verified Successfully",
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                        .success-icon { text-align: center; font-size: 80px; margin: 20px 0; }
+                        .payment-details { background: white; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+                        .detail-row:last-child { border-bottom: none; }
+                        .detail-label { color: #6b7280; font-weight: 500; }
+                        .detail-value { color: #1f2937; font-weight: 600; }
+                        .amount-highlight { font-size: 24px; color: #065f46; font-weight: bold; }
+                        .next-steps { background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>✅ Payment Verified Successfully</h1>
+                            <p>Cash payment has been confirmed</p>
+                        </div>
+                        <div class="content">
+                            <div class="success-icon">💰</div>
+                            
+                            <p>Hello <strong>${workerName}</strong>,</p>
+                            <p>Great news! The cash payment from <strong>${customerName}</strong> has been successfully verified and confirmed in our system.</p>
+                            
+                            <div class="payment-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Customer Name:</span>
+                                    <span class="detail-value">${customerName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Booking ID:</span>
+                                    <span class="detail-value">${bookingId}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Transaction ID:</span>
+                                    <span class="detail-value">${transactionId}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Amount Received:</span>
+                                    <span class="detail-value amount-highlight">₹${amount}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Payment Method:</span>
+                                    <span class="detail-value">Cash</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="detail-value" style="color: #059669;">✅ Verified & Confirmed</span>
+                                </div>
+                            </div>
+
+                            <div class="next-steps">
+                                <h3 style="margin-top: 0; color: #065f46;">What happens next?</h3>
+                                <p><strong>💰 Earnings:</strong> ₹${amount} has been added to your earnings and will be processed for payout according to our payment schedule.</p>
+                                <p><strong>📊 Dashboard:</strong> You can view this payment in your earnings dashboard.</p>
+                                <p><strong>⭐ Review:</strong> The customer can now leave a review for your service.</p>
+                            </div>
+
+                            <div style="text-align: center; margin: 25px 0;">
+                                <p><strong>Thank you for providing excellent service! 🎉</strong></p>
+                            </div>
+                            
+                            <p>Best regards,<br><strong>The Workjunction Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply to this message.</p>
+                            <p>© ${new Date().getFullYear()} Workjunction. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(
+            "Cash payment confirmation email sent successfully to worker:",
+            info.messageId
+        );
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(
+            "Error sending cash payment confirmation email to worker:",
+            error
+        );
+        throw new Error("Failed to send cash payment confirmation email");
+    }
+};
+
+export {
+    sendOTPEmail,
+    sendWelcomeEmail,
+    sendServiceOTPEmail,
+    sendCashPaymentOTPEmail,
+    sendCashPaymentConfirmationEmail,
+};

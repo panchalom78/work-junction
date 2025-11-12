@@ -35,6 +35,7 @@ const Settings = () => {
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
+    const [searchTimeout, setSearchTimeout] = useState(null);
 
     // Verification documents states
     const [verificationDocs, setVerificationDocs] = useState({
@@ -366,7 +367,18 @@ const Settings = () => {
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setSearchQuery(query);
-        searchAddress(query);
+
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Set new timeout
+        const timeout = setTimeout(() => {
+            searchAddress(query);
+        }, 500);
+
+        setSearchTimeout(timeout);
     };
 
     const handleSuggestionSelect = (suggestion) => {

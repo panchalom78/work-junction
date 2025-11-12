@@ -19,9 +19,13 @@ import {
     Eye,
     ThumbsUp,
     ThumbsDown,
+    CreditCard,
+    DollarSign,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";
 import ChatInitiateButton from "../components/ChatInitiateButton";
+import BookingCard from "../components/BookingCard";
+import PaymentOptions from "../components/PaymentOptions";
 
 const CustomerBookings = () => {
     const navigate = useNavigate();
@@ -39,6 +43,7 @@ const CustomerBookings = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [reviewData, setReviewData] = useState({ rating: 5, comment: "" });
 
     const statusFilters = [
@@ -52,6 +57,12 @@ const CustomerBookings = () => {
             value: "ACCEPTED",
             label: "Accepted",
             count: bookings.filter((b) => b.status === "ACCEPTED").length,
+        },
+        {
+            value: "PAYMENT_PENDING",
+            label: "Payment Pending",
+            count: bookings.filter((b) => b.status === "PAYMENT_PENDING")
+                .length,
         },
         {
             value: "COMPLETED",
@@ -100,6 +111,8 @@ const CustomerBookings = () => {
                 return "bg-yellow-100 text-yellow-800";
             case "ACCEPTED":
                 return "bg-blue-100 text-blue-800";
+            case "PAYMENT_PENDING":
+                return "bg-orange-100 text-orange-800";
             case "COMPLETED":
                 return "bg-green-100 text-green-800";
             case "CANCELLED":
@@ -117,6 +130,8 @@ const CustomerBookings = () => {
                 return <ClockIcon className="w-4 h-4" />;
             case "ACCEPTED":
                 return <CheckCircle className="w-4 h-4" />;
+            case "PAYMENT_PENDING":
+                return <CreditCard className="w-4 h-4" />;
             case "COMPLETED":
                 return <ThumbsUp className="w-4 h-4" />;
             case "CANCELLED":
@@ -159,6 +174,12 @@ const CustomerBookings = () => {
         }
     };
 
+    const handlePaymentSuccess = (paymentResult) => {
+        console.log("Payment successful:", paymentResult);
+        setShowPaymentModal(false);
+        fetchBookings(); // Refresh bookings to update status
+    };
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString("en-US", {
             weekday: "short",
@@ -170,6 +191,19 @@ const CustomerBookings = () => {
 
     const formatTime = (timeString) => {
         return timeString; // Already in HH:MM format
+    };
+
+    const getPaymentStatusText = (booking) => {
+        if (booking.status === "PAYMENT_PENDING") {
+            return "Payment Required";
+        }
+        if (booking.payment?.status === "COMPLETED") {
+            return "Paid";
+        }
+        if (booking.payment?.status === "PENDING") {
+            return "Payment Pending";
+        }
+        return "";
     };
 
     if (loading && bookings.length === 0) {
@@ -290,15 +324,33 @@ const CustomerBookings = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div
-                                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                                            booking.status
-                                        )}`}
-                                    >
-                                        {getStatusIcon(booking.status)}
-                                        <span className="capitalize">
-                                            {booking.status.toLowerCase()}
-                                        </span>
+                                    <div className="flex flex-col items-end space-y-1">
+                                        <div
+                                            className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                                                booking.status
+                                            )}`}
+                                        >
+                                            {getStatusIcon(booking.status)}
+                                            <span className="capitalize">
+                                                {booking.status
+                                                    .toLowerCase()
+                                                    .replace("_", " ")}
+                                            </span>
+                                        </div>
+                                        {booking.status ===
+                                            "PAYMENT_PENDING" && (
+                                            <div className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700">
+                                                <CreditCard className="w-3 h-3" />
+                                                <span>Payment Required</span>
+                                            </div>
+                                        )}
+                                        {booking.payment?.status ===
+                                            "COMPLETED" && (
+                                            <div className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                                                <CheckCircle className="w-3 h-3" />
+                                                <span>Paid</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -309,7 +361,7 @@ const CustomerBookings = () => {
                                             Service:
                                         </span>
                                         <span className="font-medium text-gray-900 text-right">
-                                            {booking.workerServiceId?.details.split(
+                                            {booking.workerServiceId?.details?.split(
                                                 "."
                                             )[0] || "Service"}
                                         </span>
@@ -385,6 +437,19 @@ const CustomerBookings = () => {
                                             className="flex-1 bg-red-100 text-red-700 py-2 rounded-2xl font-medium hover:bg-red-200 transition-colors"
                                         >
                                             Cancel
+                                        </button>
+                                    )}
+
+                                    {booking.status === "PAYMENT_PENDING" && (
+                                        <button
+                                            onClick={() => {
+                                                setSelectedBooking(booking);
+                                                setShowPaymentModal(true);
+                                            }}
+                                            className="flex-1 bg-orange-500 text-white py-2 rounded-2xl font-medium hover:bg-orange-600 transition-colors flex items-center justify-center space-x-2"
+                                        >
+                                            <CreditCard className="w-4 h-4" />
+                                            <span>Pay Now</span>
                                         </button>
                                     )}
 
@@ -499,7 +564,10 @@ const CustomerBookings = () => {
                                 </button>
                             </div>
 
-                            <div className="space-y-6">
+                            {/* Booking Card Component */}
+                            <BookingCard booking={selectedBooking} />
+
+                            <div className="space-y-6 mt-6">
                                 {/* Worker Info */}
                                 <div className="flex items-center space-x-4">
                                     <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg">
@@ -561,22 +629,53 @@ const CustomerBookings = () => {
                                     </div>
                                 </div>
 
-                                {/* Status */}
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Status
-                                    </label>
-                                    <div
-                                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                                            selectedBooking.status
-                                        )}`}
-                                    >
-                                        {getStatusIcon(selectedBooking.status)}
-                                        <span className="capitalize">
-                                            {selectedBooking.status.toLowerCase()}
-                                        </span>
+                                {/* Payment Status */}
+                                {selectedBooking.payment && (
+                                    <div>
+                                        <label className="text-sm text-gray-600">
+                                            Payment Status
+                                        </label>
+                                        <div className="flex items-center space-x-2">
+                                            <div
+                                                className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
+                                                    selectedBooking.payment
+                                                        .status === "COMPLETED"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : selectedBooking
+                                                              .payment
+                                                              .status ===
+                                                          "PENDING"
+                                                        ? "bg-orange-100 text-orange-800"
+                                                        : "bg-red-100 text-red-800"
+                                                }`}
+                                            >
+                                                {selectedBooking.payment
+                                                    .status === "COMPLETED" ? (
+                                                    <CheckCircle className="w-4 h-4" />
+                                                ) : selectedBooking.payment
+                                                      .status === "PENDING" ? (
+                                                    <ClockIcon className="w-4 h-4" />
+                                                ) : (
+                                                    <XCircle className="w-4 h-4" />
+                                                )}
+                                                <span className="capitalize">
+                                                    {selectedBooking.payment.status.toLowerCase()}
+                                                </span>
+                                            </div>
+                                            {selectedBooking.payment
+                                                .paymentType && (
+                                                <span className="text-sm text-gray-600">
+                                                    (
+                                                    {selectedBooking.payment.paymentType.replace(
+                                                        "_",
+                                                        " "
+                                                    )}
+                                                    )
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Additional Info */}
                                 {selectedBooking.declineReason && (
@@ -721,6 +820,15 @@ const CustomerBookings = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Payment Modal */}
+            {showPaymentModal && selectedBooking && (
+                <PaymentOptions
+                    booking={selectedBooking}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onClose={() => setShowPaymentModal(false)}
+                />
             )}
         </div>
     );

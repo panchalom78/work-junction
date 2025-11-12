@@ -1,10 +1,10 @@
 import mongoose, { Schema } from "mongoose";
+import { type } from "os";
 
 const paymentSchema = new Schema(
     {
         paymentId: {
-            type: Schema.Types.ObjectId,
-            default: () => new mongoose.Types.ObjectId(),
+            type: String,
         },
         amount: { type: Number, required: true, min: 0 },
         status: {
@@ -14,7 +14,7 @@ const paymentSchema = new Schema(
         },
         paymentType: {
             type: String,
-            enum: ["CREDIT_CARD", "DEBIT_CARD", "UPI", "NET_BANKING", "CASH"],
+            enum: ["RAZORPAY", "CASH"],
         },
         transactionId: { type: String },
         transactionDate: { type: Date },
@@ -63,7 +63,18 @@ const bookingSchema = new Schema(
         },
         status: {
             type: String,
+<<<<<<< HEAD
             enum: ["PENDING", "ACCEPTED", "DECLINED", "COMPLETED", "CANCELLED" , "IN_PROGRESS"],
+=======
+            enum: [
+                "PENDING",
+                "ACCEPTED",
+                "DECLINED",
+                "PAYMENT_PENDING",
+                "COMPLETED",
+                "CANCELLED",
+            ],
+>>>>>>> 2b29f9f6e505c9ea42a3ec30a5a93c604a313680
             default: "PENDING",
         },
         bookingDate: { type: Date, required: true },
