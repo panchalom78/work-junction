@@ -6,8 +6,9 @@ import ProgressStats from './ProgressStats';
 import WorkerManagement from '../components/tabs/WorkerManagement';
 import NonSmartphoneWorkers from '../components/tabs/nonSmartPhone'; // New import
 import VerificationTab from '../components/tabs/VerificationTab';
-import CustomerRequests from '../components/tabs/request';
+import CustomerRequests from '../components/tabs/customerRequest';
 import axiosInstance from '../utils/axiosInstance';
+import ServiceAgentDashboard from '../components/tabs/agentDashboard';
 
 const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
   const [areaStats, setAreaStats] = useState([]);
@@ -22,6 +23,7 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
       try {
         // Fetch Area Stats
         const areaStatsRes = await axiosInstance.get('/api/service-agent/area-stats');
+        console.log('Area Stats Response:', areaStatsRes);
         if (areaStatsRes.data && areaStatsRes.data.success) {
           setAreaStats(areaStatsRes.data.data);
         }
@@ -60,34 +62,10 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return (
-          <>
-            <StatsGrid stats={areaStats} loading={loading} />
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <VerificationQueue
-                queue={queue}
-                setSelectedWorker={setSelectedWorker}
-              />
-
-              <div className="space-y-6">
-                <WorkerRequests requests={workerRequests} />
-                <ProgressStats progressData={progressStats} loading={loading} />
-              </div>
-            </div>
-          </>
-        );
 
       case 'verification':
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Verification Dashboard</h2>
-              <VerificationTab />
-            </div>
-
-          </div>
+          <VerificationTab />
         );
 
       case 'workers':
@@ -99,32 +77,12 @@ const DashboardContent = ({ sidebarOpen, activeTab, setSelectedWorker }) => {
       case 'requests':
         return <CustomerRequests />
 
-      case 'settings':
-        return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
-            <p className="text-gray-600">Settings content will be displayed here.</p>
-          </div>
-        );
-
+      case 'dashboard':
+        return <ServiceAgentDashboard />
       default:
-        return (
-          <>
-            <StatsGrid stats={areaStats} loading={loading} />
+        <ServiceAgentDashboard />
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              <VerificationQueue
-                queue={queue}
-                setSelectedWorker={setSelectedWorker}
-              />
 
-              <div className="space-y-6">
-                <WorkerRequests requests={workerRequests} />
-                <ProgressStats progressData={progressStats} loading={loading} />
-              </div>
-            </div>
-          </>
-        );
     }
   };
 

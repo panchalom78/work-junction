@@ -1,11 +1,32 @@
 import express from "express";
-import { setupServiceAgent, getAgentStats, getAreaStats , getWorkerById ,approveWorkerVerification } from "../controllers/serviceAgent.controller.js";
-import { getPendingWorkerVerifications , getWorkerVerificationDetails, getWorkerDocuments , updateDocumentVerification , approveVerification, rejectVerification } from "../controllers/serviceAgent-verification.controller.js";
+import { setupServiceAgent, getAgentStats, getAreaStats, getWorkerById, approveWorkerVerification  } from "../controllers/serviceAgent.controller.js";
+import { getPendingWorkerVerifications, getWorkerVerificationDetails, getWorkerDocuments, updateDocumentVerification, approveVerification, rejectVerification } from "../controllers/serviceAgent-verification.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
-import { createWorker , uploadAllDocuments , addOrUpdateBankDetails , getBankDetails , addBankDetails ,updateWorkerSkillsAndAvailability , addSkillAndService , getAgentWorkers , updateAvailability} from "../controllers/physicalWorker.controller.js";
+import {
+  createWorker,
+  uploadAllDocuments,
+  addOrUpdateBankDetails,
+  getBankDetails,
+  addBankDetails,
+  updateWorkerSkillsAndAvailability,
+  addSkillAndService,
+  getAgentWorkers,
+  updateAvailability,
+  getAgentWorkerBookings,
+  getServiceRequests,
+  updateRequestStatus,
+  getBookingsByStatus,
+  getPendingBookings,
+  getAssignedBookings,
+  getInProgressBookings,
+  getCompletedBookings,
+  getCancelledBookings,
+  getAllBookings,
+  getWorkerBookings
+} from "../controllers/physicalWorker.controller.js";
 import { uploadVerificationDoc } from "../config/cloudinary.js";
 import { authorize } from "../middlewares/auth.middleware.js";
-import { getAllWorkers , suspendWorker , getWorkerDetails , activateWorker , updatePersonal , updateAddress , updateBank, updateSkillsAndServices , getSkills} from "../controllers/workerManagement.controller.js";
+import { getAllWorkers, suspendWorker, getWorkerDetails, activateWorker, updatePersonal, updateAddress, updateBank, updateSkillsAndServices, getSkills } from "../controllers/workerManagement.controller.js";
 
 const router = express.Router();
 router.use(protect);
@@ -24,15 +45,15 @@ router.post('/addSkillService/:workerId', addSkillAndService);
 
 
 router.post(
-    "/upload-documents/:workerId",
-    protect,
-    authorize("SERVICE_AGENT"),
-    uploadVerificationDoc.fields([
-        { name: "selfie", maxCount: 1 },
-        { name: "aadhar", maxCount: 1 },
-        { name: "policeVerification", maxCount: 1 },
-    ]),
-    uploadAllDocuments
+  "/upload-documents/:workerId",
+  protect,
+  authorize("SERVICE_AGENT"),
+  uploadVerificationDoc.fields([
+    { name: "selfie", maxCount: 1 },
+    { name: "aadhar", maxCount: 1 },
+    { name: "policeVerification", maxCount: 1 },
+  ]),
+  uploadAllDocuments
 );
 
 router.post("/workers/:workerId/bank-details", addOrUpdateBankDetails);
@@ -84,5 +105,19 @@ router.patch(
   authorize("SERVICE_AGENT"),
   updateAvailability
 );
+
+router.get('/service-requests', getAgentWorkerBookings);
+router.get('/bookings', getServiceRequests);
+router.patch('/bookings/:requestId/status', updateRequestStatus); 
+router.get('/bookings/status/:status', getBookingsByStatus);
+router.get('/pending', getPendingBookings);
+router.get('/assigned', getAssignedBookings);
+router.get('/in-progress', getInProgressBookings);
+router.get('/completed', getCompletedBookings);
+router.get('/cancelled', getCancelledBookings);
+router.get('/all', getAllBookings);
+
+// GET bookings for a specific worker
+router.get('/bookings/:workerId', getWorkerBookings);
 
 export default router;

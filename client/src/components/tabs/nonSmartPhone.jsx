@@ -1,5 +1,5 @@
 // components/NonSmartphoneWorkers.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axiosInstance from '../../utils/axiosInstance';
 import { toast } from 'react-hot-toast';
 import CreateWorkerProfile from '../CreateWorkerForm';
@@ -8,710 +8,582 @@ const NonSmartphoneWorkers = () => {
   const [activeView, setActiveView] = useState('workers');
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workers, setWorkers] = useState([]);
-  const [serviceRequests, setServiceRequests] = useState([]);
-  const [filteredRequests, setFilteredRequests] = useState([]);
-  const [showCallModal, setShowCallModal] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingAvailability, setUpdatingAvailability] = useState(null);
-  const [updatingRequest, setUpdatingRequest] = useState(null);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch workers
+  // FETCH ALL NON-SMARTPHONE WORKERS
   const fetchWorkers = async () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get('/api/service-agent/non-smartphone-workers');
-      if (data.success) {
-        setWorkers(data.data);
-      }
-    } catch (error) {
-      console.error(error);
+      if (data.success) setWorkers(data.data || []);
+    } catch {
       toast.error('Failed to load workers');
-      setWorkers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch service requests
-  const fetchServiceRequests = async () => {
+  // FETCH BOOKINGS FOR A PARTICULAR WORKER
+  const fetchBookings = async (workerId) => {
+    if (!workerId) return;
     try {
-      const { data } = await axiosInstance.get('/api/service-agent/service-requests');
+      const { data } = await axiosInstance.get(`/api/service-agent/bookings/${workerId}`);
       if (data.success) {
-        setServiceRequests(data.data);
+        setBookings(data.bookings || []);
+        setFilteredBookings(data.bookings || []);
       }
+      console.log(data);
     } catch (error) {
-      console.error('Error fetching service requests:', error);
-      toast.error('Failed to load service requests');
+      console.error(error);
+      toast.error('Failed to load bookings');
+      setBookings([]);
+      setFilteredBookings([]);
     }
   };
 
   useEffect(() => {
     fetchWorkers();
-    fetchServiceRequests();
   }, []);
 
-  // Update worker availability status
+  // SEARCH FILTER
+  const filteredWorkers = useMemo(() => {
+    if (!searchQuery.trim()) return workers;
+    const q = searchQuery.toLowerCase();
+    return workers.filter(w =>
+      w.name?.toLowerCase().includes(q) ||
+      w.phone?.includes(q) ||
+      w.address?.area?.toLowerCase().includes(q) ||
+      w.address?.city?.toLowerCase().includes(q)
+    );
+  }, [workers, searchQuery]);
+
+  // UPDATE AVAILABILITY
   const updateStatusDirectly = async (workerId, newStatus) => {
     try {
       setUpdatingAvailability(workerId);
-      const res = await axiosInstance.patch(`/api/service-agent/worker/${workerId}/availability`, {
-        availabilityStatus: newStatus,
-      });
-      console.log(res.data);
-      toast.success(`Status updated to ${newStatus.replace("-", " ")}`);
+      await axiosInstance.patch(`/api/service-agent/worker/${workerId}/availability`, { availabilityStatus: newStatus });
+      toast.success(`Status updated to ${newStatus.replace('-', ' ')}`);
       fetchWorkers();
-    } catch (error) {
-      toast.error("Update failed");
-      console.error(error);
+    } catch {
+      toast.error('Failed to update status');
     } finally {
       setUpdatingAvailability(null);
     }
   };
 
-  // Update request status
-  const updateRequestStatus = async (requestId, newStatus, notes = '') => {
-    try {
-      setUpdatingRequest(requestId);
-      const { data } = await axiosInstance.patch(
-        `/api/service-agent/service-requests/${requestId}/status`,
-        {
-          status: newStatus,
-          agentNotes: notes,
-          actionTakenAt: new Date().toISOString()
-        }
-      );
-
-      if (data.success) {
-        toast.success(`Request ${newStatus.toLowerCase()}`);
-        fetchServiceRequests();
-        setShowStatusModal(false);
-        setSelectedRequest(null);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update request');
-      console.error(error);
-    } finally {
-      setUpdatingRequest(null);
-    }
-  };
-
-  // Assign worker to request
-  const assignWorkerToRequest = async (requestId, workerId) => {
-    try {
-      setUpdatingRequest(requestId);
-      const { data } = await axiosInstance.patch(
-        `/api/service-agent/service-requests/${requestId}/assign`,
-        { workerId }
-      );
-
-      if (data.success) {
-        toast.success('Worker assigned successfully');
-        fetchServiceRequests();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to assign worker');
-    } finally {
-      setUpdatingRequest(null);
-    }
-  };
-
-  const toggleAvailability = async (worker) => {
-    const workerId = worker._id;
-    const current = worker.workerProfile?.availabilityStatus || "available";
-    const statusCycle = ["available", "busy", "off-duty"];
-    const nextIndex = (statusCycle.indexOf(current) + 1) % statusCycle.length;
-    const newStatus = statusCycle[nextIndex];
-
-    try {
-      setUpdatingAvailability(workerId);
-      await axiosInstance.patch(`/api/service-agent/worker/${workerId}/availability`, {
-        availabilityStatus: newStatus,
-      });
-      toast.success(`Status: ${newStatus.replace("-", " ")}`);
-      fetchWorkers();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update");
-    } finally {
-      setUpdatingAvailability(null);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedWorker && activeView === 'work-list') {
-      const workerRequests = serviceRequests.filter(req => 
-        req.assignedWorker?._id === selectedWorker._id
-      );
-      setFilteredRequests(workerRequests);
-    }
-  }, [selectedWorker, serviceRequests, activeView]);
-
-  const handleCallWorker = (worker) => {
-    setSelectedWorker(worker);
-    setShowCallModal(true);
-  };
-
-  const handleViewWorkList = (worker) => {
-    setSelectedWorker(worker);
-    setActiveView('work-list');
-  };
-
-  const handleUpdateRequestStatus = (request) => {
-    setSelectedRequest(request);
-    setShowStatusModal(true);
-  };
-
+  // BADGE - Optimized for mobile
   const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: { class: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
-      assigned: { class: 'bg-blue-100 text-blue-800', text: 'Assigned' },
-      confirmed: { class: 'bg-green-100 text-green-800', text: 'Confirmed' },
-      in_progress: { class: 'bg-orange-100 text-orange-800', text: 'In Progress' },
-      completed: { class: 'bg-green-100 text-green-800', text: 'Completed' },
-      cancelled: { class: 'bg-red-100 text-red-800', text: 'Cancelled' },
-      available: { class: 'bg-green-100 text-green-800', text: 'Available' },
-      busy: { class: 'bg-orange-100 text-orange-800', text: 'Busy' },
-      "off-duty": { class: 'bg-red-100 text-red-800', text: 'Off Duty' },
+    const s = (status || '').toString().toLowerCase();
+    const map = {
+      pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+      accepted: 'bg-blue-100 text-blue-800 border border-blue-200',
+      'in-progress': 'bg-purple-100 text-purple-800 border border-purple-200',
+      completed: 'bg-green-100 text-green-800 border border-green-200',
+      cancelled: 'bg-red-100 text-red-800 border border-red-200',
+      declined: 'bg-red-100 text-red-800 border border-red-200',
+      available: 'bg-green-100 text-green-800 border border-green-200',
+      busy: 'bg-orange-100 text-orange-800 border border-orange-200',
+      'off-duty': 'bg-gray-100 text-gray-700 border border-gray-200'
     };
-
-    const config = statusConfig[status] || { class: 'bg-gray-100 text-gray-800', text: status };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.class}`}>
-        {config.text}
-      </span>
-    );
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${map[s] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
+      {s.replace('-', ' ')}
+    </span>;
   };
 
-  const getPriorityBadge = (priority) => {
-    const priorityConfig = {
-      low: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      urgent: 'bg-red-100 text-red-800'
-    };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityConfig[priority] || 'bg-gray-100 text-gray-800'}`}>
-        {priority?.charAt(0).toUpperCase() + priority?.slice(1) || 'Normal'}
-      </span>
-    );
-  };
-
+  // WORKER CARD – Optimized for mobile
   const WorkerCard = ({ worker }) => {
-    const location = worker.address
-      ? `${worker.address.area || ''}, ${worker.address.city || ''}`.trim() || '—'
-      : '—';
+    const location = [
+      worker.address?.houseNo,
+      worker.address?.street,
+      worker.address?.area,
+      worker.address?.city,
+      worker.address?.state,
+    ].filter(Boolean).join(', ') || '—';
 
-    const service = worker.workerProfile?.services?.[0]?.serviceId?.name || 'General Service';
+    const serviceInfo = worker.workerProfile?.services?.[0] || {};
+    const serviceName = serviceInfo.skillId?.name || '—';
+    const servicePrice = serviceInfo.price ? `₹${serviceInfo.price}` : '—';
+    const serviceDetails = serviceInfo.details || '—';
+
+    const assignedCount = bookings.filter(b => b.worker?._id === worker._id).length;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all duration-200">
+        {/* HEADER - Mobile optimized */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {worker.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                {worker.name?.[0]?.toUpperCase() || 'W'}
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{worker.name}</h3>
-                <p className="text-sm text-gray-600">{service}</p>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-base font-semibold text-gray-900 truncate">{worker.name}</h4>
+                <p className="text-xs text-gray-600 truncate">{worker.phone}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <span className="flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {location}
-              </span>
-              <span className="flex items-center">
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                {worker.phone}
-              </span>
+            
+            {/* LOCATION & SERVICE INFO */}
+            <div className="space-y-1 text-xs">
+              <div className="flex items-start space-x-1">
+                <i className="far fa-map-marker-alt text-gray-400 mt-0.5 flex-shrink-0 text-xs"></i>
+                <p className="text-gray-600 line-clamp-2 text-xs">{location}</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                  <i className="far fa-tools text-gray-400 text-xs"></i>
+                  <span className="text-gray-700 font-medium text-xs">{serviceName}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <i className="far fa-rupee-sign text-gray-400 text-xs"></i>
+                  <span className="text-gray-700 font-medium text-xs">{servicePrice}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            {getStatusBadge(worker.workerProfile?.availabilityStatus || 'unavailable')}
+          
+          {/* STATUS & COUNT */}
+          <div className="text-right flex-shrink-0 ml-2">
+            {getStatusBadge(worker.workerProfile?.availabilityStatus)}
+            <div className="flex items-center justify-end space-x-1 mt-1">
+              <i className="far fa-briefcase text-gray-400 text-xs"></i>
+              <p className="text-xs text-gray-500">{assignedCount}</p>
+            </div>
           </div>
         </div>
 
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Skills & Services:</h4>
-          <div className="flex flex-wrap gap-1">
-            {worker.workerProfile?.skills?.length > 0 ? (
-              worker.workerProfile.skills.slice(0, 3).map((s, i) => (
-                <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                  {s.skillId?.name}
+        {/* SERVICE DETAILS */}
+        {serviceDetails && serviceDetails !== '—' && (
+          <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-start space-x-1">
+              <i className="far fa-info-circle text-blue-500 mt-0.5 flex-shrink-0 text-xs"></i>
+              <p className="text-xs text-blue-800 leading-relaxed line-clamp-2">{serviceDetails}</p>
+            </div>
+          </div>
+        )}
+
+        {/* SKILLS */}
+        {worker.workerProfile?.skills?.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center space-x-1 mb-1">
+              <i className="far fa-star text-gray-400 text-xs"></i>
+              <h4 className="text-xs font-medium text-gray-700">Skills</h4>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {worker.workerProfile.skills.slice(0, 3).map((s, i) => (
+                <span key={i} className="px-2 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
+                  {s.skillId?.name || '—'}
                 </span>
-              ))
-            ) : (
-              <span className="text-xs text-gray-500">No skills assigned</span>
-            )}
-            {worker.workerProfile?.skills?.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                +{worker.workerProfile.skills.length - 3} more
-              </span>
-            )}
+              ))}
+              {worker.workerProfile.skills.length > 3 && (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border border-gray-200">
+                  +{worker.workerProfile.skills.length - 3}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* AVAILABILITY TOGGLE */}
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <label className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Availability Control</span>
+        {/* AVAILABILITY BUTTONS - Mobile optimized */}
+        <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-1">
-              {["available", "busy", "off-duty"].map((status) => (
+              <i className="far fa-clock text-gray-500 text-xs"></i>
+              <span className="text-xs font-medium text-gray-700">Status</span>
+            </div>
+            <div className="flex space-x-1">
+              {['available', 'busy', 'off-duty'].map(status => (
                 <button
                   key={status}
                   onClick={() => updateStatusDirectly(worker._id, status)}
                   disabled={updatingAvailability === worker._id}
-                  className={`px-3 py-1 text-xs rounded-full font-medium transition-all ${
+                  className={`flex-1 px-2 py-1.5 text-xs rounded-lg font-medium transition-all duration-200 ${
                     worker.workerProfile?.availabilityStatus === status
                       ? status === 'available'
-                        ? 'bg-green-600 text-white shadow-sm'
+                        ? 'bg-green-500 text-white shadow-sm'
                         : status === 'busy'
-                        ? 'bg-orange-600 text-white shadow-sm'
-                        : 'bg-red-600 text-white shadow-sm'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'bg-red-500 text-white shadow-sm'
+                      : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
                   } ${updatingAvailability === worker._id ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {status === "off-duty" ? "Off Duty" : status.charAt(0).toUpperCase() + status.slice(1)}
+                  {updatingAvailability === worker._id ? (
+                    <i className="far fa-spinner-third animate-spin"></i>
+                  ) : status === 'off-duty' ? (
+                    'Off'
+                  ) : (
+                    status.charAt(0).toUpperCase() + status.slice(1)
+                  )}
                 </button>
               ))}
             </div>
-          </label>
+          </div>
         </div>
 
+        {/* ACTION BUTTONS - Mobile optimized */}
         <div className="flex space-x-2">
           <button
-            onClick={() => handleCallWorker(worker)}
-            className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
+            onClick={() => {
+              setSelectedWorker(worker);
+              setShowCallModal(true);
+            }}
+            className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg text-xs font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-1"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            Call
+            <i className="far fa-phone text-xs"></i>
+            <span>Call</span>
           </button>
           <button
-            onClick={() => handleViewWorkList(worker)}
-            className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
+            onClick={() => {
+              setSelectedWorker(worker);
+              setActiveView('work-list');
+              fetchBookings(worker._id);
+            }}
+            className="flex-1  bg-gradient-to-br from-blue-500 to-purple-600 text-white py-2 rounded-lg text-xs font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-1"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Work List
+            <i className="far fa-list-check text-xs"></i>
+            <span>Work List</span>
           </button>
         </div>
       </div>
     );
   };
 
-  const RequestCard = ({ request }) => {
-    const isAssignedToSelectedWorker = selectedWorker && request.assignedWorker?._id === selectedWorker._id;
-    
-    return (
-      <div className={`bg-white rounded-xl shadow-sm border p-6 transition-all duration-200 ${
-        isAssignedToSelectedWorker ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+  // WORK HISTORY VIEW - Mobile optimized
+  const WorkListView = () => {
+    const active = filteredBookings.filter(b =>
+      ['PENDING', 'ACCEPTED', 'IN_PROGRESS'].includes(b.status?.toUpperCase())
+    );
+    const done = filteredBookings.filter(b =>
+      ['COMPLETED', 'CANCELLED', 'DECLINED'].includes(b.status?.toUpperCase())
+    );
+
+    const formatDate = (isoDate) => {
+      try {
+        const d = new Date(isoDate);
+        return d.toLocaleDateString('en-IN', { 
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+      } catch {
+        return '—';
+      }
+    };
+
+    const BookingCard = ({ booking, type }) => (
+      <div className={`bg-white p-3 rounded-lg border shadow-sm transition-all duration-200 ${
+        type === 'active' ? 'border-blue-200' : 'border-gray-200'
       }`}>
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {request.customer?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'CU'}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{request.serviceType?.name || 'Service Request'}</h3>
-                <p className="text-sm text-gray-600">{request.customer?.name || 'Customer'}</p>
-              </div>
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{booking.serviceName || 'Service'}</h4>
+            <p className="text-xs text-purple-600 font-semibold mb-1">{booking.skillName || '—'}</p>
+          </div>
+          <div className="text-right flex-shrink-0 ml-2">
+            {getStatusBadge(booking.status)}
+            <p className="text-xs text-gray-500 mt-1">{formatDate(booking.date)}</p>
+          </div>
+        </div>
+
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 text-gray-700">
+              <i className="far fa-user text-gray-400 text-xs"></i>
+              <span className="font-medium truncate">{booking.customer?.name || '—'}</span>
             </div>
-          </div>
-          <div className="text-right space-y-2">
-            {getStatusBadge(request.status)}
-            {getPriorityBadge(request.priority)}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
-          <div>
-            <p className="text-gray-600"><strong>Location:</strong> {request.location?.address || 'Not specified'}</p>
-            <p className="text-gray-600"><strong>Schedule:</strong> {request.preferredSchedule ? new Date(request.preferredSchedule).toLocaleString() : 'Flexible'}</p>
-          </div>
-          <div>
-            <p className="text-gray-600"><strong>Budget:</strong> ₹{request.budget || 'Not specified'}</p>
-            <p className="text-gray-600"><strong>Created:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
-          </div>
-        </div>
-
-        {request.description && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-700">{request.description}</p>
-          </div>
-        )}
-
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            {request.assignedWorker ? (
-              <span>Assigned to: <strong>{request.assignedWorker.name}</strong></span>
-            ) : (
-              <span className="text-yellow-600">Not assigned</span>
-            )}
           </div>
           
-          <div className="flex space-x-2">
-            {!request.assignedWorker && selectedWorker && (
-              <button
-                onClick={() => assignWorkerToRequest(request._id, selectedWorker._id)}
-                disabled={updatingRequest === request._id}
-                className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updatingRequest === request._id ? 'Assigning...' : 'Assign'}
-              </button>
-            )}
-            <button
-              onClick={() => handleUpdateRequestStatus(request)}
-              className="px-3 py-1 bg-gray-600 text-white text-xs rounded-lg hover:bg-gray-700"
-            >
-              Update
-            </button>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1">
+              <i className="far fa-phone text-gray-400 text-xs"></i>
+              <span className="text-gray-600">{booking.customer?.phone || '—'}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <i className="far fa-rupee-sign text-gray-400 text-xs"></i>
+              <span className="font-semibold text-green-600">₹{booking.payment?.amount || 0}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 text-xs text-gray-500">
+            <span>{booking.time}</span>
+            <span>•</span>
+            <span>{booking.payment?.paymentType || '—'}</span>
+            <span>{booking.payment?.status}</span>
           </div>
         </div>
-      </div>
-    );
-  };
 
-  const CustomerRequestsView = () => {
-    const pendingRequests = serviceRequests.filter(req => 
-      ['pending', 'assigned', 'confirmed'].includes(req.status)
-    );
-    const completedRequests = serviceRequests.filter(req => 
-      ['completed', 'cancelled'].includes(req.status)
+        {type === 'active' && (
+          <div className="mt-3 pt-2 border-t border-gray-200">
+            <div className="flex space-x-2">
+              <button className="flex-1 bg-blue-500 text-white py-1.5 rounded text-xs font-medium hover:bg-blue-600 transition-colors">
+                Update
+              </button>
+              <button 
+                onClick={() => window.open(`tel:${booking.customer?.phone}`)}
+                className="flex-1 bg-green-500 text-white py-1.5 rounded text-xs font-medium hover:bg-green-600 transition-colors"
+              >
+                Contact
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     );
 
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Customer Service Requests</h1>
-              <p className="text-gray-600">Manage and assign customer requests to workers</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{pendingRequests.length}</div>
-                <div className="text-sm text-gray-600">Active Requests</div>
-              </div>
-              <button
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
+        <div className="max-w-7xl mx-auto space-y-4">
+          {/* HEADER - Mobile optimized */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center space-x-3">
+              <button 
                 onClick={() => setActiveView('workers')}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium transition-colors p-2 hover:bg-blue-50 rounded-lg"
               >
-                Back to Workers
+                <i className="far fa-arrow-left"></i>
+                <span className="text-sm">Back</span>
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Requests */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Active Requests ({pendingRequests.length})</h2>
-          {pendingRequests.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {pendingRequests.map(request => (
-                <RequestCard key={request._id} request={request} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <div className="text-gray-400 text-6xl mb-4">📋</div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Active Requests</h3>
-              <p className="text-gray-500">All customer requests are completed or there are no pending requests.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Completed Requests */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Completed & Cancelled ({completedRequests.length})</h2>
-          {completedRequests.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {completedRequests.map(request => (
-                <RequestCard key={request._id} request={request} />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <p className="text-gray-500">No completed or cancelled requests yet.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const WorkListView = () => {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <button
-                  onClick={() => setActiveView('workers')}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">{selectedWorker.name}'s Work List</h1>
-                  <p className="text-gray-600">Assigned service requests and work schedule</p>
-                </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-lg font-bold text-gray-900 truncate">{selectedWorker.name}'s Work</h4>
+                <p className="text-xs text-gray-600 flex items-center space-x-1 mt-1">
+                  <i className="far fa-phone text-gray-400"></i>
+                  <span>{selectedWorker.phone}</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-gray-700">Total</p>
+                <p className="text-lg font-bold text-blue-600">{bookings.length}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              {getStatusBadge(selectedWorker.workerProfile?.availabilityStatus || 'unavailable')}
-              <button
-                onClick={() => setActiveView('customer-requests')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-              >
-                View All Requests
-              </button>
-            </div>
           </div>
-        </div>
 
-        {/* Worker's Assigned Requests */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Assigned Requests ({filteredRequests.length})</h2>
-          {filteredRequests.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredRequests.map(request => (
-                <RequestCard key={request._id} request={request} />
-              ))}
+          {/* ACTIVE BOOKINGS */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span>Active ({active.length})</span>
+              </h4>
             </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-              <div className="text-gray-400 text-6xl mb-4">📭</div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Assigned Requests</h3>
-              <p className="text-gray-500 mb-4">This worker doesn't have any assigned service requests yet.</p>
-              <button
-                onClick={() => setActiveView('customer-requests')}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-              >
-                Assign from Requests
-              </button>
+            
+            {active.length > 0 ? (
+              <div className="space-y-3">
+                {active.map(booking => (
+                  <BookingCard key={booking._id} booking={booking} type="active" />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <i className="far fa-clipboard-list text-3xl text-gray-300 mb-2"></i>
+                <p className="text-sm text-gray-500">No active bookings</p>
+              </div>
+            )}
+          </div>
+
+          {/* COMPLETED BOOKINGS */}
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                <i className="far fa-check-circle text-blue-500"></i>
+                <span>Completed ({done.length})</span>
+              </h4>
             </div>
-          )}
+            
+            {done.length > 0 ? (
+              <div className="space-y-3">
+                {done.map(booking => (
+                  <BookingCard key={booking._id} booking={booking} type="completed" />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <i className="far fa-history text-3xl text-gray-300 mb-2"></i>
+                <p className="text-sm text-gray-500">No completed bookings</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
+  // LOADING STATE - Mobile optimized
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            {/* Header Skeleton */}
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="h-6 bg-gray-200 rounded w-48"></div>
+                  <div className="h-3 bg-gray-200 rounded w-64"></div>
+                </div>
+                <div className="w-24 h-8 bg-gray-200 rounded-lg"></div>
+              </div>
+            </div>
+            
+            {/* Search Bar Skeleton */}
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+              <div className="h-10 bg-gray-200 rounded-lg"></div>
+            </div>
+            
+            {/* Worker Cards Skeleton */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-white p-4 rounded-xl shadow-sm space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div className="space-y-1 flex-1">
+                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-2 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="h-2 bg-gray-200 rounded"></div>
+                    <div className="h-2 bg-gray-200 rounded w-5/6"></div>
+                  </div>
+                  <div className="h-8 bg-gray-200 rounded-lg"></div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // CREATE WORKER VIEW
   if (activeView === 'create') return <CreateWorkerProfile />;
 
-  if (activeView === 'customer-requests') return <CustomerRequestsView />;
+  // WORK LIST VIEW
+  if (activeView === 'work-list' && selectedWorker) {
+    return <WorkListView />;
+  }
 
-  if (activeView === 'work-list' && selectedWorker) return <WorkListView />;
-
+  // MAIN WORKERS VIEW
   return (
-    <div className="space-y-6 p-4">
-      {/* HEADER */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Non-Smartphone Workers</h1>
-            <p className="text-gray-600">Manage agent-created workers and service requests</p>
-          </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{workers.length}</div>
-              <div className="text-sm text-gray-600">Total Workers</div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* HEADER - Mobile optimized */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Non-Smartphone Workers
+              </h1>
+              
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {workers.filter(w => w.workerProfile?.availabilityStatus === 'available').length}
+            <div className="flex items-center space-x-3">
+              <div className="text-right">
+                <p className="text-xs font-semibold text-gray-700">Total</p>
+                <p className="text-lg sm:text-xl font-bold text-blue-600">{workers.length}</p>
               </div>
-              <div className="text-sm text-gray-600">Available</div>
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow">
+                <i className="far fa-users text-sm"></i>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ACTION BAR */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex flex-wrap gap-3">
-            <button
+        {/* SEARCH & ACTIONS - Mobile optimized */}
+        <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+            <div className="flex-1">
+              <div className="relative">
+                <i className="far fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input
+                  type="text"
+                  placeholder="Search workers..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
+                />
+              </div>
+            </div>
+            <button 
               onClick={() => setActiveView('create')}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center"
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-2 text-sm w-full sm:w-auto"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add New Worker
-            </button>
-            <button
-              onClick={() => setActiveView('customer-requests')}
-              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Customer Requests
+              <i className="far fa-user-plus"></i>
+              <span>Add Worker</span>
             </button>
           </div>
-          <div className="text-sm text-gray-600">
-            {workers.filter(w => w.workerProfile?.availabilityStatus === 'available').length} workers available
+        </div>
+
+        {/* WORKERS GRID - Mobile optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredWorkers.map(w => <WorkerCard key={w._id} worker={w} />)}
+        </div>
+
+        {/* EMPTY STATE - Mobile optimized */}
+        {filteredWorkers.length === 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <i className="far fa-users text-4xl text-gray-300 mb-3"></i>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Workers Found</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {searchQuery ? 'Try adjusting your search terms' : 'Get started by adding your first worker'}
+            </p>
+            <button 
+              onClick={() => setActiveView('create')}
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:shadow-md transition-all duration-200 inline-flex items-center space-x-2 text-sm"
+            >
+              <i className="far fa-user-plus"></i>
+              <span>Add First Worker</span>
+            </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* WORKERS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {workers.map((worker) => (
-          <WorkerCard key={worker._id} worker={worker} />
-        ))}
-      </div>
-
-      {workers.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <div className="text-gray-400 text-6xl mb-4">👷</div>
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">No Workers Yet</h3>
-          <p className="text-gray-500 mb-6">Create your first non-smartphone worker to get started.</p>
-          <button
-            onClick={() => setActiveView('create')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-          >
-            + Create First Worker
-          </button>
-        </div>
-      )}
-
-      {/* CALL MODAL */}
-      {showCallModal && selectedWorker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-              📞
-            </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Call Worker</h3>
-            <p className="text-gray-600 mb-4">Call {selectedWorker.name} directly</p>
-            <div className="text-2xl font-bold text-gray-900 mb-6">{selectedWorker.phone}</div>
-            <div className="flex justify-center space-x-4">
-              <a
-                href={`tel:${selectedWorker.phone}`}
-                className="bg-green-600 text-white px-8 py-3 rounded-xl hover:bg-green-700 font-medium flex items-center"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Call Now
-              </a>
-              <button
-                onClick={() => setShowCallModal(false)}
-                className="bg-gray-300 text-gray-700 px-8 py-3 rounded-xl hover:bg-gray-400 font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STATUS UPDATE MODAL */}
-      {showStatusModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-800">Update Request Status</h3>
-              <button
-                onClick={() => setShowStatusModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="mb-6">
-              <p className="text-gray-600 mb-2">
-                <strong>Service:</strong> {selectedRequest.serviceType?.name}
-              </p>
-              <p className="text-gray-600">
-                <strong>Customer:</strong> {selectedRequest.customer?.name}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Update Status
-                </label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  onChange={(e) => {
-                    const newStatus = e.target.value;
-                    if (newStatus) {
-                      updateRequestStatus(selectedRequest._id, newStatus);
-                    }
-                  }}
-                  disabled={updatingRequest === selectedRequest._id}
-                >
-                  <option value="">Select new status</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div className="flex space-x-3 pt-4">
-                <button
-                  onClick={() => updateRequestStatus(selectedRequest._id, 'completed', 'Service completed successfully')}
-                  disabled={updatingRequest === selectedRequest._id}
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
-                >
-                  Mark Complete
-                </button>
-                <button
-                  onClick={() => updateRequestStatus(selectedRequest._id, 'cancelled', 'Request cancelled by agent')}
-                  disabled={updatingRequest === selectedRequest._id}
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
-                >
-                  Cancel
-                </button>
+        {/* CALL MODAL - Improved design without black background */}
+        {showCallModal && selectedWorker && (
+          <div className="fixed inset-0 flex items-end justify-center p-4 z-50 sm:items-center sm:p-6">
+            {/* Backdrop with blur effect */}
+            <div 
+              className="fixed inset-0 bg-white/80 backdrop-blur-sm"
+              onClick={() => setShowCallModal(false)}
+            ></div>
+            
+            {/* Modal Content */}
+            <div className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all duration-300 scale-100">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg">
+                  <i className="far fa-phone"></i>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Call Worker</h3>
+                <p className="text-sm text-gray-600 mb-3">Ready to connect with {selectedWorker.name}?</p>
+                <p className="text-xl font-mono font-bold text-gray-900 mb-4 bg-gray-100 py-2 rounded-lg">
+                  {selectedWorker.phone}
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      window.open(`tel:${selectedWorker.phone}`);
+                      setShowCallModal(false);
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 text-sm"
+                  >
+                    <i className="far fa-phone"></i>
+                    <span>Call Now</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowCallModal(false)}
+                    className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
 export default NonSmartphoneWorkers;
-
-
-

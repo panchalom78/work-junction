@@ -168,8 +168,10 @@ const workerProfileSchema = new Schema(
         bankDetails: bankDetailsSchema,
         timetable: timetableSchema,
         nonAvailability: [nonAvailabilitySchema],
+        isSuspended : {type : Boolean , default: false } ,
         createdByAgent: { type: Boolean, default: false },
         createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+
     },
     { _id: false }
 );

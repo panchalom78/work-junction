@@ -63,7 +63,7 @@ const bookingSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["PENDING", "ACCEPTED", "DECLINED", "COMPLETED", "CANCELLED"],
+            enum: ["PENDING", "ACCEPTED", "DECLINED", "COMPLETED", "CANCELLED" , "IN_PROGRESS"],
             default: "PENDING",
         },
         bookingDate: { type: Date, required: true },

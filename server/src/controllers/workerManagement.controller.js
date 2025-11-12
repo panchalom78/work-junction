@@ -270,7 +270,6 @@ export const verifyDocument = async (req, res) => {
   }
 };
 
-/* ----------------------- 🧩 7. SUSPEND WORKER ----------------------- */
 export const suspendWorker = async (req, res) => {
   try {
     const { workerId } = req.params;
@@ -279,13 +278,20 @@ export const suspendWorker = async (req, res) => {
     const worker = await User.findOne({ _id: workerId, role: "WORKER" });
     if (!worker) return errorResponse(res, 404, "Worker not found");
 
+    // Suspend worker
     worker.workerProfile.availabilityStatus = "off-duty";
-    worker.workerProfile.verification.suspensionReason = reason || "Suspended";
-    worker.workerProfile.verification.suspendedAt = new Date();
+    worker.workerProfile.isSuspended = true;
+    worker.workerProfile.suspensionReason = reason || "Suspended by admin";
+    worker.workerProfile.suspendedAt = new Date();
 
     await worker.save();
 
-    return successResponse(res, 200, "Worker suspended successfully", { worker });
+    return successResponse(res, 200, "Worker suspended successfully", {
+      workerId: worker._id,
+      name: worker.name,
+      isSuspended: worker.workerProfile.isSuspended,
+      reason: worker.workerProfile.suspensionReason,
+    });
   } catch (error) {
     console.error("Error suspending worker:", error);
     return errorResponse(res, 500, "Failed to suspend worker");
@@ -304,18 +310,25 @@ export const activateWorker = async (req, res) => {
       return errorResponse(res, 400, "Cannot activate unverified worker");
     }
 
+    // Activate worker
     worker.workerProfile.availabilityStatus = "available";
-    worker.workerProfile.verification.suspensionReason = undefined;
-    worker.workerProfile.verification.suspendedAt = undefined;
+    worker.workerProfile.isSuspended = false;
+    worker.workerProfile.suspensionReason = undefined;
+    worker.workerProfile.suspendedAt = undefined;
 
     await worker.save();
 
-    return successResponse(res, 200, "Worker activated successfully", { worker });
+    return successResponse(res, 200, "Worker activated successfully", {
+      workerId: worker._id,
+      name: worker.name,
+      isSuspended: worker.workerProfile.isSuspended,
+    });
   } catch (error) {
     console.error("Error activating worker:", error);
     return errorResponse(res, 500, "Failed to activate worker");
   }
 };
+
 
 export const updatePersonal = async (req, res) => {
   const { name, phone, email, workType } = req.body;

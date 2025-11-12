@@ -39,6 +39,7 @@ const VerificationTab = () => {
       const res = await axiosInstance.get(
         "/api/service-agent/workers-for-verification"
       );
+      console.log("Workers for Verification Response:", res);
       if (res.data.success) {
         setWorkers(res.data.data || []);
       } else {
@@ -308,9 +309,9 @@ const VerificationTab = () => {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <h4 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Worker Verification
-            </h1>
+            </h4>
             <p className="text-gray-600 mt-1">
               Review and verify worker documents
             </p>
