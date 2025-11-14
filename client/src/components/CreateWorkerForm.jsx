@@ -120,6 +120,7 @@ const CreateWorkerProfile = () => {
     });
   };
 
+  // In your handleServiceChange function, modify the service object:
   const handleServiceChange = (service) => {
     setFormData(prev => {
       const isSelected = prev.selectedServices.some(s => s.serviceId === service.serviceId);
@@ -136,7 +137,13 @@ const CreateWorkerProfile = () => {
           ...prev,
           [service.serviceId]: { details: '', pricingType: 'fixed', price: '' }
         }));
-        return { ...prev, selectedServices: [...prev.selectedServices, service] };
+        return {
+          ...prev,
+          selectedServices: [...prev.selectedServices, {
+            serviceId: service.serviceId, // Ensure this is the service ID
+            skillId: service.skillId
+          }]
+        };
       }
     });
   };
@@ -223,9 +230,10 @@ const CreateWorkerProfile = () => {
         email: formData.email || undefined,
         password: formData.password,
         address: formData.address,
-        skills: formData.selectedSkills,
-        createdByAgent: true, 
-  
+        selectedSkills: formData.selectedSkills, // ✅ Correct field name
+        selectedServices: formData.selectedServices.map(s => s.serviceId), // Send service IDs only
+        bankDetails: formData.bankDetails,
+        createdByAgent: true,
       });
       console.log('Create Worker Response:', data);
       if (!data.success) throw new Error(data.message);
@@ -244,6 +252,7 @@ const CreateWorkerProfile = () => {
     if (!validateStep(2) || !createdWorkerId) return;
     setLoading(true);
     try {
+      // In your saveSkillsAndServices function
       const servicesData = formData.selectedServices.map(s => {
         const detail = serviceDetails[s.serviceId] || {};
         return {
@@ -257,7 +266,11 @@ const CreateWorkerProfile = () => {
 
       const { data } = await axiosInstance.post(
         `/api/service-agent/addSkillService/${createdWorkerId}`,
-        { services: servicesData, workType: formData.workType, dailyAvailability: formData.dailyAvailability }
+        {
+          services: servicesData,
+          workType: formData.workType,
+          dailyAvailability: formData.dailyAvailability
+        }
       );
 
       if (!data.success) throw new Error(data.message);
@@ -265,6 +278,7 @@ const CreateWorkerProfile = () => {
       setCurrentStep(3);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Save failed');
+      console.error('Error saving skills and services:', error);
     } finally {
       setLoading(false);
     }
@@ -348,8 +362,8 @@ const CreateWorkerProfile = () => {
             <div key={step.number} className="flex items-center flex-1">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${currentStep >= step.number
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-500'
                   }`}
               >
                 {step.number}
@@ -376,6 +390,11 @@ const CreateWorkerProfile = () => {
                   { label: 'Email', name: 'email', type: 'email' },
                   { label: 'Password *', name: 'password', type: 'password' },
                   { label: 'City *', name: 'address.city', type: 'text' },
+                  { label: 'House No/Building *', name: 'address.houseNo', type: 'text' },
+                  { label: 'Street', name: 'address.street', type: 'text' },
+                  { label: 'Area/Locality *', name: 'address.area', type: 'text' },
+                  { label: 'State *', name: 'address.state', type: 'text' },
+
                   { label: 'Pincode *', name: 'address.pincode', type: 'text' },
                 ].map(field => (
                   <div key={field.name}>
@@ -413,8 +432,8 @@ const CreateWorkerProfile = () => {
                     <label
                       key={skill._id}
                       className={`flex items-center p-2 rounded-lg border cursor-pointer text-sm ${formData.selectedSkills.includes(skill._id)
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:bg-gray-50'
                         }`}
                     >
                       <input

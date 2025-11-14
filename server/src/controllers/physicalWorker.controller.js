@@ -1,8 +1,8 @@
 import User from "../models/user.model.js";
 import { deleteFromCloudinary, extractPublicId } from "../config/cloudinary.js";
 import { errorResponse, successResponse } from "../utils/response.js";
-import {cloudinary } from "../config/cloudinary.js";
-import  { WorkerService} from "../models/workerService.model.js";
+import { cloudinary } from "../config/cloudinary.js";
+import { WorkerService } from "../models/workerService.model.js";
 import { Booking } from "../models/booking.model.js";
 import mongoose from "mongoose";
 
@@ -15,8 +15,8 @@ export const createWorker = async (req, res) => {
       password,
       address,
       workType,
-      selectedSkills = [], // ✅ default to empty array
-      selectedServices = [], // ✅ default to empty array
+      selectedSkills = [],
+      selectedServices = [], // This should contain service IDs
       bankDetails = {},
     } = req.body;
 
@@ -71,20 +71,18 @@ export const createWorker = async (req, res) => {
         createdBy: req.user?._id || null,
         skills: Array.isArray(selectedSkills)
           ? selectedSkills.map((skillId) => ({ skillId }))
-          : [], // ✅ Safe mapping
+          : [],
         services: Array.isArray(selectedServices) ? selectedServices : [],
         verification: {
-          isSelfieVerified: true,
-          isAddharDocVerified: true,
-          isPoliceVerificationDocVerified: true,
-          status: "APPROVED",
-          approvedBy: req.user?._id || null,
-          approvedAt: new Date(),
-          documents: {
-            selfie: selfieUrl,
-            aadhar: aadharUrl,
-            policeVerification: policeUrl,
-          },
+          status: "APPROVED", // ✅ Set to APPROVED
+          serviceAgentId: req.user?._id || null, // ✅ Add serviceAgentId
+          selfieUrl: selfieUrl, // ✅ Correct field name
+          addharDocUrl: aadharUrl, // ✅ Correct field name
+          policeVerificationDocUrl: policeUrl, // ✅ Correct field name
+          isSelfieVerified: true, // ✅ Set to true
+          isAddharDocVerified: true, // ✅ Set to true
+          isPoliceVerificationDocVerified: true, // ✅ Set to true
+          verifiedAt: new Date(), // ✅ Add verification timestamp
         },
         bankDetails: {
           accountNumber: bankDetails?.accountNumber || "",
@@ -97,19 +95,34 @@ export const createWorker = async (req, res) => {
 
     await newWorker.save();
 
-    /* ------------------- Link skills & services safely ------------------- */
-    if (Array.isArray(selectedSkills) && selectedSkills.length > 0) {
-      await Skill.updateMany(
-        { _id: { $in: selectedSkills } },
-        { $addToSet: { workers: newWorker._id } }
-      );
-    }
-
+    /* ------------------- Create WorkerService entries ------------------- */
     if (Array.isArray(selectedServices) && selectedServices.length > 0) {
-      await WorkerService.updateMany(
-        { _id: { $in: selectedServices } },
-        { $addToSet: { workers: newWorker._id } }
-      );
+      const workerServicePromises = selectedServices.map(async (serviceId) => {
+        try {
+          return await WorkerService.create({
+            worker: newWorker._id,
+            service: serviceId,
+          });
+        } catch (error) {
+          console.error(`Error creating WorkerService for service ${serviceId}:`, error);
+          return null;
+        }
+      });
+
+      const workerServices = await Promise.all(workerServicePromises);
+      const validWorkerServices = workerServices.filter(ws => ws !== null);
+
+      // Update worker with WorkerService IDs
+      if (validWorkerServices.length > 0) {
+        await User.findByIdAndUpdate(
+          newWorker._id,
+          {
+            $set: {
+              "workerProfile.services": validWorkerServices.map(ws => ws._id)
+            }
+          }
+        );
+      }
     }
 
     /* ------------------- Success Response ------------------- */
@@ -124,6 +137,8 @@ export const createWorker = async (req, res) => {
         createdBy: newWorker.workerProfile.createdBy,
         verification: newWorker.workerProfile.verification,
         bankDetails: newWorker.workerProfile.bankDetails,
+        skills: newWorker.workerProfile.skills,
+        services: newWorker.workerProfile.services,
       },
     });
   } catch (error) {
@@ -135,7 +150,6 @@ export const createWorker = async (req, res) => {
     });
   }
 };
-
 export const uploadAllDocuments = async (req, res) => {
   try {
     const { workerId } = req.params;
@@ -207,14 +221,18 @@ export const uploadAllDocuments = async (req, res) => {
     }
 
     // Set verification status to PENDING
-    user.workerProfile.verification.status = "PENDING";
+    user.workerProfile.verification.status = "APPROVED";
+    user.workerProfile.verification.isSelfieVerified = true;
+    user.workerProfile.verification.isAddharDocVerified = true;
+    user.workerProfile.verification.isPoliceVerificationDocVerified = true;
+    user.workerProfile.verification.verifiedAt = new Date();
 
     await user.save();
 
     return successResponse(res, 200, "Documents uploaded successfully", {
       workerId: user._id,
       uploadedDocuments: uploadedDocs,
-      verificationStatus: "PENDING",
+      verificationStatus: "APPROVED",
       message: "Your documents have been uploaded and are pending verification",
     });
   } catch (error) {
@@ -241,93 +259,96 @@ export const addBankDetails = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-export const addSkillAndService = async (req, res) => {
+export const addSkillsAndServices = async (req, res) => {
   try {
     const { workerId } = req.params;
-    const { services, workType, dailyAvailability } = req.body;
+    const { services } = req.body;
 
-    // 🔍 Validate input
-    if (!workerId) {
-      return errorResponse(res, 400, "Worker ID is required");
-    }
+    console.log('Received services data:', services);
+    console.log('Worker ID:', workerId);
 
-    if (!services || !Array.isArray(services) || services.length === 0) {
-      return errorResponse(res, 400, "Services array is required");
-    }
+    // Validate worker exists
+    const worker = await User.findOne({
+      _id: workerId,
+      role: 'WORKER'
+    });
 
-    // 🧾 Find the worker
-    const worker = await User.findById(workerId);
-    if (!worker || worker.role !== "WORKER") {
-      return errorResponse(res, 404, "Worker not found or invalid role");
-    }
-
-    const results = [];
-    const errors = [];
-
-    // Process each service
-    for (const serviceData of services) {
-      const { skillId, serviceId, details, pricingType, price } = serviceData;
-
-      // Validate individual service data
-      if (!skillId || !serviceId) {
-        errors.push(`Missing skillId or serviceId for service: ${JSON.stringify(serviceData)}`);
-        continue;
-      }
-
-      try {
-        // 🧩 Check if this skill-service combination already exists for this worker
-        const existing = await WorkerService.findOne({
-          workerId,
-          skillId,
-          serviceId,
-        });
-        
-        if (existing) {
-          errors.push(`Skill ${skillId} and service ${serviceId} already added for this worker`);
-          continue;
-        }
-
-        // 💼 Create new WorkerService entry
-        const newWorkerService = new WorkerService({
-          workerId,
-          skillId,
-          serviceId,
-          details: details?.trim() || "",
-          pricingType: pricingType || "FIXED",
-          price: price || 0,
-          portfolioImages: [],
-        });
-
-        await newWorkerService.save();
-        results.push(newWorkerService);
-
-      } catch (error) {
-        errors.push(`Error adding service ${serviceId}: ${error.message}`);
-      }
-    }
-
-    // Update worker's work type and availability if provided
-    if (workType || dailyAvailability) {
-      const updateData = {};
-      if (workType) updateData.workType = workType;
-      if (dailyAvailability) updateData.dailyAvailability = dailyAvailability;
-      
-      await User.findByIdAndUpdate(workerId, updateData);
-    }
-
-    // ✅ Success with warnings if any errors occurred
-    if (errors.length > 0) {
-      return successResponse(res, 207, "Some services were added successfully with warnings", {
-        addedServices: results,
-        errors: errors
+    if (!worker) {
+      return res.status(404).json({
+        success: false,
+        message: 'Worker not found'
       });
     }
 
-    return successResponse(res, 201, "All skills and services added successfully", results);
-    
+    // Validate services data
+    if (!services || !Array.isArray(services) || services.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Services data is required and must be a non-empty array'
+      });
+    }
+
+    // Extract unique skillIds from services for worker profile
+    const skillIds = [...new Set(services.map(service => service.skillId))];
+
+    // Update worker skills in profile
+    await User.findByIdAndUpdate(workerId, {
+      $set: {
+        'workerProfile.skills': skillIds.map(skillId => ({ skillId }))
+      }
+    });
+
+    // Deactivate existing services
+    await WorkerService.updateMany(
+      { workerId, isActive: true },
+      { isActive: false }
+    );
+
+    // Create new worker services
+    const createdServices = await WorkerService.insertMany(
+      services.map(service => ({
+        workerId,
+        skillId: service.skillId,
+        serviceId: service.serviceId,
+        details: service.details || '',
+        pricingType: service.pricingType || 'FIXED',
+        price: service.price || 0,
+        isActive: true
+      }))
+    );
+
+    // Update worker profile with new services
+    await User.findByIdAndUpdate(workerId, {
+      $set: {
+        'workerProfile.services': createdServices.map(service => service._id)
+      }
+    });
+
+    // Get updated worker data without population (since we don't have separate Service model)
+    const updatedWorker = await User.findById(workerId)
+      .select('-password')
+      .lean();
+
+    // Get worker services
+    const workerServices = await WorkerService.find({ workerId, isActive: true })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      message: 'Skills and services added successfully',
+      data: {
+        worker: updatedWorker,
+        services: workerServices
+      }
+    });
+
   } catch (error) {
-    console.error("Error adding skill and service:", error);
-    return errorResponse(res, 500, "Internal server error", error.message);
+    console.error('Add skills and services error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add skills and services',
+      error: error.message
+    });
   }
 };
 export const addOrUpdateBankDetails = async (req, res) => {
@@ -453,33 +474,33 @@ export const updateAvailability = async (req, res) => {
 
     // Update using findByIdAndUpdate to avoid full document save issues
     const worker = await User.findOneAndUpdate(
-      { 
-        _id: id, 
-        role: "WORKER" 
+      {
+        _id: id,
+        role: "WORKER"
       },
-      { 
-        $set: { 
-          "workerProfile.availabilityStatus": availabilityStatus 
-        } 
+      {
+        $set: {
+          "workerProfile.availabilityStatus": availabilityStatus
+        }
       },
-      { 
+      {
         new: true, // Return updated document
-        runValidators: true 
+        runValidators: true
       }
     );
 
     if (!worker) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Worker not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Worker not found"
       });
     }
 
     res.json({
       success: true,
       message: "Availability updated",
-      data: { 
-        availabilityStatus: worker.workerProfile.availabilityStatus 
+      data: {
+        availabilityStatus: worker.workerProfile.availabilityStatus
       },
     });
   } catch (error) {
@@ -496,20 +517,20 @@ export const updateAvailability = async (req, res) => {
 export const getAgentWorkerBookings = async (req, res) => {
   try {
     const agentId = req.user._id;
-    const { 
-      status, 
-      page = 1, 
-      limit = 10, 
-      workerId, 
-      startDate, 
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      workerId,
+      startDate,
       endDate,
-      search 
+      search
     } = req.query;
 
     // Build query for agent's workers bookings
     const query = {
       'workerId': {
-        $in: await User.find({ 
+        $in: await User.find({
           'workerProfile.createdBy': agentId,
           role: 'WORKER'
         }).distinct('_id')
@@ -635,22 +656,22 @@ export const getBookingDetails = async (req, res) => {
     const booking = await Booking.findOne({
       _id: bookingId,
       workerId: {
-        $in: await User.find({ 
+        $in: await User.find({
           'workerProfile.createdBy': agentId,
           role: 'WORKER'
         }).distinct('_id')
       }
     })
-    .populate('customerId', 'name phone email address')
-    .populate('workerId', 'name phone workerProfile skills')
-    .populate({
-      path: 'workerServiceId',
-      populate: {
-        path: 'skillId',
-        select: 'name'
-      }
-    })
-    .lean();
+      .populate('customerId', 'name phone email address')
+      .populate('workerId', 'name phone workerProfile skills')
+      .populate({
+        path: 'workerServiceId',
+        populate: {
+          path: 'skillId',
+          select: 'name'
+        }
+      })
+      .lean();
 
     if (!booking) {
       return res.status(404).json({
@@ -745,7 +766,7 @@ export const updateBookingStatus = async (req, res) => {
     const booking = await Booking.findOne({
       _id: bookingId,
       workerId: {
-        $in: await User.find({ 
+        $in: await User.find({
           'workerProfile.createdBy': agentId,
           role: 'WORKER'
         }).distinct('_id')
@@ -777,11 +798,11 @@ export const updateBookingStatus = async (req, res) => {
 
     // Update booking
     const updateData = { status };
-    
+
     if (status === "DECLINED" && reason) {
       updateData.declineReason = reason;
     }
-    
+
     if (status === "CANCELLED" && reason) {
       updateData.cancellationReason = reason;
     }
@@ -795,8 +816,8 @@ export const updateBookingStatus = async (req, res) => {
       updateData,
       { new: true }
     )
-    .populate('customerId', 'name phone')
-    .populate('workerId', 'name phone');
+      .populate('customerId', 'name phone')
+      .populate('workerId', 'name phone');
 
     // Update worker availability if completed
     if (status === "COMPLETED") {
@@ -847,7 +868,7 @@ export const generateServiceOTP = async (req, res) => {
       _id: bookingId,
       status: 'ACCEPTED',
       workerId: {
-        $in: await User.find({ 
+        $in: await User.find({
           'workerProfile.createdBy': agentId,
           role: 'WORKER'
         }).distinct('_id')
@@ -875,8 +896,8 @@ export const generateServiceOTP = async (req, res) => {
       },
       { new: true }
     )
-    .populate('customerId', 'name phone')
-    .populate('workerId', 'name phone');
+      .populate('customerId', 'name phone')
+      .populate('workerId', 'name phone');
 
     res.status(200).json({
       success: true,
@@ -907,7 +928,7 @@ export const getBookingStatistics = async (req, res) => {
     const { period = 'month' } = req.query; // day, week, month, year
 
     // Get agent's workers
-    const agentWorkers = await User.find({ 
+    const agentWorkers = await User.find({
       'workerProfile.createdBy': agentId,
       role: 'WORKER'
     }).distinct('_id');
@@ -915,7 +936,7 @@ export const getBookingStatistics = async (req, res) => {
     // Date range based on period
     const now = new Date();
     let startDate;
-    
+
     switch (period) {
       case 'day':
         startDate = new Date(now.setHours(0, 0, 0, 0));
@@ -987,10 +1008,12 @@ export const getBookingStatistics = async (req, res) => {
           totalEarnings: {
             $sum: {
               $cond: [
-                { $and: [
-                  { $eq: ['$status', 'COMPLETED'] },
-                  { $eq: ['$payment.status', 'COMPLETED'] }
-                ]},
+                {
+                  $and: [
+                    { $eq: ['$status', 'COMPLETED'] },
+                    { $eq: ['$payment.status', 'COMPLETED'] }
+                  ]
+                },
                 '$price',
                 0
               ]
@@ -1123,10 +1146,12 @@ export const getAvailableWorkers = async (req, res) => {
                   {
                     $and: [
                       { bookingTime: { $lte: time } },
-                      { $expr: { 
+                      {
+                        $expr: {
                           $gte: [
-                            { $add: [
-                                { $toDate: { $concat: [ { $toString: '$bookingDate' }, 'T', '$bookingTime' ] } },
+                            {
+                              $add: [
+                                { $toDate: { $concat: [{ $toString: '$bookingDate' }, 'T', '$bookingTime'] } },
                                 2 * 60 * 60 * 1000 // 2 hours buffer
                               ]
                             },
@@ -1139,9 +1164,10 @@ export const getAvailableWorkers = async (req, res) => {
                   {
                     $and: [
                       { bookingTime: { $gte: time } },
-                      { $expr: { 
+                      {
+                        $expr: {
                           $lte: [
-                            { $toDate: { $concat: [ { $toString: '$bookingDate' }, 'T', '$bookingTime' ] } },
+                            { $toDate: { $concat: [{ $toString: '$bookingDate' }, 'T', '$bookingTime'] } },
                             { $add: [bookingDateTime, 2 * 60 * 60 * 1000] }
                           ]
                         }
@@ -1372,14 +1398,14 @@ const formatBooking = (b) => {
 
     worker: w._id
       ? {
-          _id: w._id,
-          name: w.name || '—',
-          phone: w.phone || '—',
-          createdByAgent: w.workerProfile?.createdByAgent || false,
-          bankDetails: w.workerProfile?.bankDetails || null,
-          verification: w.workerProfile?.verification || null,
-          timetable: w.workerProfile?.timetable || {},
-        }
+        _id: w._id,
+        name: w.name || '—',
+        phone: w.phone || '—',
+        createdByAgent: w.workerProfile?.createdByAgent || false,
+        bankDetails: w.workerProfile?.bankDetails || null,
+        verification: w.workerProfile?.verification || null,
+        timetable: w.workerProfile?.timetable || {},
+      }
       : null,
 
     serviceDetails: {
@@ -1410,12 +1436,12 @@ const createHandler = (status) => async (req, res) => {
     const query =
       status === 'CANCELLED'
         ? {
-            workerId: { $in: workerIds },
-            status: { $in: ['CANCELLED', 'DECLINED', 'REJECTED'] },
-          }
+          workerId: { $in: workerIds },
+          status: { $in: ['CANCELLED', 'DECLINED', 'REJECTED'] },
+        }
         : status === 'ALL'
-        ? { workerId: { $in: workerIds } }
-        : { workerId: { $in: workerIds }, status };
+          ? { workerId: { $in: workerIds } }
+          : { workerId: { $in: workerIds }, status };
 
     const bookings = await Booking.find(query)
       .populate(populateBooking().populate)

@@ -24,11 +24,7 @@ import bookingRoutes from "./routes/customer-booking.route.js";
 // import bookingRoutes from "./routes/booking.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import workerSearchRoutes from "./routes/workerSearch.routes.js";
-<<<<<<< HEAD
 import agentDashboardRoutes from "./routes/agentDashboard.route.js"
-=======
-import razorpayInstance from "./config/razorpay.js";
->>>>>>> 2b29f9f6e505c9ea42a3ec30a5a93c604a313680
 
 const app = express();
 
@@ -83,11 +79,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
 app.use("/api/customers", workerSearchRoutes);
-<<<<<<< HEAD
-app.use("/api/service-agent/dashboard", agentDashboardRoutes )
-=======
 app.use("/api/worker-payment", workerPaymentRoutes);
->>>>>>> 2b29f9f6e505c9ea42a3ec30a5a93c604a313680
+app.use("/api/service-agent/dashboard", agentDashboardRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {

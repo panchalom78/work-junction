@@ -8,8 +8,8 @@ import {
   addOrUpdateBankDetails,
   getBankDetails,
   addBankDetails,
+  addSkillsAndServices,
   updateWorkerSkillsAndAvailability,
-  addSkillAndService,
   getAgentWorkers,
   updateAvailability,
   getAgentWorkerBookings,
@@ -41,7 +41,7 @@ router.patch('/reject-worker/:workerId', rejectVerification);
 router.get('/worker-documents/:workerId', getWorkerDocuments);
 router.patch('/update-document-verification/:workerId', updateDocumentVerification);
 router.post('/create-worker', createWorker);
-router.post('/addSkillService/:workerId', addSkillAndService);
+router.post('/addSkillService/:workerId', addSkillsAndServices);
 
 
 router.post(
