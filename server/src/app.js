@@ -12,11 +12,8 @@ import otpRoutes from "./routes/otp.routes.js";
 import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
 import adminRoutes from "./routes/admin.route.js";
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 289ebcc5bbb733765b5ae7ea8386780ff6891962
 import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
@@ -70,16 +67,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
-<<<<<<< HEAD
-
-app.use("/api/admin", adminRoutes);
-=======
 
 
 app.use("/api/admin", adminRoutes);
 
 
->>>>>>> 289ebcc5bbb733765b5ae7ea8386780ff6891962
 app.use("/api/skill", skillRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/skills", skillRoutes);
@@ -88,18 +80,8 @@ app.use("/api/worker/services", workerServiceRoutes);
 app.use("/api/workers", workerScheduleRoutes);
 // app.use("/api/bookings", bookingRoutes);
 app.use("/api/bookings", bookingRoutes);
-<<<<<<< HEAD
-app.use("/api/payments", paymentRoutes);
-
-app.use("/api/chats", chatRoutes);
-app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
-app.use("/api/customers", workerSearchRoutes);
-app.use("/api/worker-payment", workerPaymentRoutes);
-app.use("/api/service-agent/dashboard", agentDashboardRoutes);
-=======
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
->>>>>>> 289ebcc5bbb733765b5ae7ea8386780ff6891962
 
 // Health check route
 app.get("/health", (req, res) => {
