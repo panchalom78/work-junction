@@ -4,6 +4,7 @@ import {
   Clock, AlertCircle, DollarSign, User, Phone, Mail,
   ChevronLeft, ChevronRight, Download, MapPin
 } from 'lucide-react';
+import axiosInstance from '../../utils/axiosInstance';
 
 const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -78,17 +79,46 @@ const AdminBookings = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 10,
+        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(searchTerm && { search: searchTerm })
+      });
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await axiosInstance.get(`/api/admin/bookings?${params}`);
 
+      if (response.data.success) {
+        setBookings(response.data.data.bookings);
+        setTotalPages(response.data.data.pagination.pages);
+      } else {
+        // Fallback to dummy data
+        let allBookings = generateDummyData();
+        if (statusFilter !== 'ALL') {
+          allBookings = allBookings.filter(booking => booking.status === statusFilter);
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          allBookings = allBookings.filter(booking =>
+            booking.customerId.name.toLowerCase().includes(term) ||
+            booking.workerId.name.toLowerCase().includes(term) ||
+            booking._id.toLowerCase().includes(term) ||
+            booking.customerId.phone.includes(term) ||
+            booking.workerId.phone.includes(term)
+          );
+        }
+        const startIndex = (currentPage - 1) * 10;
+        const endIndex = startIndex + 10;
+        setBookings(allBookings.slice(startIndex, endIndex));
+        setTotalPages(Math.ceil(allBookings.length / 10));
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      // Fallback to dummy data on error
       let allBookings = generateDummyData();
-
-      // Apply filters
       if (statusFilter !== 'ALL') {
         allBookings = allBookings.filter(booking => booking.status === statusFilter);
       }
-
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         allBookings = allBookings.filter(booking =>
@@ -99,17 +129,10 @@ const AdminBookings = () => {
           booking.workerId.phone.includes(term)
         );
       }
-
-      // Simulate pagination
       const startIndex = (currentPage - 1) * 10;
       const endIndex = startIndex + 10;
-      const paginatedBookings = allBookings.slice(startIndex, endIndex);
-
-      setBookings(paginatedBookings);
+      setBookings(allBookings.slice(startIndex, endIndex));
       setTotalPages(Math.ceil(allBookings.length / 10));
-
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
     } finally {
       setLoading(false);
     }

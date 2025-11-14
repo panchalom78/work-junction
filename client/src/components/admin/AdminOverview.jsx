@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users, Clock, CheckCircle, DollarSign, TrendingUp,
-  Shield, Calendar, MapPin, FileText, AlertCircle , Search
+  Shield, Calendar, MapPin, FileText, AlertCircle, Search
 } from 'lucide-react';
+import axiosInstance from '../../utils/axiosInstance';
+import toast from 'react-hot-toast';
 
 const AdminOverview = () => {
   const [stats, setStats] = useState({
@@ -71,16 +73,32 @@ const AdminOverview = () => {
     try {
       setLoading(true);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch dashboard stats
+      const statsResponse = await axiosInstance.get('/api/admin/dashboard/stats');
+      if (statsResponse.data.success) {
+        setStats(statsResponse.data.data);
+        toast.success('Dashboard data loaded successfully!');
+      }
 
-      // Set dummy data
-      setStats(generateStats());
-      setActivities(generateActivities());
-      setVerificationQueue(generateVerificationQueue());
+      // Fetch recent activities
+      const activitiesResponse = await axiosInstance.get('/api/admin/dashboard/activities');
+      if (activitiesResponse.data.success) {
+        setActivities(activitiesResponse.data.data);
+      }
+
+      // Fetch verification queue
+      const verificationResponse = await axiosInstance.get('/api/admin/verification/queue');
+      if (verificationResponse.data.success) {
+        setVerificationQueue(verificationResponse.data.data.workers);
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data. Using sample data.');
+      // Fallback to dummy data on error
+      setStats(generateStats());
+      setActivities(generateActivities());
+      setVerificationQueue(generateVerificationQueue());
     } finally {
       setLoading(false);
     }
@@ -231,7 +249,7 @@ const AdminOverview = () => {
               <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-md transition-all duration-200">
                 <div className="flex items-center space-x-3">
                   <div className={`w-3 h-3 rounded-full ${worker.priority === 'HIGH' ? 'bg-red-500' :
-                      worker.priority === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500'
+                    worker.priority === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500'
                     }`}></div>
                   <div>
                     <p className="font-medium text-gray-900">{worker.name}</p>

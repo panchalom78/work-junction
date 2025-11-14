@@ -3,6 +3,7 @@ import {
   FileText, TrendingUp, BarChart3, Download,
   Calendar, Filter, RefreshCw, Eye
 } from 'lucide-react';
+import axiosInstance from '../../utils/axiosInstance';
 
 const AdminReports = () => {
   const [analytics, setAnalytics] = useState({
@@ -60,14 +61,20 @@ const AdminReports = () => {
     try {
       setLoading(true);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Fetch analytics from API
+      const response = await axiosInstance.get(`/api/admin/dashboard/analytics?period=${period}`);
 
-      // Set dummy data based on selected period
-      setAnalytics(generateAnalytics(period));
+      if (response.data.success) {
+        setAnalytics(response.data.data);
+      } else {
+        // Fallback to dummy data
+        setAnalytics(generateAnalytics(period));
+      }
 
     } catch (error) {
       console.error('Error fetching analytics:', error);
+      // Fallback to dummy data on error
+      setAnalytics(generateAnalytics(period));
     } finally {
       setLoading(false);
     }

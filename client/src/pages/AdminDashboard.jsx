@@ -5,6 +5,8 @@ import {
   Menu, X, ChevronDown, Bell, User, LogOut,
   TrendingUp, Shield, FileText, Calendar
 } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 // Import admin components
 import AdminOverview from '../components/admin/AdminOverview';
@@ -52,6 +54,30 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#4ade80',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       {/* Top Navigation */}
       <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
         <div className="px-6 py-4">
