@@ -7,16 +7,17 @@ import {
     getVerificationQueue,
     getAllUsers,
     getAllBookings,
+    getAllPayments,
     getServiceAgents,
     updateUserStatus,
     updateWorkerVerification,
     getAnalytics
 } from "../controllers/admin.controller.js";
 
-import { protect } from "../middlewares/auth.middleware.js";
+import { protect, authorize } from "../middlewares/auth.middleware.js";
 
 // Apply admin protection to all routes
-router.use(protect);
+router.use(protect, authorize("ADMIN"));
 
 // Dashboard routes
 router.get("/dashboard/stats", getDashboardStats);
@@ -33,6 +34,9 @@ router.put("/verification/:workerId", updateWorkerVerification);
 
 // Booking management routes
 router.get("/bookings", getAllBookings);
+
+// Payment management routes
+router.get("/payments", getAllPayments);
 
 // Service agent routes
 router.get("/service-agents", getServiceAgents);

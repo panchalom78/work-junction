@@ -4,6 +4,7 @@ import {
   Clock, AlertCircle, TrendingUp, User, Phone, Mail,
   ChevronLeft, ChevronRight, Download, Calendar
 } from 'lucide-react';
+import axiosInstance from '../../utils/axiosInstance';
 
 const AdminPayments = () => {
   const [payments, setPayments] = useState([]);
@@ -85,45 +86,63 @@ const AdminPayments = () => {
 
   useEffect(() => {
     fetchPayments();
-    fetchPaymentAnalytics();
   }, [currentPage, searchTerm, statusFilter]);
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 10,
+        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(searchTerm && { search: searchTerm })
+      });
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await axiosInstance.get(`/api/admin/payments?${params}`);
 
+      if (response.data.success) {
+        setPayments(response.data.data.payments);
+        setTotalPages(response.data.data.pagination.pages);
+        setAnalytics(response.data.data.analytics);
+      } else {
+        // Fallback to dummy data
+        let allPayments = generatePayments();
+        if (statusFilter !== 'ALL') {
+          allPayments = allPayments.filter(payment => payment.payment.status === statusFilter);
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          allPayments = allPayments.filter(payment =>
+            payment.customerId.name.toLowerCase().includes(term) ||
+            payment.workerId.name.toLowerCase().includes(term) ||
+            payment.payment.paymentId.toLowerCase().includes(term)
+          );
+        }
+        const startIndex = (currentPage - 1) * 10;
+        const endIndex = startIndex + 10;
+        setPayments(allPayments.slice(startIndex, endIndex));
+        setTotalPages(Math.ceil(allPayments.length / 10));
+      }
+
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      // Fallback to dummy data on error
       let allPayments = generatePayments();
-
-      // Apply filters
       if (statusFilter !== 'ALL') {
         allPayments = allPayments.filter(payment => payment.payment.status === statusFilter);
       }
-
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         allPayments = allPayments.filter(payment =>
           payment.customerId.name.toLowerCase().includes(term) ||
           payment.workerId.name.toLowerCase().includes(term) ||
-          payment.payment.paymentId.toLowerCase().includes(term) ||
-          (payment.payment.transactionId && payment.payment.transactionId.toLowerCase().includes(term)) ||
-          payment.customerId.phone.includes(term) ||
-          payment.workerId.phone.includes(term)
+          payment.payment.paymentId.toLowerCase().includes(term)
         );
       }
-
-      // Simulate pagination
       const startIndex = (currentPage - 1) * 10;
       const endIndex = startIndex + 10;
-      const paginatedPayments = allPayments.slice(startIndex, endIndex);
-
-      setPayments(paginatedPayments);
+      setPayments(allPayments.slice(startIndex, endIndex));
       setTotalPages(Math.ceil(allPayments.length / 10));
-
-    } catch (error) {
-      console.error('Error fetching payments:', error);
     } finally {
       setLoading(false);
     }

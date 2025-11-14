@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import { Booking } from "../models/booking.model.js";
+import { successResponse, errorResponse } from "../utils/response.js";
 
 
 // Admin Dashboard Stats
@@ -49,10 +50,10 @@ export const getDashboardStats = async (req, res) => {
             totalRevenue: totalRevenue[0]?.total || 0
         };
 
-        res.json(createResponse(true, "Dashboard stats retrieved successfully", stats));
+        return successResponse(res, 200, "Dashboard stats retrieved successfully", stats);
     } catch (error) {
         console.error("Error fetching dashboard stats:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch dashboard stats"));
+        return errorResponse(res, 500, "Failed to fetch dashboard stats");
     }
 };
 
@@ -114,10 +115,10 @@ export const getRecentActivities = async (req, res) => {
         // Sort all activities by time
         activities.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-        res.json(createResponse(true, "Recent activities retrieved successfully", activities.slice(0, 10)));
+        return successResponse(res, 200, "Recent activities retrieved successfully", activities.slice(0, 10));
     } catch (error) {
         console.error("Error fetching recent activities:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch recent activities"));
+        return errorResponse(res, 500, "Failed to fetch recent activities");
     }
 };
 
@@ -154,17 +155,17 @@ export const getVerificationQueue = async (req, res) => {
 
         const total = await User.countDocuments(filter);
 
-        res.json(createResponse(true, "Verification queue retrieved successfully", {
+        return successResponse(res, 200, "Verification queue retrieved successfully", {
             workers: formattedWorkers,
             pagination: {
                 current: parseInt(page),
                 pages: Math.ceil(total / limit),
                 total
             }
-        }));
+        });
     } catch (error) {
         console.error("Error fetching verification queue:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch verification queue"));
+        return errorResponse(res, 500, "Failed to fetch verification queue");
     }
 };
 
@@ -195,17 +196,17 @@ export const getAllUsers = async (req, res) => {
 
         const total = await User.countDocuments(filter);
 
-        res.json(createResponse(true, "Users retrieved successfully", {
+        return successResponse(res, 200, "Users retrieved successfully", {
             users,
             pagination: {
                 current: parseInt(page),
                 pages: Math.ceil(total / limit),
                 total
             }
-        }));
+        });
     } catch (error) {
         console.error("Error fetching users:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch users"));
+        return errorResponse(res, 500, "Failed to fetch users");
     }
 };
 
@@ -236,17 +237,17 @@ export const getAllBookings = async (req, res) => {
 
         const total = await Booking.countDocuments(filter);
 
-        res.json(createResponse(true, "Bookings retrieved successfully", {
+        return successResponse(res, 200, "Bookings retrieved successfully", {
             bookings,
             pagination: {
                 current: parseInt(page),
                 pages: Math.ceil(total / limit),
                 total
             }
-        }));
+        });
     } catch (error) {
         console.error("Error fetching bookings:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch bookings"));
+        return errorResponse(res, 500, "Failed to fetch bookings");
     }
 };
 
@@ -263,17 +264,17 @@ export const getServiceAgents = async (req, res) => {
 
         const total = await User.countDocuments({ role: "SERVICE_AGENT" });
 
-        res.json(createResponse(true, "Service agents retrieved successfully", {
+        return successResponse(res, 200, "Service agents retrieved successfully", {
             agents,
             pagination: {
                 current: parseInt(page),
                 pages: Math.ceil(total / limit),
                 total
             }
-        }));
+        });
     } catch (error) {
         console.error("Error fetching service agents:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch service agents"));
+        return errorResponse(res, 500, "Failed to fetch service agents");
     }
 };
 
@@ -290,13 +291,13 @@ export const updateUserStatus = async (req, res) => {
         ).select("-password -otp");
 
         if (!user) {
-            return res.status(404).json(createResponse(false, "User not found"));
+            return errorResponse(res, 404, "User not found");
         }
 
-        res.json(createResponse(true, "User status updated successfully", user));
+        return successResponse(res, 200, "User status updated successfully", user);
     } catch (error) {
         console.error("Error updating user status:", error);
-        res.status(500).json(createResponse(false, "Failed to update user status"));
+        return errorResponse(res, 500, "Failed to update user status");
     }
 };
 
@@ -307,7 +308,7 @@ export const updateWorkerVerification = async (req, res) => {
         const { status, rejectionReason } = req.body;
 
         if (!["APPROVED", "REJECTED"].includes(status)) {
-            return res.status(400).json(createResponse(false, "Invalid status"));
+            return errorResponse(res, 400, "Invalid status");
         }
 
         const updateData = {
@@ -326,13 +327,89 @@ export const updateWorkerVerification = async (req, res) => {
         ).select("-password -otp");
 
         if (!worker) {
-            return res.status(404).json(createResponse(false, "Worker not found"));
+            return errorResponse(res, 404, "Worker not found");
         }
 
-        res.json(createResponse(true, `Worker verification ${status.toLowerCase()} successfully`, worker));
+        return successResponse(res, 200, `Worker verification ${status.toLowerCase()} successfully`, worker);
     } catch (error) {
         console.error("Error updating worker verification:", error);
-        res.status(500).json(createResponse(false, "Failed to update worker verification"));
+        return errorResponse(res, 500, "Failed to update worker verification");
+    }
+};
+
+// Get All Payments with Pagination and Filters
+export const getAllPayments = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, status, search } = req.query;
+
+        let filter = {
+            "payment.status": { $exists: true }
+        };
+
+        if (status && status !== "ALL") {
+            filter["payment.status"] = status;
+        }
+
+        if (search) {
+            filter.$or = [
+                { _id: { $regex: search, $options: "i" } },
+                { "payment.paymentId": { $regex: search, $options: "i" } }
+            ];
+        }
+
+        const bookings = await Booking.find(filter)
+            .populate("customerId", "name email phone")
+            .populate("workerId", "name email phone")
+            .sort({ "payment.transactionDate": -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        const total = await Booking.countDocuments(filter);
+
+        // Get payment analytics
+        const paymentStats = await Booking.aggregate([
+            {
+                $match: { "payment.status": { $exists: true } }
+            },
+            {
+                $group: {
+                    _id: "$payment.status",
+                    count: { $sum: 1 },
+                    totalAmount: { $sum: "$payment.amount" }
+                }
+            }
+        ]);
+
+        const analytics = {
+            totalRevenue: 0,
+            completedPayments: 0,
+            pendingPayments: 0,
+            failedPayments: 0
+        };
+
+        paymentStats.forEach(stat => {
+            if (stat._id === "COMPLETED") {
+                analytics.completedPayments = stat.count;
+                analytics.totalRevenue = stat.totalAmount;
+            } else if (stat._id === "PENDING") {
+                analytics.pendingPayments = stat.count;
+            } else if (stat._id === "FAILED") {
+                analytics.failedPayments = stat.count;
+            }
+        });
+
+        return successResponse(res, 200, "Payments retrieved successfully", {
+            payments: bookings,
+            analytics,
+            pagination: {
+                current: parseInt(page),
+                pages: Math.ceil(total / limit),
+                total
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching payments:", error);
+        return errorResponse(res, 500, "Failed to fetch payments");
     }
 };
 
@@ -404,13 +481,13 @@ export const getAnalytics = async (req, res) => {
             ])
         ]);
 
-        res.json(createResponse(true, "Analytics retrieved successfully", {
+        return successResponse(res, 200, "Analytics retrieved successfully", {
             userRegistrations,
             bookingStats,
             revenueStats: revenueStats[0] || { totalRevenue: 0, averageOrderValue: 0 }
-        }));
+        });
     } catch (error) {
         console.error("Error fetching analytics:", error);
-        res.status(500).json(createResponse(false, "Failed to fetch analytics"));
+        return errorResponse(res, 500, "Failed to fetch analytics");
     }
 };
