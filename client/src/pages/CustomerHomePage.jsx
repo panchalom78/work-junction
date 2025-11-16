@@ -22,6 +22,7 @@ import OngoingBookings from "../components/customer/OngoingBookings";
 import FeaturedWorkers from "../components/customer/FeaturedWorkers";
 import { useWorkerSearchStore } from "../store/workerSearch.store";
 import { useAuthStore } from "../store/auth.store";
+import RobustGujaratTranslator from "../components/GujaratTranslator";
 
 const CustomerHomePage = () => {
     const navigate = useNavigate();
@@ -89,6 +90,8 @@ const CustomerHomePage = () => {
                         <div className="flex items-center space-x-4">
                             {/* Language Toggle */}
                             {/* <RobustGujaratTranslator /> */}
+
+                            <RobustGujaratTranslator />
 
                             {/* Chat */}
                             <button
