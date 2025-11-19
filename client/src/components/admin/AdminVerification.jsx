@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, Search, Filter, Eye, CheckCircle, XCircle, 
+import {
+  Shield, Search, Filter, Eye, CheckCircle, XCircle,
   Clock, AlertCircle, FileText, User, Phone, Mail,
   ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
@@ -34,11 +34,12 @@ const AdminVerification = () => {
       const params = new URLSearchParams({
         page: currentPage,
         limit: 10,
-        ...(priorityFilter !== 'ALL' && { priority: priorityFilter })
+        ...(priorityFilter !== 'ALL' && { priority: priorityFilter }),
+        ...(searchTerm && { search: searchTerm })
       });
 
       const response = await axiosInstance.get(`/api/admin/verification/queue?${params}`);
-      
+
       if (response.data.success) {
         setVerificationQueue(response.data.data.workers);
         setTotalPages(response.data.data.pagination.pages);
@@ -57,7 +58,7 @@ const AdminVerification = () => {
         status: action,
         ...(action === 'REJECTED' && rejectionReason && { rejectionReason })
       });
-      
+
       if (response.data.success) {
         fetchVerificationQueue(); // Refresh the list
         setShowWorkerModal(false);
@@ -73,13 +74,13 @@ const AdminVerification = () => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / (1000 * 60));
-    
+
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
-    
+
     const diffInHours = Math.floor(diffInMinutes / 60);
     if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    
+
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
   };
@@ -112,7 +113,7 @@ const AdminVerification = () => {
         <div className="bg-white rounded-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Worker Verification Review</h2>
-            <button 
+            <button
               onClick={() => setShowWorkerModal(false)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -157,19 +158,18 @@ const AdminVerification = () => {
                 <div className="border border-gray-200 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h5 className="font-medium text-gray-900">Selfie</h5>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedWorker.verification?.isSelfieVerified 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs ${selectedWorker.verification?.isSelfieVerified
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                      }`}>
                       {selectedWorker.verification?.isSelfieVerified ? 'Verified' : 'Pending'}
                     </span>
                   </div>
                   {selectedWorker.verification?.selfieUrl ? (
                     <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                      <img 
-                        src={selectedWorker.verification.selfieUrl} 
-                        alt="Selfie" 
+                      <img
+                        src={selectedWorker.verification.selfieUrl}
+                        alt="Selfie"
                         className="w-full h-full object-cover rounded-lg"
                       />
                     </div>
@@ -184,19 +184,18 @@ const AdminVerification = () => {
                 <div className="border border-gray-200 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h5 className="font-medium text-gray-900">Aadhar Document</h5>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedWorker.verification?.isAddharDocVerified 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs ${selectedWorker.verification?.isAddharDocVerified
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                      }`}>
                       {selectedWorker.verification?.isAddharDocVerified ? 'Verified' : 'Pending'}
                     </span>
                   </div>
                   {selectedWorker.verification?.addharDocUrl ? (
                     <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                      <img 
-                        src={selectedWorker.verification.addharDocUrl} 
-                        alt="Aadhar Document" 
+                      <img
+                        src={selectedWorker.verification.addharDocUrl}
+                        alt="Aadhar Document"
                         className="w-full h-full object-cover rounded-lg"
                       />
                     </div>
@@ -211,19 +210,18 @@ const AdminVerification = () => {
                 <div className="border border-gray-200 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h5 className="font-medium text-gray-900">Police Verification</h5>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      selectedWorker.verification?.isPoliceVerificationDocVerified 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-orange-100 text-orange-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs ${selectedWorker.verification?.isPoliceVerificationDocVerified
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800'
+                      }`}>
                       {selectedWorker.verification?.isPoliceVerificationDocVerified ? 'Verified' : 'Pending'}
                     </span>
                   </div>
                   {selectedWorker.verification?.policeVerificationDocUrl ? (
                     <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                      <img 
-                        src={selectedWorker.verification.policeVerificationDocUrl} 
-                        alt="Police Verification" 
+                      <img
+                        src={selectedWorker.verification.policeVerificationDocUrl}
+                        alt="Police Verification"
                         className="w-full h-full object-cover rounded-lg"
                       />
                     </div>
@@ -350,62 +348,71 @@ const AdminVerification = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {verificationQueue.map((worker) => (
-                    <tr key={worker._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{worker.name}</p>
-                            <p className="text-sm text-gray-500">{worker.phone}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(worker.priority)}`}>
-                          <div className="flex items-center space-x-1">
-                            {getPriorityIcon(worker.priority)}
-                            <span>{worker.priority}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {worker.service || 'General Worker'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatTimeAgo(worker.submitted)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-1">
-                          <div className={`w-2 h-2 rounded-full ${
-                            worker.verification?.isSelfieVerified ? 'bg-green-500' : 'bg-orange-500'
-                          }`}></div>
-                          <div className={`w-2 h-2 rounded-full ${
-                            worker.verification?.isAddharDocVerified ? 'bg-green-500' : 'bg-orange-500'
-                          }`}></div>
-                          <div className={`w-2 h-2 rounded-full ${
-                            worker.verification?.isPoliceVerificationDocVerified ? 'bg-green-500' : 'bg-orange-500'
-                          }`}></div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedWorker(worker);
-                              setShowWorkerModal(true);
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="Review Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+                  {verificationQueue.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Shield className="w-12 h-12 text-gray-400 mb-3" />
+                          <p className="text-gray-600 font-medium">No pending verifications</p>
+                          <p className="text-sm text-gray-500 mt-1">All worker verifications have been processed</p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    verificationQueue.map((worker) => (
+                      <tr key={worker._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{worker.name}</p>
+                              <p className="text-sm text-gray-500">{worker.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(worker.priority)}`}>
+                            <div className="flex items-center space-x-1">
+                              {getPriorityIcon(worker.priority)}
+                              <span>{worker.priority}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {worker.service || 'General Worker'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {formatTimeAgo(worker.submitted)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-1">
+                            <div className={`w-2 h-2 rounded-full ${worker.verification?.isSelfieVerified ? 'bg-green-500' : 'bg-orange-500'
+                              }`}></div>
+                            <div className={`w-2 h-2 rounded-full ${worker.verification?.isAddharDocVerified ? 'bg-green-500' : 'bg-orange-500'
+                              }`}></div>
+                            <div className={`w-2 h-2 rounded-full ${worker.verification?.isPoliceVerificationDocVerified ? 'bg-green-500' : 'bg-orange-500'
+                              }`}></div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                setSelectedWorker(worker);
+                                setShowWorkerModal(true);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Review Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

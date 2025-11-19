@@ -29,61 +29,6 @@ const AdminPayments = () => {
     { value: 'FAILED', label: 'Failed' }
   ];
 
-  // Generate dummy payments data
-  const generatePayments = () => {
-    const paymentMethods = ['ONLINE', 'CASH', 'CARD', 'UPI'];
-    const statusOptions = ['PENDING', 'COMPLETED', 'FAILED'];
-    const customerNames = ['John Doe', 'Alice Smith', 'Bob Johnson', 'Emma Wilson', 'Mike Brown', 'Sarah Davis'];
-    const workerNames = ['Raj Kumar', 'Priya Sharma', 'Amit Patel', 'Sneha Gupta', 'Vikram Singh'];
-    const services = ['AC Repair', 'Plumbing', 'Electrical', 'Carpentry', 'Cleaning'];
-
-    return Array.from({ length: 25 }, (_, i) => {
-      const status = statusOptions[Math.floor(Math.random() * statusOptions.length)];
-      const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
-      const amount = Math.floor(500 + Math.random() * 2000);
-
-      return {
-        _id: `payment_${i}_${Date.now()}`,
-        payment: {
-          paymentId: `pay_${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-          amount: amount,
-          status: status,
-          paymentType: paymentMethod,
-          transactionId: paymentMethod !== 'CASH' ? `txn_${Math.random().toString(36).substr(2, 12)}` : null,
-          transactionDate: status === 'COMPLETED' ?
-            new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() :
-            null
-        },
-        customerId: {
-          name: customerNames[Math.floor(Math.random() * customerNames.length)],
-          phone: `+91 ${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-          email: `customer${i}@gmail.com`
-        },
-        workerId: {
-          name: workerNames[Math.floor(Math.random() * workerNames.length)],
-          phone: `+91 ${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-          email: `worker${i}@gmail.com`
-        },
-        bookingDate: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
-        bookingTime: `${Math.floor(9 + Math.random() * 8)}:${Math.random() > 0.5 ? '30' : '00'} ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
-        price: amount,
-        status: status === 'COMPLETED' ? 'COMPLETED' : 'PENDING',
-        createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
-        serviceType: services[Math.floor(Math.random() * services.length)]
-      };
-    });
-  };
-
-  // Generate dummy analytics
-  const generateAnalytics = () => {
-    return {
-      totalRevenue: 284500,
-      completedPayments: 156,
-      pendingPayments: 23,
-      failedPayments: 8
-    };
-  };
-
   useEffect(() => {
     fetchPayments();
   }, [currentPage, searchTerm, statusFilter]);
@@ -104,59 +49,15 @@ const AdminPayments = () => {
         setPayments(response.data.data.payments);
         setTotalPages(response.data.data.pagination.pages);
         setAnalytics(response.data.data.analytics);
-      } else {
-        // Fallback to dummy data
-        let allPayments = generatePayments();
-        if (statusFilter !== 'ALL') {
-          allPayments = allPayments.filter(payment => payment.payment.status === statusFilter);
-        }
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          allPayments = allPayments.filter(payment =>
-            payment.customerId.name.toLowerCase().includes(term) ||
-            payment.workerId.name.toLowerCase().includes(term) ||
-            payment.payment.paymentId.toLowerCase().includes(term)
-          );
-        }
-        const startIndex = (currentPage - 1) * 10;
-        const endIndex = startIndex + 10;
-        setPayments(allPayments.slice(startIndex, endIndex));
-        setTotalPages(Math.ceil(allPayments.length / 10));
       }
 
     } catch (error) {
       console.error('Error fetching payments:', error);
-      // Fallback to dummy data on error
-      let allPayments = generatePayments();
-      if (statusFilter !== 'ALL') {
-        allPayments = allPayments.filter(payment => payment.payment.status === statusFilter);
-      }
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        allPayments = allPayments.filter(payment =>
-          payment.customerId.name.toLowerCase().includes(term) ||
-          payment.workerId.name.toLowerCase().includes(term) ||
-          payment.payment.paymentId.toLowerCase().includes(term)
-        );
-      }
-      const startIndex = (currentPage - 1) * 10;
-      const endIndex = startIndex + 10;
-      setPayments(allPayments.slice(startIndex, endIndex));
-      setTotalPages(Math.ceil(allPayments.length / 10));
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPaymentAnalytics = async () => {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setAnalytics(generateAnalytics());
-    } catch (error) {
-      console.error('Error fetching payment analytics:', error);
-    }
-  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -443,71 +344,83 @@ const AdminPayments = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {payments.map((payment) => (
-                    <tr key={payment._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-mono text-sm text-gray-900">
-                          #{payment.payment?.paymentId?.slice(-8) || payment._id.slice(-8)}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{payment.customerId?.name}</p>
-                            <p className="text-sm text-gray-500">{payment.customerId?.phone}</p>
-                          </div>
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <DollarSign className="w-12 h-12 text-gray-400 mb-3" />
+                          <p className="text-gray-600 font-medium">No payments found</p>
+                          <p className="text-sm text-gray-500 mt-1">Try adjusting your filters or search term</p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{payment.workerId?.name}</p>
-                            <p className="text-sm text-gray-500">{payment.workerId?.phone}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-green-600">
-                          {formatCurrency(payment.payment?.amount || payment.price)}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {payment.payment?.paymentType || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.payment?.status)}`}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(payment.payment?.status)}
-                            <span>{payment.payment?.status}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {payment.payment?.transactionDate ?
-                          formatDate(payment.payment.transactionDate) :
-                          formatDate(payment.createdAt)
-                        }
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => {
-                            setSelectedPayment(payment);
-                            setShowPaymentModal(true);
-                          }}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    payments.map((payment) => (
+                      <tr key={payment._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="font-mono text-sm text-gray-900">
+                            #{payment.payment?.paymentId?.slice(-8) || payment._id.slice(-8)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{payment.customerId?.name}</p>
+                              <p className="text-sm text-gray-500">{payment.customerId?.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{payment.workerId?.name}</p>
+                              <p className="text-sm text-gray-500">{payment.workerId?.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-green-600">
+                            {formatCurrency(payment.payment?.amount || payment.price)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {payment.payment?.paymentType || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.payment?.status)}`}>
+                            <div className="flex items-center space-x-1">
+                              {getStatusIcon(payment.payment?.status)}
+                              <span>{payment.payment?.status}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {payment.payment?.transactionDate ?
+                            formatDate(payment.payment.transactionDate) :
+                            formatDate(payment.createdAt)
+                          }
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => {
+                              setSelectedPayment(payment);
+                              setShowPaymentModal(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

@@ -267,8 +267,8 @@ const OTPVerificationPage = () => {
                                             <input
                                                 key={index}
                                                 ref={(el) =>
-                                                    (inputRefs.current[index] =
-                                                        el)
+                                                (inputRefs.current[index] =
+                                                    el)
                                                 }
                                                 type="text"
                                                 inputMode="numeric"

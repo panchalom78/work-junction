@@ -125,7 +125,7 @@ export const getRecentActivities = async (req, res) => {
 // Get Verification Queue
 export const getVerificationQueue = async (req, res) => {
     try {
-        const { page = 1, limit = 10, priority } = req.query;
+        const { page = 1, limit = 10, priority, search } = req.query;
 
         let filter = {
             role: "WORKER",
@@ -133,8 +133,17 @@ export const getVerificationQueue = async (req, res) => {
         };
 
         // Add priority filter if specified
-        if (priority) {
+        if (priority && priority !== "ALL") {
             filter["workerProfile.verification.priority"] = priority.toUpperCase();
+        }
+
+        // Add search filter if specified
+        if (search) {
+            filter.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { phone: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } }
+            ];
         }
 
         const workers = await User.find(filter)
@@ -142,15 +151,25 @@ export const getVerificationQueue = async (req, res) => {
             .sort({ "workerProfile.verification.createdAt": -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)
-            .select("name phone workerProfile.verification createdAt");
+            .select("name phone email workerProfile createdAt");
 
         const formattedWorkers = workers.map(worker => ({
             _id: worker._id,
             name: worker.name,
             phone: worker.phone,
+            email: worker.email,
             service: "General Worker", // This would come from worker services
-            submitted: worker.createdAt,
-            priority: worker.workerProfile.verification.priority || "MEDIUM"
+            submitted: worker.workerProfile?.verification?.createdAt || worker.createdAt,
+            priority: worker.workerProfile?.verification?.priority || "MEDIUM",
+            verification: {
+                selfieUrl: worker.workerProfile?.verification?.selfieUrl || null,
+                addharDocUrl: worker.workerProfile?.verification?.addharDocUrl || null,
+                policeVerificationDocUrl: worker.workerProfile?.verification?.policeVerificationDocUrl || null,
+                isSelfieVerified: worker.workerProfile?.verification?.isSelfieVerified || false,
+                isAddharDocVerified: worker.workerProfile?.verification?.isAddharDocVerified || false,
+                isPoliceVerificationDocVerified: worker.workerProfile?.verification?.isPoliceVerificationDocVerified || false,
+                status: worker.workerProfile?.verification?.status || "PENDING"
+            }
         }));
 
         const total = await User.countDocuments(filter);
@@ -490,4 +509,243 @@ export const getAnalytics = async (req, res) => {
         console.error("Error fetching analytics:", error);
         return errorResponse(res, 500, "Failed to fetch analytics");
     }
+};
+// controllers/adminManage.controller.js
+
+// Get single service agent details
+export const getServiceAgentById = async (req, res) => {
+  try {
+    const { agentId } = req.params;
+
+    const agent = await User.findOne({ 
+      _id: agentId, 
+      role: 'SERVICE_AGENT' 
+    }).select('-password -otp');
+
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service agent not found'
+      });
+    }
+
+    // Get additional service agent data
+    const serviceAgentData = await ServiceAgent.findOne({ userId: agentId });
+
+    res.json({
+      success: true,
+      data: {
+        ...agent.toObject(),
+        serviceAgentData: serviceAgentData || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching service agent:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching service agent details'
+    });
+  }
+};
+
+// Update service agent
+export const updateServiceAgent = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { agentId } = req.params;
+    const updateData = req.body;
+    const adminId = req.user._id;
+
+    // Find the agent
+    const agent = await User.findOne({ 
+      _id: agentId, 
+      role: 'SERVICE_AGENT' 
+    }).session(session);
+
+    if (!agent) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Service agent not found'
+      });
+    }
+
+    // Fields that can be updated
+    const allowedUserFields = [
+      'name', 'phone', 'email', 'isActive', 'address', 
+      'serviceAgentProfile.assignedArea', 'serviceAgentProfile.isSuspended'
+    ];
+
+    // Filter update data to only allowed fields
+    const filteredUpdateData = {};
+    Object.keys(updateData).forEach(key => {
+      if (allowedUserFields.includes(key) || key.startsWith('address.')) {
+        filteredUpdateData[key] = updateData[key];
+      }
+    });
+
+    // Update user data
+    const updatedUser = await User.findByIdAndUpdate(
+      agentId,
+      { $set: filteredUpdateData },
+      { new: true, session, runValidators: true }
+    ).select('-password -otp');
+
+    // Update ServiceAgent collection if needed
+    if (updateData.areasAssigned || updateData.status || updateData.serviceRadius) {
+      const serviceAgentUpdate = {};
+      
+      if (updateData.areasAssigned) {
+        serviceAgentUpdate.areasAssigned = updateData.areasAssigned;
+      }
+      
+      if (updateData.status) {
+        serviceAgentUpdate.status = updateData.status;
+        serviceAgentUpdate.reviewedByAdmin = adminId;
+        serviceAgentUpdate.reviewedAt = new Date();
+      }
+      
+      if (updateData.serviceRadius) {
+        serviceAgentUpdate.serviceRadius = updateData.serviceRadius;
+      }
+
+      if (updateData.contactEmail || updateData.contactPhone) {
+        serviceAgentUpdate.contactEmail = updateData.contactEmail || agent.email;
+        serviceAgentUpdate.contactPhone = updateData.contactPhone || agent.phone;
+      }
+
+      await ServiceAgent.findOneAndUpdate(
+        { userId: agentId },
+        { $set: serviceAgentUpdate },
+        { upsert: true, session, new: true }
+      );
+    }
+
+    // Handle suspension
+    if (updateData.serviceAgentProfile?.isSuspended !== undefined) {
+      if (updateData.serviceAgentProfile.isSuspended) {
+        await ServiceAgent.findOneAndUpdate(
+          { userId: agentId },
+          { 
+            $set: { 
+              isSuspended: true,
+              suspendedUntil: updateData.serviceAgentProfile.suspendedUntil || null,
+              suspensionReason: updateData.serviceAgentProfile.suspensionReason || 'Admin action'
+            }
+          },
+          { upsert: true, session }
+        );
+      } else {
+        await ServiceAgent.findOneAndUpdate(
+          { userId: agentId },
+          { 
+            $set: { 
+              isSuspended: false,
+              suspendedUntil: null,
+              suspensionReason: null
+            }
+          },
+          { upsert: true, session }
+        );
+      }
+    }
+
+    await session.commitTransaction();
+
+    // Fetch updated data
+    const updatedAgent = await User.findById(agentId).select('-password -otp');
+    const updatedServiceAgent = await ServiceAgent.findOne({ userId: agentId });
+
+    res.json({
+      success: true,
+      message: 'Service agent updated successfully',
+      data: {
+        user: updatedAgent,
+        serviceAgent: updatedServiceAgent
+      }
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Error updating service agent:', error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email or phone already exists'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Error updating service agent'
+    });
+  } finally {
+    session.endSession();
+  }
+};
+
+// Delete service agent
+export const deleteServiceAgent = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { agentId } = req.params;
+
+    // Check if agent exists
+    const agent = await User.findOne({ 
+      _id: agentId, 
+      role: 'SERVICE_AGENT' 
+    }).session(session);
+
+    if (!agent) {
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        message: 'Service agent not found'
+      });
+    }
+
+    // Delete from User collection (soft delete by setting isActive to false)
+    await User.findByIdAndUpdate(
+      agentId,
+      { $set: { isActive: false } },
+      { session }
+    );
+
+    // Delete from ServiceAgent collection
+    await ServiceAgent.findOneAndUpdate(
+      { userId: agentId },
+      { $set: { status: 'SUSPENDED', isSuspended: true } },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    res.json({
+      success: true,
+      message: 'Service agent deleted successfully'
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('Error deleting service agent:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting service agent'
+    });
+  } finally {
+    session.endSession();
+  }
 };

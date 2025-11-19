@@ -33,18 +33,25 @@ export const useAuthStore = create((set, get) => ({
             };
         } catch (err) {
             console.error("Register API error:", err);
+            let errorMessage = "Registration failed, please try again";
+
+            if (err.code === "ERR_NETWORK") {
+                errorMessage = "Cannot connect to server. Please ensure the backend server is running on port 3000.";
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.response?.data?.errors?.[0]?.message) {
+                errorMessage = err.response.data.errors[0].message;
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+
             set({
                 loading: false,
-                error:
-                    err.response?.data?.message ||
-                    "Registration failed, please try again",
+                error: errorMessage,
             });
             return {
                 success: false,
-                message:
-                    err.response?.data?.message ||
-                    err.response?.data?.errors?.[0]?.message ||
-                    "Registration failed, please try again",
+                message: errorMessage,
             };
         }
     },
@@ -77,18 +84,25 @@ export const useAuthStore = create((set, get) => ({
             };
         } catch (err) {
             console.error("Login API error:", err);
+            let errorMessage = "Login failed, please try again";
+
+            if (err.code === "ERR_NETWORK") {
+                errorMessage = "Cannot connect to server. Please ensure the backend server is running on port 3000.";
+            } else if (err.response?.data?.message) {
+                errorMessage = err.response.data.message;
+            } else if (err.response?.data?.errors?.[0]?.message) {
+                errorMessage = err.response.data.errors[0].message;
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+
             set({
                 loading: false,
-                error:
-                    err.response?.data?.message ||
-                    "Login failed, please try again",
+                error: errorMessage,
             });
             return {
                 success: false,
-                message:
-                    err.response?.data?.message ||
-                    err.response?.data?.errors?.[0]?.message ||
-                    "Login failed, please try again",
+                message: errorMessage,
             };
         }
     },

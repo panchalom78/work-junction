@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Users, CheckCircle, Clock, AlertCircle,
   Settings, DollarSign, MapPin, Filter, Search,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/auth.store';
 
 // Import admin components
 import AdminOverview from '../components/admin/AdminOverview';
@@ -20,6 +22,42 @@ import AdminReports from '../components/admin/AdminReports';
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const { getUser, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  // Authentication check
+  useEffect(() => {
+    const checkAuth = async () => {
+      const response = await getUser();
+      if (!response.success) {
+        navigate('/login');
+        toast.error('Please login to access admin dashboard');
+        return;
+      }
+
+      if (response.user.role !== 'ADMIN') {
+        toast.error('Access denied. Admin privileges required.');
+        // Redirect based on user role
+        if (response.user.role === 'WORKER') {
+          navigate('/worker');
+        } else if (response.user.role === 'CUSTOMER') {
+          navigate('/customer/dashboard');
+        } else if (response.user.role === 'SERVICE_AGENT') {
+          navigate('/serviceAgentDashboard');
+        } else {
+          navigate('/login');
+        }
+        return;
+      }
+
+      if (!response.user.isVerified) {
+        navigate('/otpVerification');
+        toast.error('Please verify your email to continue');
+      }
+    };
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Render active component based on selected tab
   const renderActiveComponent = () => {
@@ -108,13 +146,28 @@ const AdminDashboard = () => {
               </div>
 
               <div className="relative">
-                <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                <div className="relative group">
+                  <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="font-medium">Admin</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <button
+                      onClick={async () => {
+                        await logout();
+                        navigate('/login');
+                        toast.success('Logged out successfully');
+                      }}
+                      className="w-full flex items-center space-x-2 px-4 py-2 text-left hover:bg-gray-50 transition-colors text-red-600"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
                   </div>
-                  <span className="font-medium">Admin</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                </div>
               </div>
             </div>
           </div>

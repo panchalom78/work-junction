@@ -28,31 +28,6 @@ const AdminReports = () => {
     { value: 'revenue', label: 'Revenue Analytics' }
   ];
 
-  // Generate dummy analytics data
-  const generateAnalytics = (period) => {
-    const baseMultiplier = period === 'weekly' ? 1 : period === 'monthly' ? 4 : 52;
-
-    return {
-      userRegistrations: [
-        { _id: 'CUSTOMER', count: 850 * baseMultiplier },
-        { _id: 'WORKER', count: 320 * baseMultiplier },
-        { _id: 'SERVICE_AGENT', count: 45 * baseMultiplier },
-        { _id: 'ADMIN', count: 5 }
-      ],
-      bookingStats: [
-        { _id: 'COMPLETED', count: 450 * baseMultiplier },
-        { _id: 'PENDING', count: 35 * baseMultiplier },
-        { _id: 'ACCEPTED', count: 120 * baseMultiplier },
-        { _id: 'CANCELLED', count: 25 * baseMultiplier },
-        { _id: 'DECLINED', count: 15 * baseMultiplier }
-      ],
-      revenueStats: {
-        totalRevenue: 284500 * baseMultiplier,
-        averageOrderValue: 1250
-      }
-    };
-  };
-
   useEffect(() => {
     fetchAnalytics();
   }, [period]);
@@ -66,15 +41,10 @@ const AdminReports = () => {
 
       if (response.data.success) {
         setAnalytics(response.data.data);
-      } else {
-        // Fallback to dummy data
-        setAnalytics(generateAnalytics(period));
       }
 
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      // Fallback to dummy data on error
-      setAnalytics(generateAnalytics(period));
     } finally {
       setLoading(false);
     }
