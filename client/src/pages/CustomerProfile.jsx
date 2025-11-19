@@ -18,6 +18,10 @@ import {
 import { useAuthStore } from "../store/auth.store";
 import toast from "react-hot-toast";
 
+// <-- NEW: import the translator component
+// import RobustGujaratTranslator from "../components/RobustGujaratTranslator";
+import RobustGujaratTranslator from "../components/GujaratTranslator";
+
 const CustomerProfile = () => {
     const navigate = useNavigate();
     const { user, updateProfile, loading, error, getUser } = useAuthStore();
@@ -169,6 +173,7 @@ const CustomerProfile = () => {
                     }
 
                     const data = await response.json();
+                    console.log(data.address);
 
                     if (data.address) {
                         const address = data.address;
@@ -188,12 +193,14 @@ const CustomerProfile = () => {
                                     address.suburb ||
                                     address.neighbourhood ||
                                     address.city_district ||
+                                    address.county ||
                                     prev.address.area,
                                 city:
                                     address.city ||
                                     address.town ||
                                     address.village ||
                                     address.municipality ||
+                                    address.state_district ||
                                     prev.address.city,
                                 state:
                                     address.state ||
@@ -862,8 +869,17 @@ const CustomerProfile = () => {
                         </form>
                     </div>
 
-                    {/* Sidebar - Profile Summary */}
-                    <div className="lg:col-span-1">
+                    {/* Sidebar - Translator + Profile Summary */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* NEW: Translator card */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+                            <h3 className="text-md font-semibold text-gray-900 mb-3">
+                                Translate UI
+                            </h3>
+                            <RobustGujaratTranslator />
+                        </div>
+
+                        {/* Profile Summary */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-8">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">
                                 Profile Summary

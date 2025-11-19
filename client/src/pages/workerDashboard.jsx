@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import WorkerNavbar from "../components/WorkerNavbar";
 import { useAuthStore } from "../store/auth.store";
 import { Outlet, useNavigate } from "react-router-dom";
+import RobustGujaratTranslator from "../components/GujaratTranslator";
 
 const WorkerDashboard = () => {
     const [activeTab, setActiveTab] = useState("overview");

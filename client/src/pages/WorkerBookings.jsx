@@ -39,7 +39,7 @@ const WorkerBookings = () => {
         initiateService,
         verifyServiceOtp,
         completeService,
-        updateBookingPrice, // Add this to your store
+        updateBookingPrice,
     } = useBookingStore();
 
     const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -47,13 +47,13 @@ const WorkerBookings = () => {
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showActionModal, setShowActionModal] = useState(false);
     const [showOtpModal, setShowOtpModal] = useState(false);
-    const [showPriceModal, setShowPriceModal] = useState(false); // New modal for price update
-    const [actionType, setActionType] = useState(""); // 'accept', 'decline', 'complete'
+    const [showPriceModal, setShowPriceModal] = useState(false);
+    const [actionType, setActionType] = useState("");
     const [reason, setReason] = useState("");
     const [otp, setOtp] = useState("");
     const [serviceLoading, setServiceLoading] = useState(false);
-    const [updatedPrice, setUpdatedPrice] = useState(""); // For price update
-    const [priceUpdateReason, setPriceUpdateReason] = useState(""); // Reason for price change
+    const [updatedPrice, setUpdatedPrice] = useState("");
+    const [priceUpdateReason, setPriceUpdateReason] = useState("");
 
     const statusFilters = [
         { value: "ALL", label: "All Bookings", count: bookings.length },
@@ -166,7 +166,7 @@ const WorkerBookings = () => {
             alert(
                 "OTP sent to customer successfully! Please ask the customer for the OTP to start the service."
             );
-            await fetchBookings(); // Refresh bookings to update status
+            await fetchBookings();
         } catch (error) {
             alert(
                 error.response?.data?.message || "Failed to initiate service"
@@ -189,7 +189,7 @@ const WorkerBookings = () => {
             setShowOtpModal(false);
             setOtp("");
             setSelectedBooking(null);
-            await fetchBookings(); // Refresh bookings to update status
+            await fetchBookings();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to verify OTP");
         } finally {
@@ -215,7 +215,6 @@ const WorkerBookings = () => {
 
         setServiceLoading(true);
         try {
-            // First update the price if changed
             if (newPrice !== selectedBooking.price) {
                 await updateBookingPrice(selectedBooking._id, {
                     newPrice: newPrice,
@@ -225,14 +224,13 @@ const WorkerBookings = () => {
                 });
             }
 
-            // Then complete the service
             const response = await completeService(selectedBooking._id);
             alert("Service completed successfully!");
             setShowPriceModal(false);
             setSelectedBooking(null);
             setUpdatedPrice("");
             setPriceUpdateReason("");
-            await fetchBookings(); // Refresh bookings to update status
+            await fetchBookings();
         } catch (error) {
             console.log(error);
 
@@ -354,13 +352,13 @@ const WorkerBookings = () => {
                     <div className="flex space-x-2">
                         <button
                             onClick={() => handleAction(booking, "accept")}
-                            className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                            className="flex-1 bg-green-600 text-white py-3 px-3 rounded-lg hover:bg-green-700 transition-colors text-base font-medium"
                         >
                             Accept
                         </button>
                         <button
                             onClick={() => handleAction(booking, "decline")}
-                            className="flex-1 bg-red-600 text-white py-2 px-3 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                            className="flex-1 bg-red-600 text-white py-3 px-3 rounded-lg hover:bg-red-700 transition-colors text-base font-medium"
                         >
                             Decline
                         </button>
@@ -369,31 +367,28 @@ const WorkerBookings = () => {
             case "ACCEPTED":
             case "PAYMENT_PENDING":
                 return (
-                    <div className="space-y-2">
-                        {/* Payment Status */}
+                    <div className="space-y-3">
                         {paymentStatus && (
                             <div
-                                className={`text-center text-xs font-medium px-2 py-1 rounded-lg ${paymentStatus.bg} ${paymentStatus.color}`}
+                                className={`text-center text-sm md:text-base font-medium px-2 py-2 rounded-lg ${paymentStatus.bg} ${paymentStatus.color}`}
                             >
                                 {paymentStatus.text}
                             </div>
                         )}
 
-                        {/* Service Status */}
                         {serviceStatus && (
                             <div
-                                className={`text-center text-xs font-medium px-2 py-1 rounded-lg ${serviceStatus.bg} ${serviceStatus.color}`}
+                                className={`text-center text-sm md:text-base font-medium px-2 py-2 rounded-lg ${serviceStatus.bg} ${serviceStatus.color}`}
                             >
                                 {serviceStatus.text}
                             </div>
                         )}
 
-                        {/* Service Actions */}
                         {!booking.serviceInitiated ? (
                             <button
                                 onClick={() => handleInitiateService(booking)}
                                 disabled={serviceLoading}
-                                className="w-full bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 text-white py-3 px-3 rounded-lg hover:bg-blue-700 transition-colors text-base font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {serviceLoading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -408,7 +403,7 @@ const WorkerBookings = () => {
                                     setSelectedBooking(booking);
                                     setShowOtpModal(true);
                                 }}
-                                className="w-full bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full bg-green-600 text-white py-3 px-3 rounded-lg hover:bg-green-700 transition-colors text-base font-medium flex items-center justify-center gap-2"
                             >
                                 <Key className="w-4 h-4" />
                                 Verify OTP
@@ -420,7 +415,7 @@ const WorkerBookings = () => {
                                     serviceLoading ||
                                     booking.status === "PAYMENT_PENDING"
                                 }
-                                className="w-full bg-purple-600 text-white py-2 px-3 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full bg-purple-600 text-white py-3 px-3 rounded-lg hover:bg-purple-700 transition-colors text-base font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {serviceLoading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -433,21 +428,19 @@ const WorkerBookings = () => {
                             </button>
                         )}
 
-                        {/* Chat Button */}
                         <button
                             onClick={() =>
                                 navigate(`/chat/${booking.customerId._id}`)
                             }
-                            className="w-full bg-gray-600 text-white py-2 px-3 rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                            className="w-full bg-gray-600 text-white py-3 px-3 rounded-lg hover:bg-gray-700 transition-colors text-base font-medium flex items-center justify-center gap-2"
                         >
                             <MessageCircle className="w-4 h-4" />
                             Chat
                         </button>
 
-                        {/* Payment Reminder for PAYMENT_PENDING */}
                         {booking.status === "PAYMENT_PENDING" && (
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-2">
-                                <p className="text-orange-700 text-xs text-center">
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                                <p className="text-orange-700 text-sm md:text-base text-center">
                                     <strong>Note:</strong> Waiting for customer
                                     to complete payment
                                 </p>
@@ -458,19 +451,19 @@ const WorkerBookings = () => {
             case "COMPLETED":
                 return (
                     <div className="text-center">
-                        <div className="text-green-600 text-sm font-medium">
+                        <div className="text-green-600 text-base font-medium">
                             Completed
                         </div>
                         {booking.review && (
-                            <div className="flex items-center justify-center gap-1 mt-1">
+                            <div className="flex items-center justify-center gap-2 mt-2">
                                 <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                <span className="text-sm text-gray-600">
+                                <span className="text-base text-gray-600">
                                     {booking.review.rating}/5
                                 </span>
                             </div>
                         )}
                         {booking.payment?.status === "COMPLETED" && (
-                            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 mt-2">
                                 <CheckCircle className="w-3 h-3" />
                                 <span>Paid</span>
                             </div>
@@ -479,7 +472,7 @@ const WorkerBookings = () => {
                 );
             default:
                 return (
-                    <div className="text-center text-gray-500 text-sm">
+                    <div className="text-center text-gray-500 text-base">
                         {booking.status.charAt(0) +
                             booking.status
                                 .slice(1)
@@ -495,7 +488,7 @@ const WorkerBookings = () => {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                    <div className="text-gray-600">
+                    <div className="text-gray-600 text-base">
                         Loading your bookings...
                     </div>
                 </div>
@@ -504,34 +497,35 @@ const WorkerBookings = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        // Top-level text sizing + relaxed line-height to increase font sizes everywhere
+        <div className="min-h-screen bg-gray-50 text-base md:text-lg leading-relaxed">
             {/* Header */}
             <div className="bg-white shadow-sm border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-6 py-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
+                            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 break-words">
                                 My Bookings
                             </h1>
-                            <p className="text-gray-600 mt-1">
+                            <p className="text-gray-600 mt-1 text-base md:text-lg break-words">
                                 Manage and track your service bookings
                             </p>
                         </div>
                         <div className="flex gap-6">
                             <div className="text-right">
-                                <div className="text-2xl font-bold text-gray-900">
+                                <div className="text-2xl md:text-3xl font-bold text-gray-900">
                                     {
                                         bookings.filter(
                                             (b) => b.status === "PENDING"
                                         ).length
                                     }
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm md:text-base text-gray-600">
                                     Pending Requests
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-2xl font-bold text-orange-600">
+                                <div className="text-2xl md:text-3xl font-bold text-orange-600">
                                     {
                                         bookings.filter(
                                             (b) =>
@@ -539,7 +533,7 @@ const WorkerBookings = () => {
                                         ).length
                                     }
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm md:text-base text-gray-600">
                                     Payment Pending
                                 </div>
                             </div>
@@ -560,14 +554,14 @@ const WorkerBookings = () => {
                                     onClick={() =>
                                         setSelectedStatus(filter.value)
                                     }
-                                    className={`px-4 py-2 rounded-xl font-medium transition-all border ${
+                                    className={`px-4 py-2 rounded-xl font-medium transition-all border text-base md:text-lg ${
                                         selectedStatus === filter.value
                                             ? "bg-blue-600 text-white border-blue-600"
                                             : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
                                     }`}
                                 >
                                     {filter.label}
-                                    <span className="ml-2 text-sm opacity-80">
+                                    <span className="ml-2 text-sm md:text-base opacity-80">
                                         ({filter.count})
                                     </span>
                                 </button>
@@ -575,14 +569,14 @@ const WorkerBookings = () => {
                         </div>
 
                         {/* Search */}
-                        <div className="relative">
+                        <div className="relative w-full lg:w-auto">
                             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search by customer or service..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 w-full lg:w-64"
+                                className="pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 w-full lg:w-64 text-base md:text-lg"
                             />
                         </div>
                     </div>
@@ -591,16 +585,16 @@ const WorkerBookings = () => {
                 {/* Error Display */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-                        <div className="flex items-center space-x-2 text-red-800">
+                        <div className="flex items-center space-x-2 text-red-800 text-base md:text-lg">
                             <AlertCircle className="w-5 h-5" />
-                            <span>{error}</span>
+                            <span className="break-words">{error}</span>
                         </div>
                     </div>
                 )}
 
                 {/* Bookings Grid */}
                 {filteredBookings.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
                         {filteredBookings.map((booking) => (
                             <div
                                 key={booking._id}
@@ -609,20 +603,20 @@ const WorkerBookings = () => {
                                 {/* Header */}
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold">
+                                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg">
                                             {booking.customerId?.name
                                                 ?.split(" ")
                                                 .map((n) => n[0])
                                                 .join("") || "C"}
                                         </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-900">
+                                        <div className="min-w-0">
+                                            <div className="font-semibold text-gray-900 text-base md:text-lg break-words">
                                                 {booking.customerId?.name ||
                                                     "Customer"}
                                             </div>
-                                            <div className="flex items-center space-x-1 text-sm text-gray-600 mt-1">
+                                            <div className="flex items-center space-x-1 text-sm md:text-base text-gray-600 mt-1 break-words">
                                                 <Phone className="w-4 h-4" />
-                                                <span>
+                                                <span className="break-words">
                                                     {booking.customerId
                                                         ?.phone || "N/A"}
                                                 </span>
@@ -631,12 +625,12 @@ const WorkerBookings = () => {
                                     </div>
                                     <div className="flex flex-col items-end space-y-1">
                                         <div
-                                            className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                                            className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm md:text-base font-medium border ${getStatusColor(
                                                 booking.status
                                             )}`}
                                         >
                                             {getStatusIcon(booking.status)}
-                                            <span className="capitalize">
+                                            <span className="capitalize break-words">
                                                 {booking.status
                                                     .toLowerCase()
                                                     .replace("_", " ")}
@@ -644,7 +638,7 @@ const WorkerBookings = () => {
                                         </div>
                                         {booking.payment?.status ===
                                             "COMPLETED" && (
-                                            <div className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <div className="inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs md:text-sm font-medium bg-green-100 text-green-800">
                                                 <CheckCircle className="w-3 h-3" />
                                                 <span>Paid</span>
                                             </div>
@@ -653,43 +647,45 @@ const WorkerBookings = () => {
                                 </div>
 
                                 {/* Service Details */}
-                                <div className="space-y-3 mb-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">
+                                <div className="space-y-3 mb-4 text-base md:text-lg">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600 ">
                                             Service:
                                         </span>
-                                        <span className="font-medium text-gray-900 text-right">
+                                        <span className="font-medium text-gray-900 text-right break-words max-w-[60%]">
                                             {booking.workerServiceId?.details ||
                                                 "Service"}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
+                                    <div className="flex justify-between font-bold">
                                         <span className="text-gray-600">
                                             Date:
                                         </span>
-                                        <span className="font-medium text-gray-900">
+                                        <span className="font-medium text-gray-900 break-words">
                                             {formatDate(booking.bookingDate)}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600 font-bold">
                                             Time:
                                         </span>
-                                        <span className="font-medium text-gray-900">
+                                        <span className="font-medium text-gray-900 break-words">
                                             {formatTime(booking.bookingTime)}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-gray-600 font-bold">
                                             Amount:
                                         </span>
-                                        <span className="font-bold text-gray-900 flex items-center">
+                                        <span className="font-bold text-gray-900 flex items-center break-words">
                                             <IndianRupee className="w-4 h-4" />
-                                            {booking.price}
+                                            <span className="ml-1">
+                                                {booking.price}
+                                            </span>
                                             {booking.originalPrice &&
                                                 booking.originalPrice !==
                                                     booking.price && (
-                                                    <span className="ml-1 text-xs text-gray-500 line-through">
+                                                    <span className="ml-2 text-xs md:text-sm text-gray-500 line-through break-words">
                                                         ₹{booking.originalPrice}
                                                     </span>
                                                 )}
@@ -699,8 +695,8 @@ const WorkerBookings = () => {
 
                                 {/* Payment Info */}
                                 {booking.payment && (
-                                    <div className="mb-4 p-2 bg-gray-50 rounded-lg">
-                                        <div className="flex justify-between text-xs">
+                                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-base md:text-lg">
+                                        <div className="flex justify-between">
                                             <span className="text-gray-600">
                                                 Payment:
                                             </span>
@@ -720,11 +716,11 @@ const WorkerBookings = () => {
                                             </span>
                                         </div>
                                         {booking.payment.paymentType && (
-                                            <div className="flex justify-between text-xs mt-1">
+                                            <div className="flex justify-between mt-1">
                                                 <span className="text-gray-600">
                                                     Method:
                                                 </span>
-                                                <span className="font-medium text-gray-900">
+                                                <span className="font-medium text-gray-900 break-words">
                                                     {booking.payment.paymentType.replace(
                                                         "_",
                                                         " "
@@ -733,7 +729,7 @@ const WorkerBookings = () => {
                                             </div>
                                         )}
                                         {booking.priceUpdateReason && (
-                                            <div className="mt-1 text-xs text-gray-600">
+                                            <div className="mt-2 text-sm md:text-base text-gray-600 break-words">
                                                 <strong>Note:</strong>{" "}
                                                 {booking.priceUpdateReason}
                                             </div>
@@ -743,12 +739,12 @@ const WorkerBookings = () => {
 
                                 {/* Customer Address */}
                                 {booking.customerId?.address && (
-                                    <div className="flex items-start space-x-2 text-sm text-gray-600 mb-4">
+                                    <div className="flex items-start space-x-2 text-sm md:text-base text-gray-600 mb-4">
                                         <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                        <div className="flex-1">
+                                        <div className="flex-1 break-words">
                                             {booking.customerId.address
                                                 .street && (
-                                                <div>
+                                                <div className="break-words">
                                                     {
                                                         booking.customerId
                                                             .address.street
@@ -757,7 +753,7 @@ const WorkerBookings = () => {
                                             )}
                                             {booking.customerId.address
                                                 .area && (
-                                                <div>
+                                                <div className="break-words">
                                                     {
                                                         booking.customerId
                                                             .address.area
@@ -766,7 +762,7 @@ const WorkerBookings = () => {
                                             )}
                                             {booking.customerId.address
                                                 .city && (
-                                                <div>
+                                                <div className="break-words">
                                                     {
                                                         booking.customerId
                                                             .address.city
@@ -784,8 +780,8 @@ const WorkerBookings = () => {
 
                                 {/* Additional Info */}
                                 {booking.declineReason && (
-                                    <div className="mt-3 p-2 bg-red-50 rounded-lg">
-                                        <p className="text-red-700 text-sm">
+                                    <div className="mt-3 p-3 bg-red-50 rounded-lg text-base md:text-lg">
+                                        <p className="text-red-700 break-words">
                                             <strong>Decline Reason:</strong>{" "}
                                             {booking.declineReason}
                                         </p>
@@ -793,8 +789,8 @@ const WorkerBookings = () => {
                                 )}
 
                                 {booking.cancellationReason && (
-                                    <div className="mt-3 p-2 bg-yellow-50 rounded-lg">
-                                        <p className="text-yellow-700 text-sm">
+                                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg text-base md:text-lg">
+                                        <p className="text-yellow-700 break-words">
                                             <strong>
                                                 Cancellation Reason:
                                             </strong>{" "}
@@ -804,13 +800,13 @@ const WorkerBookings = () => {
                                 )}
 
                                 {booking.review && (
-                                    <div className="mt-3 p-2 bg-green-50 rounded-lg">
+                                    <div className="mt-3 p-3 bg-green-50 rounded-lg text-base md:text-lg">
                                         <div className="flex items-center space-x-2 mb-1">
                                             <div className="flex items-center space-x-1">
                                                 {[1, 2, 3, 4, 5].map((star) => (
                                                     <Star
                                                         key={star}
-                                                        className={`w-3 h-3 ${
+                                                        className={`w-4 h-4 ${
                                                             star <=
                                                             booking.review
                                                                 .rating
@@ -820,12 +816,12 @@ const WorkerBookings = () => {
                                                     />
                                                 ))}
                                             </div>
-                                            <span className="text-sm font-medium text-gray-900">
+                                            <span className="text-base font-medium text-gray-900">
                                                 {booking.review.rating}/5
                                             </span>
                                         </div>
                                         {booking.review.comment && (
-                                            <p className="text-gray-700 text-sm">
+                                            <p className="text-gray-700 text-base break-words">
                                                 {booking.review.comment}
                                             </p>
                                         )}
@@ -837,12 +833,12 @@ const WorkerBookings = () => {
                 ) : (
                     <div className="text-center py-12 bg-white rounded-2xl shadow-lg">
                         <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2 break-words">
                             {searchTerm || selectedStatus !== "ALL"
                                 ? "No matching bookings found"
                                 : "No bookings yet"}
                         </h3>
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-gray-600 mb-6 text-base md:text-lg break-words">
                             {searchTerm || selectedStatus !== "ALL"
                                 ? "Try adjusting your search or filters"
                                 : "Your booking requests will appear here"}
@@ -853,7 +849,7 @@ const WorkerBookings = () => {
                                     setSearchTerm("");
                                     setSelectedStatus("ALL");
                                 }}
-                                className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold"
+                                className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold text-base md:text-lg"
                             >
                                 Clear Filters
                             </button>
@@ -874,15 +870,15 @@ const WorkerBookings = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl max-w-md w-full">
                         <div className="p-6">
-                            <h3 className="text-xl font-bold text-gray-900 mb-4">
+                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
                                 {actionType === "accept" && "Accept Booking"}
                                 {actionType === "decline" && "Decline Booking"}
                                 {actionType === "complete" &&
                                     "Mark as Complete"}
                             </h3>
 
-                            <div className="space-y-4">
-                                <p className="text-gray-600">
+                            <div className="space-y-4 text-base md:text-lg">
+                                <p className="text-gray-600 break-words">
                                     {actionType === "accept" &&
                                         `Are you sure you want to accept this booking from ${selectedBooking.customerId?.name}?`}
                                     {actionType === "decline" &&
@@ -893,7 +889,7 @@ const WorkerBookings = () => {
 
                                 {actionType === "decline" && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                                             Reason for declining (optional)
                                         </label>
                                         <textarea
@@ -903,14 +899,14 @@ const WorkerBookings = () => {
                                             }
                                             placeholder="Provide a reason for declining this booking..."
                                             rows="3"
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 resize-none"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none focus:border-blue-500 resize-none"
                                         />
                                     </div>
                                 )}
 
                                 {actionType === "complete" && (
                                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                        <p className="text-blue-800 text-sm">
+                                        <p className="text-blue-800 text-sm md:text-base">
                                             <strong>Note:</strong> Marking as
                                             complete will allow the customer to
                                             leave a review.
@@ -927,14 +923,14 @@ const WorkerBookings = () => {
                                         setActionType("");
                                         setReason("");
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors"
+                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={confirmAction}
                                     disabled={loading}
-                                    className={`flex-1 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                                    className={`flex-1 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 text-base md:text-lg ${
                                         actionType === "accept"
                                             ? "bg-green-600 hover:bg-green-700"
                                             : actionType === "decline"
@@ -963,13 +959,13 @@ const WorkerBookings = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl max-w-md w-full">
                         <div className="p-6">
-                            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <Key className="w-6 h-6 text-green-600" />
                                 Verify OTP
                             </h3>
 
-                            <div className="space-y-4">
-                                <p className="text-gray-600">
+                            <div className="space-y-4 text-base md:text-lg">
+                                <p className="text-gray-600 break-words">
                                     Please enter the 6-digit OTP received from{" "}
                                     <strong>
                                         {selectedBooking.customerId?.name}
@@ -978,7 +974,7 @@ const WorkerBookings = () => {
                                 </p>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                                         OTP Code
                                     </label>
                                     <input
@@ -994,14 +990,14 @@ const WorkerBookings = () => {
                                         className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-xl font-mono focus:outline-none focus:border-blue-500"
                                         maxLength={6}
                                     />
-                                    <p className="text-sm text-gray-500 mt-2 text-center">
+                                    <p className="text-sm md:text-base text-gray-500 mt-2 text-center break-words">
                                         Ask the customer for the OTP sent to
                                         their email
                                     </p>
                                 </div>
 
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p className="text-blue-800 text-sm">
+                                    <p className="text-blue-800 text-sm md:text-base">
                                         <strong>Note:</strong> The OTP ensures
                                         that service only starts with customer's
                                         consent.
@@ -1016,7 +1012,7 @@ const WorkerBookings = () => {
                                         setOtp("");
                                         setSelectedBooking(null);
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors"
+                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
                                 >
                                     Cancel
                                 </button>
@@ -1025,7 +1021,7 @@ const WorkerBookings = () => {
                                     disabled={
                                         serviceLoading || otp.length !== 6
                                     }
-                                    className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-base md:text-lg"
                                 >
                                     {serviceLoading && (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1043,14 +1039,14 @@ const WorkerBookings = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl max-w-md w-full">
                         <div className="p-6">
-                            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <Edit className="w-6 h-6 text-purple-600" />
                                 Update Service Charge & Complete
                             </h3>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 text-base md:text-lg">
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <p className="text-blue-800 text-sm">
+                                    <p className="text-blue-800 text-sm md:text-base">
                                         <strong>Note:</strong> You can update
                                         the service charge if the actual work
                                         differs from the original quote. The
@@ -1060,17 +1056,19 @@ const WorkerBookings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                                         Original Amount
                                     </label>
                                     <div className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
                                         <IndianRupee className="w-5 h-5" />
-                                        <span>{selectedBooking.price}</span>
+                                        <span className="break-words">
+                                            {selectedBooking.price}
+                                        </span>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                                         Updated Service Charge
                                     </label>
                                     <div className="relative">
@@ -1082,14 +1080,14 @@ const WorkerBookings = () => {
                                                 setUpdatedPrice(e.target.value)
                                             }
                                             placeholder="Enter updated amount"
-                                            className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:border-blue-500"
+                                            className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-base md:text-lg focus:outline-none focus:border-blue-500"
                                             min="0"
                                             step="0.01"
                                         />
                                     </div>
                                     {parseFloat(updatedPrice) >
                                         selectedBooking.price && (
-                                        <p className="text-green-600 text-sm mt-1">
+                                        <p className="text-green-600 text-sm md:text-base mt-1 break-words">
                                             Additional ₹
                                             {parseFloat(updatedPrice) -
                                                 selectedBooking.price}{" "}
@@ -1098,7 +1096,7 @@ const WorkerBookings = () => {
                                     )}
                                     {parseFloat(updatedPrice) <
                                         selectedBooking.price && (
-                                        <p className="text-orange-600 text-sm mt-1">
+                                        <p className="text-orange-600 text-sm md:text-base mt-1 break-words">
                                             ₹
                                             {selectedBooking.price -
                                                 parseFloat(updatedPrice)}{" "}
@@ -1108,7 +1106,7 @@ const WorkerBookings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
                                         Reason for Price Change (Optional)
                                     </label>
                                     <textarea
@@ -1118,7 +1116,7 @@ const WorkerBookings = () => {
                                         }
                                         placeholder="Explain the reason for price change (e.g., additional work, material cost, etc.)"
                                         rows="3"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 resize-none"
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none focus:border-blue-500 resize-none"
                                     />
                                 </div>
                             </div>
@@ -1131,14 +1129,14 @@ const WorkerBookings = () => {
                                         setUpdatedPrice("");
                                         setPriceUpdateReason("");
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors"
+                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleUpdatePriceAndComplete}
                                     disabled={serviceLoading || !updatedPrice}
-                                    className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-base md:text-lg"
                                 >
                                     {serviceLoading && (
                                         <Loader2 className="w-4 h-4 animate-spin" />

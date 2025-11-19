@@ -82,6 +82,8 @@ app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
+app.use("/api/service-agent/dashboard", agentDashboardRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {

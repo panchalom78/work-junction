@@ -22,13 +22,15 @@ import OngoingBookings from "../components/customer/OngoingBookings";
 import FeaturedWorkers from "../components/customer/FeaturedWorkers";
 import { useWorkerSearchStore } from "../store/workerSearch.store";
 import { useAuthStore } from "../store/auth.store";
+import { applyPreferredLanguageAsync } from "../components/GujaratTranslator";
 import RobustGujaratTranslator from "../components/GujaratTranslator";
+import RobustGujaratTranslatorDropdown from "../components/RobustGujaratTranslatorDropdown";
 
 const CustomerHomePage = () => {
     const navigate = useNavigate();
     const [language, setLanguage] = useState("en");
     const { searchWorkers } = useWorkerSearchStore();
-    const { user, logout } = useAuthStore();
+    const { user, logout, getUser } = useAuthStore();
 
     const handleSearch = (filters) => {
         console.log(filters);
@@ -41,6 +43,45 @@ const CustomerHomePage = () => {
         navigate(`/customer/search?${queryParams.toString()}`);
         searchWorkers(filters);
     };
+
+    useEffect(() => {
+        const navigateUser = async () => {
+            const response = await getUser();
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.verification
+                                ?.status == "APPROVED"
+                        ) {
+                            navigate("/worker");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                navigate("/login");
+            }
+        };
+        navigateUser();
+    }, []);
+
+    useEffect(() => {
+        // attempt to apply saved language; await is optional
+        applyPreferredLanguageAsync(5000).then((applied) => {
+            console.log("preferred language applied:", applied);
+        });
+    }, []);
+    if (!user) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div
@@ -91,8 +132,6 @@ const CustomerHomePage = () => {
                             {/* Language Toggle */}
                             {/* <RobustGujaratTranslator /> */}
 
-                            <RobustGujaratTranslator />
-
                             {/* Chat */}
                             <button
                                 className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
@@ -139,6 +178,9 @@ const CustomerHomePage = () => {
                                         <LogOut className="w-4 h-4" />
                                         <span>Logout</span>
                                     </button>
+                                    <div className="px-2">
+                                        <RobustGujaratTranslator />
+                                    </div>
                                 </div>
                             </div>
                         </div>

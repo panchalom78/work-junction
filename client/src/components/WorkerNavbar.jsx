@@ -20,6 +20,7 @@ import {
 
 import { useAuthStore } from "../store/auth.store";
 import toast from "react-hot-toast";
+import RobustGujaratTranslator from "./GujaratTranslator";
 
 const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
     const location = useLocation();
@@ -218,6 +219,8 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
                                 </button>
                             );
                         })}
+
+                        <RobustGujaratTranslator />
                     </div>
                 </div>
 
