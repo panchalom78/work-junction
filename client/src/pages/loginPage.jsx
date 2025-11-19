@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import lottie from "lottie-web";
 import toast from "react-hot-toast"; // ✅ Toast import
-import { FiMail, FiLock, FiEye, FiEyeOff, FiCheck } from "react-icons/fi";
+import { FiMail, FiLock, FiCheck } from "react-icons/fi";
 import { useAuthStore } from "../store/auth.store";
 import InputField from "../components/InputField";
 import workManagementAnim from "../assets/workmanagemnt.json";
@@ -52,7 +52,7 @@ const LoginPage = () => {
                             navigate("/worker/verification");
                         }
                     } else if (response.user.role == "CUSTOMER") {
-                        navigate("/customer/dashboard");
+                        navigate("/customer");
                     } else if (response.user.role == "SERVICE_AGENT") {
                         navigate("/serviceAgentDashboard");
                     } else if (response.user.role == "ADMIN") {
@@ -120,7 +120,7 @@ const LoginPage = () => {
                 toast.success("Login successful 🎉"); // ✅ Success toast
                 if (res?.user) {
                     if (res?.user?.role === "CUSTOMER") {
-                        navigate("/customer/dashboard");
+                        navigate("/customer");
                     } else if (res?.user?.role === "WORKER") {
                         navigate("/worker");
                     } else if (res?.user?.role === "SERVICE_AGENT") {

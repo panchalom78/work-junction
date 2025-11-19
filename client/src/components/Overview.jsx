@@ -1,198 +1,344 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { TrendingUp } from 'lucide-react';
-import StatsCard from './StatsCard';
-import QuickAction from './QuickAction';
-import { DollarSign, CheckCircle, Star, Clock, User, Plus } from 'lucide-react';
-import axiosInstance from '../utils/axiosInstance';
+import { useState, useEffect } from "react";
+import {
+    TrendingUp,
+    DollarSign,
+    CheckCircle,
+    Star,
+    Clock,
+    User,
+    Calendar,
+} from "lucide-react";
+import StatsCard from "./StatsCard";
+import axiosInstance from "../utils/axiosInstance";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer,
+    CartesianGrid,
+} from "recharts";
+import { useNavigate } from "react-router-dom";
 
 const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
-  const [workerData, setWorkerData] = useState({
-    name: '',
-    earnings: 0,
-    completedJobs: 0,
-    upcomingJobs: 0,
-    rating: 0,
-    earningsData: []
-  });
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+    const [workerData, setWorkerData] = useState({
+        name: "",
+        earnings: 0,
+        completedJobs: 0,
+        upcomingJobs: 0,
+        rating: 0,
+        earningsData: [],
+        availabilityStatus: "available",
+    });
+    const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axiosInstance("/api/worker/overview"); 
-        const { worker, bookings } = response.data;
-        setWorkerData(worker);
-        setBookings(bookings);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch data');
-        setLoading(false);
-      }
+    useEffect(() => {
+        fetchOverviewData();
+    }, []);
+
+    const fetchOverviewData = async () => {
+        try {
+            setLoading(true);
+            const response = await axiosInstance.get("/api/worker/overview");
+            const { worker, bookings } = response.data.data;
+            setWorkerData(worker);
+            setBookings(bookings);
+            setLoading(false);
+        } catch (err) {
+            console.error("Failed to fetch overview data:", err);
+            setError("Failed to fetch dashboard data");
+            setLoading(false);
+        }
     };
 
-    fetchData();
-  }, []);
+    const getAvailabilityColor = (status) => {
+        switch (status) {
+            case "available":
+                return "text-green-600 bg-green-100";
+            case "busy":
+                return "text-yellow-600 bg-yellow-100";
+            case "off-duty":
+                return "text-red-600 bg-red-100";
+            default:
+                return "text-gray-600 bg-gray-100";
+        }
+    };
 
-  const maxEarning = workerData.earningsData.length > 0 
-    ? Math.max(...workerData.earningsData.map(item => item.amount)) 
-    : 1; // Fallback to 1 to avoid division by zero
+    const getAvailabilityText = (status) => {
+        switch (status) {
+            case "available":
+                return "Available for work";
+            case "busy":
+                return "Currently busy";
+            case "off-duty":
+                return "Off duty";
+            default:
+                return "Available for work";
+        }
+    };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+    const maxEarning =
+        workerData.earningsData.length > 0
+            ? Math.max(...workerData.earningsData.map((item) => item.amount))
+            : 1;
 
-  if (error) {
-    return <div>{error}</div>;
-  }
-
-  return (
-    <div className="space-y-8 p-6" style={{ backgroundColor: 'var(--bg-light)', color: 'var(--text-color)' }}>
-      {/* Welcome Section */}
-      <div className="dashboard-header" style={{ backgroundColor: 'var(--surface-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', padding: '2rem', marginBottom: '1.5rem' }}>
-        <h1 className="dashboard-title" style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--text-color)', margin: '0 0 0.25rem 0', lineHeight: '1.2' }}>Welcome back, {workerData.name}</h1>
-        <p className="dashboard-subtitle" style={{ fontSize: 'var(--font-size-lg)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-regular)', margin: '0' }}>Here's your work overview for today.</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <StatsCard 
-          icon={DollarSign} 
-          label="Total Earnings" 
-          value={`₹${workerData.earnings}`}
-          color="green"
-        />
-        <StatsCard 
-          icon={CheckCircle} 
-          label="Completed Jobs" 
-          value={workerData.completedJobs}
-          color="blue"
-        />
-        <StatsCard 
-          icon={Star} 
-          label="Average Rating" 
-          value={workerData.rating}
-          color="yellow"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Status Card */}
-          <div className="stat-card" style={{ backgroundColor: 'var(--surface-primary)', padding: '1.75rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)', transition: 'all var(--transition-normal)' }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>Status</p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className="w-2 h-2 bg-success-color rounded-full"></div>
-                  <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>Available for work</span>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <div className="text-gray-600">Loading dashboard...</div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>Upcoming Jobs</p>
-                <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--primary-color)' }}>{workerData.upcomingJobs}</p>
-              </div>
             </div>
-          </div>
+        );
+    }
 
-          {/* Earnings Chart */}
-          <div className="chart-container" style={{ backgroundColor: 'var(--surface-primary)', padding: '2rem', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
-            <div className="chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h3 className="chart-title" style={{ fontSize: 'var(--font-size-xl)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--text-color)', margin: '0' }}>Earnings Overview</h3>
-              <TrendingUp className="w-5 h-5 text-success-color" />
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-red-600 text-lg mb-4">{error}</div>
+                    <button
+                        onClick={fetchOverviewData}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
             </div>
-            
-            {workerData.earningsData.length === 0 ? (
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', textAlign: 'center' }}>No earnings data available.</p>
-            ) : (
-              <div className="flex items-end justify-between h-48 mt-8">
-                {workerData.earningsData.map((item, index) => {
-                  const height = (item.amount / maxEarning) * 100;
-                  return (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div className="text-center mb-2">
-                        <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--text-muted)' }}>₹{(item.amount / 1000).toFixed(0)}k</span>
-                      </div>
-                      <div
-                        className="w-8 bg-primary-color rounded-t-lg transition-all duration-300 hover:bg-primary-hover cursor-pointer"
-                        style={{ height: `${height}%` }}
-                      ></div>
-                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{item.month}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        );
+    }
 
-        <div className="space-y-8">
-          {/* Quick Actions */}
-          <div className="card" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
-            <div className="card-header" style={{ padding: '1rem' }}>
-              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', margin: '0' }}>Quick Actions</h3>
+    return (
+        <div className="space-y-8 p-6 bg-gray-50 min-h-screen">
+            {/* Welcome Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    Welcome back, {workerData.name} 👋
+                </h1>
+                <p className="text-gray-600 text-lg">
+                    Here's your work overview for today.
+                </p>
             </div>
-            <div className="card-body" style={{ padding: '1rem' }}>
-              <div className="space-y-3">
-                <QuickAction 
-                  icon={Clock} 
-                  label="Create Emergency Slot" 
-                  onClick={() => onSetActiveTab('availability')}
-                  color="orange"
-                />
-                <QuickAction 
-                  icon={User} 
-                  label="Update Work Profile" 
-                  onClick={() => onSetActiveTab('services')}
-                  color="blue"
-                />
-                <QuickAction 
-                  icon={Plus} 
-                  label="Add New Service" 
-                  onClick={onShowServiceModal}
-                  color="green"
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Recent Bookings */}
-          <div className="card" style={{ backgroundColor: 'var(--surface-primary)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
-            <div className="card-header" style={{ padding: '1rem' }}>
-              <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)', margin: '0' }}>Recent Bookings</h3>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatsCard
+                    icon={DollarSign}
+                    label="Total Earnings"
+                    value={`₹${workerData.earnings?.toLocaleString() || 0}`}
+                    color="green"
+                />
+                <StatsCard
+                    icon={CheckCircle}
+                    label="Completed Jobs"
+                    value={workerData.completedJobs}
+                    color="blue"
+                />
+                <StatsCard
+                    icon={Star}
+                    label="Average Rating"
+                    value={workerData.rating}
+                    color="yellow"
+                />
+                <StatsCard
+                    icon={Clock}
+                    label="Upcoming Jobs"
+                    value={workerData.upcomingJobs}
+                    color="purple"
+                />
             </div>
-            <div className="card-body" style={{ padding: '1rem' }}>
-              <div className="space-y-4">
-                {bookings.length === 0 ? (
-                  <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>No recent bookings available.</p>
-                ) : (
-                  bookings.slice(0, 3).map((booking) => (
-                    <div key={booking.id} className="flex items-start space-x-3 p-3 border border-border-color rounded-lg hover:bg-surface-secondary transition-colors" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-secondary)' }}>
-                      <div className="w-10 h-10 bg-primary-light rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--primary-light)' }}>
-                        <User className="w-5 h-5 text-primary-color" style={{ color: 'var(--primary-color)' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Status Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex items-center justify-between">
-                          <h4 style={{ fontSize: 'var(--font-size-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--primary-color)' }}>{booking.customer}</h4>
-                          <span className={`text-xs px-2 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-success-light text-success-color' : 'bg-warning-light text-warning-color'}`} style={{ backgroundColor: booking.status === 'confirmed' ? 'var(--success-light)' : 'var(--warning-light)', color: booking.status === 'confirmed' ? 'var(--success-color)' : 'var(--warning-color)' }}>
-                            {booking.status === 'confirmed' ? 'Confirmed' : 'Pending'}
-                          </span>
+                            <div>
+                                <p className="text-gray-600 text-sm font-medium">
+                                    Current Status
+                                </p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                    <div
+                                        className={`w-3 h-3 rounded-full ${
+                                            workerData.availabilityStatus ===
+                                            "available"
+                                                ? "bg-green-500"
+                                                : workerData.availabilityStatus ===
+                                                  "busy"
+                                                ? "bg-yellow-500"
+                                                : "bg-red-500"
+                                        }`}
+                                    ></div>
+                                    <span className="text-lg font-semibold text-gray-900">
+                                        {getAvailabilityText(
+                                            workerData.availabilityStatus
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-gray-600 text-sm font-medium">
+                                    Quick Stats
+                                </p>
+                                <div className="flex items-center space-x-4 mt-1">
+                                    <div>
+                                        <p className="text-2xl font-bold text-blue-600">
+                                            {workerData.upcomingJobs}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Upcoming
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-green-600">
+                                            {workerData.completedJobs}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            Completed
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{booking.service}</p>
-                        <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-light)', marginTop: '0.25rem' }}>{booking.date}</p>
-                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    {/* Earnings Chart */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-semibold text-gray-900">
+                                Earnings Overview
+                            </h3>
+                            <TrendingUp className="w-5 h-5 text-green-600" />
+                        </div>
+
+                        {workerData.earningsData.length === 0 ? (
+                            <div className="text-center py-12">
+                                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <p className="text-gray-500">
+                                    No earnings data available yet
+                                </p>
+                                <p className="text-sm text-gray-400 mt-1">
+                                    Complete your first job to see earnings data
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="h-64 mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={workerData.earningsData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip
+                                            formatter={(value) =>
+                                                `₹${value.toLocaleString(
+                                                    "en-IN"
+                                                )}`
+                                            }
+                                        />
+                                        <Bar
+                                            dataKey="amount"
+                                            fill="#2563eb"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-8">
+                    {/* Quick Actions */}
+
+                    {/* Recent Bookings */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+                        <div className="p-6 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Recent Bookings
+                            </h3>
+                        </div>
+                        <div className="p-6">
+                            <div className="space-y-4">
+                                {bookings.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                        <p className="text-gray-500">
+                                            No recent bookings
+                                        </p>
+                                        <p className="text-sm text-gray-400 mt-1">
+                                            Your bookings will appear here
+                                        </p>
+                                    </div>
+                                ) : (
+                                    bookings.map((booking) => (
+                                        <div
+                                            key={booking.id}
+                                            className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                        >
+                                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                                <User className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-base font-semibold text-gray-900 truncate">
+                                                        {booking.customer}
+                                                    </h4>
+                                                    <span
+                                                        className={`text-xs px-2 py-1 rounded-full ${
+                                                            booking.status ===
+                                                                "confirmed" ||
+                                                            booking.status ===
+                                                                "accepted"
+                                                                ? "bg-green-100 text-green-800"
+                                                                : booking.status ===
+                                                                  "completed"
+                                                                ? "bg-blue-100 text-blue-800"
+                                                                : "bg-yellow-100 text-yellow-800"
+                                                        }`}
+                                                    >
+                                                        {booking.status
+                                                            .charAt(0)
+                                                            .toUpperCase() +
+                                                            booking.status.slice(
+                                                                1
+                                                            )}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-600 mt-1 truncate">
+                                                    {booking.service}
+                                                </p>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <p className="text-xs text-gray-500">
+                                                        {booking.date}
+                                                    </p>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        ₹{booking.amount}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            {bookings.length > 0 && (
+                                <button
+                                    onClick={() => navigate("/worker/bookings")}
+                                    className="w-full mt-4 text-center text-blue-600 hover:text-blue-700 font-medium text-sm"
+                                >
+                                    View All Bookings →
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Overview;

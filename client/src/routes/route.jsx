@@ -21,6 +21,12 @@ import Settings from "../components/Settings";
 import CustomerHomePage from "../pages/CustomerHomePage";
 import SearchResultsPage from "../pages/SearchResultsPage";
 import CustomerBookingHostory from "../pages/Customer.bookingHistory";
+import WorkerProfile from "../pages/WorkerProfile";
+import BookingPage from "../pages/BookingPage";
+import CustomerBookings from "../pages/CustomerBookings";
+import WorkerBookings from "../pages/WorkerBookings";
+import CustomerProfile from "../pages/CustomerProfile";
+import CustomerChatPage from "../pages/CustomerChatPage";
 
 const Routers = () => {
     return (
@@ -56,12 +62,10 @@ const Routers = () => {
                         path="/customer/dashboard"
                         element={<CustomerDashboard />}
                     ></Route>
-
                     <Route
                         path="/servicebooking/:id"
                         element={<ServiceBooking />}
                     ></Route>
-
                     {/* Service Agent */}
                     <Route
                         path="/serviceAgentDashboard"
@@ -71,6 +75,7 @@ const Routers = () => {
                         path="/serviceAgentSetup"
                         element={<ServiceAgentSetup />}
                     />
+                    //Worker
                     <Route path="worker" element={<WorkerDashboard />}>
                         <Route index element={<Overview />} />
                         <Route
@@ -78,13 +83,11 @@ const Routers = () => {
                             element={<WorkerServiceManagement />}
                         />
                         <Route
-                            path="bookings"
-                            element={<BookingManagement />}
-                        />
-                        <Route
                             path="availability"
                             element={<AvailabilityManagement />}
                         />
+                        // Add this to your worker routing
+                        <Route path="bookings" element={<WorkerBookings />} />
                         <Route path="settings" element={<Settings />} />
                         <Route path="chat" element={<WorkerChat />} />
                         <Route path="chat/:chatId" element={<WorkerChat />} />
@@ -97,11 +100,25 @@ const Routers = () => {
                         path="/worker/verification"
                         element={<WorkerVerificationPage />}
                     />
+                    //customer
                     <Route path="customer">
                         <Route index element={<CustomerHomePage />} />
                         <Route path="search" element={<SearchResultsPage />} />
+                        // Add this route to your customer routes
+                        <Route
+                            path="worker/profile/:workerId"
+                            element={<WorkerProfile />}
+                        />
+                        <Route
+                            path="booking/:workerId"
+                            element={<BookingPage />}
+                        />
+                        // Add this to your customer routing
+                        <Route path="bookings" element={<CustomerBookings />} />
+                        // In your customer routes
+                        <Route path="profile" element={<CustomerProfile />} />
+                        <Route path="chat" element={<CustomerChatPage />} />
                     </Route>
-
                     <Route
                         path="/customer/booking/history"
                         element={<CustomerBookingHostory />}

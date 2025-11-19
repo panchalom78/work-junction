@@ -1,9 +1,15 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, ChevronRight } from "lucide-react";
+import { useBookingStore } from "../../store/booking.store";
 
-const OngoingBookings = ({ bookings = [] }) => {
+const OngoingBookings = () => {
     const navigate = useNavigate();
+    const { bookings, getCustomerBookings } = useBookingStore();
+
+    useEffect(() => {
+        getCustomerBookings();
+    }, []);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -43,7 +49,7 @@ const OngoingBookings = ({ bookings = [] }) => {
                 </h2>
                 {bookings.length > 0 && (
                     <button
-                        onClick={() => navigate("/bookings")}
+                        onClick={() => navigate("/customer/bookings")}
                         className="text-blue-600 hover:text-blue-700 font-medium flex items-center space-x-2"
                     >
                         <span>View All</span>
@@ -57,11 +63,9 @@ const OngoingBookings = ({ bookings = [] }) => {
                     <div className="space-y-4">
                         {bookings.map((booking) => (
                             <div
-                                key={booking.id}
+                                key={booking._id}
                                 className="flex items-center justify-between p-4 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer"
-                                onClick={() =>
-                                    navigate(`/bookings/${booking.id}`)
-                                }
+                                onClick={() => navigate(`/customer/bookings`)}
                             >
                                 <div className="flex items-center space-x-4">
                                     <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
@@ -69,10 +73,14 @@ const OngoingBookings = ({ bookings = [] }) => {
                                     </div>
                                     <div>
                                         <div className="font-semibold text-gray-900">
-                                            {booking.serviceName}
+                                            {
+                                                booking.workerServiceId.details.split(
+                                                    "."
+                                                )[0]
+                                            }
                                         </div>
                                         <div className="text-gray-600">
-                                            Worker: {booking.workerName}
+                                            Worker: {booking.workerId.name}
                                         </div>
                                         <div className="flex items-center space-x-2 text-sm text-gray-500 mt-1">
                                             <Clock className="w-4 h-4" />
@@ -101,10 +109,11 @@ const OngoingBookings = ({ bookings = [] }) => {
                                     </div>
                                     <div
                                         className={`text-sm font-medium mt-1 ${getPaymentStatusColor(
-                                            booking.paymentStatus
+                                            booking.payment?.status || "Pending"
                                         )}`}
                                     >
-                                        {booking.paymentStatus}
+                                        Payment :{" "}
+                                        {booking?.payment?.status || "Pending"}
                                     </div>
                                 </div>
                             </div>

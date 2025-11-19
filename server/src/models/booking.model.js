@@ -1,10 +1,10 @@
 import mongoose, { Schema } from "mongoose";
+import { type } from "os";
 
 const paymentSchema = new Schema(
     {
         paymentId: {
-            type: Schema.Types.ObjectId,
-            default: () => new mongoose.Types.ObjectId(),
+            type: String,
         },
         amount: { type: Number, required: true, min: 0 },
         status: {
@@ -14,7 +14,7 @@ const paymentSchema = new Schema(
         },
         paymentType: {
             type: String,
-            enum: ["CREDIT_CARD", "DEBIT_CARD", "UPI", "NET_BANKING", "CASH"],
+            enum: ["RAZORPAY", "CASH"],
         },
         transactionId: { type: String },
         transactionDate: { type: Date },
@@ -63,7 +63,14 @@ const bookingSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ["PENDING", "ACCEPTED", "DECLINED", "COMPLETED", "CANCELLED"],
+            enum: [
+                "PENDING",
+                "ACCEPTED",
+                "DECLINED",
+                "PAYMENT_PENDING",
+                "COMPLETED",
+                "CANCELLED",
+            ],
             default: "PENDING",
         },
         bookingDate: { type: Date, required: true },
@@ -75,6 +82,26 @@ const bookingSchema = new Schema(
 
         // Nested Review (only after completion)
         review: reviewSchema,
+
+        serviceInitiated: {
+            type: Boolean,
+            default: false,
+        },
+        serviceInitiatedAt: {
+            type: Date,
+        },
+        serviceOtp: {
+            type: String,
+        },
+        serviceOtpExpires: {
+            type: Date,
+        },
+        serviceStartedAt: {
+            type: Date,
+        },
+        serviceCompletedAt: {
+            type: Date,
+        },
 
         cancellationReason: { type: String, trim: true },
         declineReason: { type: String, trim: true },

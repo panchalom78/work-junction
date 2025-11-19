@@ -153,10 +153,25 @@ const workerProfileSchema = new Schema(
             enum: ["available", "busy", "off-duty"],
             default: "available",
         },
+        skills: [
+            {
+                skillId: { type: Schema.Types.ObjectId, ref: "Skill" },
+            },
+        ],
+        services: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "WorkerService",
+            },
+        ],
         verification: verificationSchema,
         bankDetails: bankDetailsSchema,
         timetable: timetableSchema,
         nonAvailability: [nonAvailabilitySchema],
+        isSuspended : {type : Boolean , default: false } ,
+        createdByAgent: { type: Boolean, default: false },
+        createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+
     },
     { _id: false }
 );

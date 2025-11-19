@@ -1,6 +1,19 @@
-import React, { useState, useEffect } from "react";
-import { User, MapPin, Navigation } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+    User,
+    MapPin,
+    Navigation,
+    Search,
+    Camera,
+    Eye,
+    Edit,
+    X,
+} from "lucide-react";
 import { useAuthStore } from "../store/auth.store";
+
+// Compact translator used across the app (dropdown-friendly)
+import RobustGujaratTranslatorDropdown from "../components/RobustGujaratTranslatorDropdown";
+import RobustGujaratTranslator from "./GujaratTranslator";
 
 const Settings = () => {
     const { user, loading, error, getUser, updateProfile } = useAuthStore();
@@ -22,9 +35,32 @@ const Settings = () => {
         },
     });
 
+    // Loading states
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
+    const [searchTimeout, setSearchTimeout] = useState(null);
+
+    // Verification documents states
+    const [verificationDocs, setVerificationDocs] = useState({
+        selfie: null,
+        aadhar: null,
+        policeVerification: null,
+    });
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [editingSelfie, setEditingSelfie] = useState(false);
+    const [newSelfieFile, setNewSelfieFile] = useState(null);
+    const [uploadingSelfie, setUploadingSelfie] = useState(false);
+
+    // Autocomplete states
+    const [searchQuery, setSearchQuery] = useState("");
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+    const searchInputRef = useRef(null);
+    const suggestionsRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // Initialize form data when user data is loaded
     useEffect(() => {
@@ -45,6 +81,17 @@ const Settings = () => {
                     },
                 },
             });
+
+            // Load verification documents if user is a worker
+            if (user.role === "WORKER" && user.workerProfile?.verification) {
+                const verification = user.workerProfile.verification;
+                setVerificationDocs({
+                    selfie: verification.selfieUrl || null,
+                    aadhar: verification.addharDocUrl || null,
+                    policeVerification:
+                        verification.policeVerificationDocUrl || null,
+                });
+            }
         }
     }, [user]);
 
@@ -52,6 +99,25 @@ const Settings = () => {
     useEffect(() => {
         getUser();
     }, [getUser]);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                suggestionsRef.current &&
+                !suggestionsRef.current.contains(event.target) &&
+                searchInputRef.current &&
+                !searchInputRef.current.contains(event.target)
+            ) {
+                setShowSuggestions(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     const handleInputChange = (field, value) => {
         if (field.startsWith("address.")) {
@@ -82,6 +148,80 @@ const Settings = () => {
         }
     };
 
+    // Handle selfie file selection
+    const handleSelfieChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith("image/")) {
+                alert("Please select an image file");
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert("File size should be less than 5MB");
+                return;
+            }
+
+            setNewSelfieFile(file);
+        }
+    };
+
+    // Upload new selfie
+    const uploadSelfie = async () => {
+        if (!newSelfieFile) return;
+
+        setUploadingSelfie(true);
+        try {
+            const form = new FormData();
+            form.append("selfie", newSelfieFile);
+
+            const response = await fetch(
+                "/api/worker/verification/upload-selfie",
+                {
+                    method: "POST",
+                    body: form,
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to upload selfie");
+            }
+
+            const result = await response.json();
+
+            // Update local state
+            setVerificationDocs((prev) => ({
+                ...prev,
+                selfie: result.data.selfieUrl,
+            }));
+
+            setEditingSelfie(false);
+            setNewSelfieFile(null);
+            setSuccessMessage("Selfie updated successfully!");
+            setTimeout(() => setSuccessMessage(""), 3000);
+
+            // Refresh user data
+            getUser();
+        } catch (err) {
+            console.error("Error uploading selfie:", err);
+            alert("Failed to upload selfie. Please try again.");
+        } finally {
+            setUploadingSelfie(false);
+        }
+    };
+
+    // Cancel selfie editing
+    const cancelSelfieEdit = () => {
+        setEditingSelfie(false);
+        setNewSelfieFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
+    // LocationIQ Reverse Geocoding
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
             alert("Geolocation is not supported by this browser.");
@@ -107,35 +247,53 @@ const Settings = () => {
                         },
                     }));
 
-                    // Reverse geocoding to get address details
+                    // LocationIQ Reverse Geocoding
+                    const API_KEY = import.meta.env.VITE_LOCATION_API_KEY;
                     const response = await fetch(
-                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                        `https://us1.locationiq.com/v1/reverse.php?key=${API_KEY}&lat=${latitude}&lon=${longitude}&format=json&accept-language=en`
                     );
+
+                    if (!response.ok) {
+                        throw new Error(
+                            `HTTP error! status: ${response.status}`
+                        );
+                    }
+
                     const data = await response.json();
 
                     if (data.address) {
+                        const address = data.address;
                         setFormData((prev) => ({
                             ...prev,
                             address: {
                                 ...prev.address,
                                 houseNo:
-                                    data.address.house_number ||
+                                    address.house_number ||
+                                    address.house_name ||
                                     prev.address.houseNo,
                                 street:
-                                    data.address.road || prev.address.street,
+                                    address.road ||
+                                    address.footway ||
+                                    prev.address.street,
                                 area:
-                                    data.address.suburb ||
-                                    data.address.neighbourhood ||
+                                    address.suburb ||
+                                    address.neighbourhood ||
+                                    address.city_district ||
+                                    address.county ||
                                     prev.address.area,
                                 city:
-                                    data.address.city ||
-                                    data.address.town ||
-                                    data.address.village ||
+                                    address.city ||
+                                    address.town ||
+                                    address.village ||
+                                    address.municipality ||
+                                    address.state_district ||
                                     prev.address.city,
-                                state: data.address.state || prev.address.state,
+                                state:
+                                    address.state ||
+                                    address.region ||
+                                    prev.address.state,
                                 pincode:
-                                    data.address.postcode ||
-                                    prev.address.pincode,
+                                    address.postcode || prev.address.pincode,
                             },
                         }));
                     }
@@ -178,6 +336,95 @@ const Settings = () => {
                 maximumAge: 60000,
             }
         );
+    };
+
+    // LocationIQ Autocomplete Search
+    const searchAddress = async (query) => {
+        if (!query.trim() || query.length < 3) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        setIsLoadingSuggestions(true);
+        try {
+            const API_KEY = import.meta.env.VITE_LOCATION_API_KEY;
+            const response = await fetch(
+                `https://us1.locationiq.com/v1/autocomplete?key=${API_KEY}&q=${encodeURIComponent(
+                    query
+                )}&format=json&limit=10&bounded=1&&viewbox=68.1756585,20.1195321,74.4764325,24.7118932`
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            setSuggestions(data);
+            setShowSuggestions(true);
+        } catch (error) {
+            console.error("Error fetching address suggestions:", error);
+            setSuggestions([]);
+        } finally {
+            setIsLoadingSuggestions(false);
+        }
+    };
+
+    const handleSearchChange = (e) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Set new timeout
+        const timeout = setTimeout(() => {
+            searchAddress(query);
+        }, 500);
+
+        setSearchTimeout(timeout);
+    };
+
+    const handleSuggestionSelect = (suggestion) => {
+        const { lat, lon, display_name, address } = suggestion;
+
+        setFormData((prev) => ({
+            ...prev,
+            address: {
+                ...prev.address,
+                houseNo:
+                    address.house_number ||
+                    address.house_name ||
+                    prev.address.houseNo,
+                street: address.road || address.footway || "",
+                area:
+                    address.name ||
+                    address.suburb ||
+                    address.neighbourhood ||
+                    address.city_district ||
+                    "",
+                city:
+                    address.city ||
+                    address.town ||
+                    address.village ||
+                    address.municipality ||
+                    address.county ||
+                    "",
+                state: address.state || address.region || "",
+                pincode: address.postcode || "",
+                coordinates: {
+                    latitude: lat || "",
+                    longitude: lon || "",
+                },
+            },
+        }));
+
+        setSearchQuery(display_name);
+        setShowSuggestions(false);
+        setSuccessMessage("Address selected successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
 
     const handleSubmit = async (e) => {
@@ -241,27 +488,6 @@ const Settings = () => {
         }
     };
 
-    const SettingSection = ({ title, icon: Icon, children, description }) => (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                    <Icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900 m-0">
-                        {title}
-                    </h3>
-                    {description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                            {description}
-                        </p>
-                    )}
-                </div>
-            </div>
-            {children}
-        </div>
-    );
-
     if (loading && !user) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -272,13 +498,20 @@ const Settings = () => {
 
     return (
         <div className="space-y-6 p-4">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                    Profile Settings
-                </h2>
-                <p className="text-base text-gray-600">
-                    Manage your personal information and address
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                        Profile Settings
+                    </h2>
+                    <p className="text-base text-gray-600">
+                        Manage your personal information and address
+                    </p>
+                </div>
+
+                {/* Compact translator placed in header (top-right) */}
+                <div className="ml-4 w-40 hidden sm:block">
+                    <RobustGujaratTranslator />
+                </div>
             </div>
 
             {/* Error and Success Messages */}
@@ -298,11 +531,20 @@ const Settings = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="space-y-6">
                         {/* Personal Information */}
-                        <SettingSection
-                            title="Personal Information"
-                            icon={User}
-                            description="Update your basic personal details"
-                        >
+                        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <div className="p-2 bg-blue-100 rounded-lg">
+                                    <User className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 m-0">
+                                        Personal Information
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        Update your basic personal details
+                                    </p>
+                                </div>
+                            </div>
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -347,21 +589,214 @@ const Settings = () => {
                                     </p>
                                 </div>
                             </div>
-                        </SettingSection>
+                        </div>
+
+                        {/* Worker Verification Documents Section */}
+                        {user?.role === "WORKER" && (
+                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-green-100 rounded-lg">
+                                            <Camera className="w-5 h-5 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-900 m-0">
+                                                Verification Documents
+                                            </h3>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                Manage your verification
+                                                documents
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowVerificationModal(true)
+                                        }
+                                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        <span>View Documents</span>
+                                    </button>
+                                </div>
+
+                                {/* Selfie Section with Edit Option */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Selfie Photo
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setEditingSelfie(true)
+                                            }
+                                            className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                        >
+                                            <Edit className="w-3 h-3" />
+                                            <span>Edit</span>
+                                        </button>
+                                    </div>
+
+                                    {editingSelfie ? (
+                                        <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                                            <div className="flex items-center space-x-3">
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={
+                                                        handleSelfieChange
+                                                    }
+                                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={cancelSelfieEdit}
+                                                    className="p-2 text-gray-500 hover:text-gray-700"
+                                                >
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                            {newSelfieFile && (
+                                                <div className="flex items-center space-x-3">
+                                                    <span className="text-sm text-gray-600">
+                                                        Selected:{" "}
+                                                        {newSelfieFile.name}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={uploadSelfie}
+                                                        disabled={
+                                                            uploadingSelfie
+                                                        }
+                                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {uploadingSelfie
+                                                            ? "Uploading..."
+                                                            : "Upload"}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center space-x-3">
+                                            {verificationDocs.selfie ? (
+                                                <div className="flex items-center space-x-3">
+                                                    <img
+                                                        src={
+                                                            verificationDocs.selfie
+                                                        }
+                                                        alt="Selfie"
+                                                        className="w-16 h-16 rounded-lg object-cover border border-gray-300"
+                                                    />
+                                                    <span className="text-sm text-green-600 font-medium">
+                                                        Selfie uploaded
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-500">
+                                                    No selfie uploaded
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <p className="text-xs text-gray-500">
+                                        Upload a clear selfie photo for
+                                        verification purposes
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-6">
                         {/* Address Information */}
-                        <SettingSection
-                            title="Address Information"
-                            icon={MapPin}
-                            description="Update your current address and location"
-                        >
+                        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                            <div className="flex items-center space-x-3 mb-4">
+                                <div className="p-2 bg-blue-100 rounded-lg">
+                                    <MapPin className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 m-0">
+                                        Address Information
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        Update your current address and location
+                                    </p>
+                                </div>
+                            </div>
                             <div className="space-y-4">
+                                {/* Address Search Autocomplete */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Search Address
+                                    </label>
+                                    <div
+                                        className="relative"
+                                        ref={searchInputRef}
+                                    >
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={handleSearchChange}
+                                                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                placeholder="Search for your address..."
+                                            />
+                                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                        </div>
+
+                                        {/* Suggestions Dropdown */}
+                                        {showSuggestions && (
+                                            <div
+                                                ref={suggestionsRef}
+                                                className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                                            >
+                                                {isLoadingSuggestions ? (
+                                                    <div className="p-3 text-center text-gray-500">
+                                                        Loading suggestions...
+                                                    </div>
+                                                ) : suggestions.length > 0 ? (
+                                                    suggestions.map(
+                                                        (suggestion, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                                                onClick={() =>
+                                                                    handleSuggestionSelect(
+                                                                        suggestion
+                                                                    )
+                                                                }
+                                                            >
+                                                                <div className="font-medium text-sm text-gray-900">
+                                                                    {
+                                                                        suggestion.display_name
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    )
+                                                ) : (
+                                                    <div className="p-3 text-center text-gray-500">
+                                                        No addresses found
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Start typing to search for your address
+                                        (minimum 3 characters)
+                                    </p>
+                                </div>
+
                                 {/* Get Location Button */}
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-sm font-medium text-gray-700">
-                                        Use current location
+                                        Or use current location
                                     </span>
                                     <button
                                         type="button"
@@ -533,7 +968,7 @@ const Settings = () => {
                                     </div>
                                 </div>
                             </div>
-                        </SettingSection>
+                        </div>
                     </div>
                 </div>
 
@@ -548,6 +983,174 @@ const Settings = () => {
                     </button>
                 </div>
             </form>
+
+            {/* Verification Documents Modal */}
+            {showVerificationModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    Verification Documents
+                                </h3>
+                                <button
+                                    onClick={() =>
+                                        setShowVerificationModal(false)
+                                    }
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Selfie Document */}
+                                <div>
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                                        Selfie Photo
+                                    </h4>
+                                    {verificationDocs.selfie ? (
+                                        <div className="flex flex-col items-center space-y-3">
+                                            <img
+                                                src={verificationDocs.selfie}
+                                                alt="Selfie"
+                                                className="w-48 h-48 rounded-lg object-cover border border-gray-300"
+                                            />
+                                            <button
+                                                onClick={() =>
+                                                    setEditingSelfie(true)
+                                                }
+                                                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                                <span>Change Selfie</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                                            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                            <p className="text-gray-500 mb-3">
+                                                No selfie uploaded
+                                            </p>
+                                            <button
+                                                onClick={() =>
+                                                    setEditingSelfie(true)
+                                                }
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                Upload Selfie
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Aadhar Document */}
+                                <div>
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                                        Aadhar Document
+                                    </h4>
+                                    {verificationDocs.aadhar ? (
+                                        <div className="flex flex-col items-center space-y-3">
+                                            {verificationDocs.aadhar.endsWith(
+                                                ".pdf"
+                                            ) ? (
+                                                <div className="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                            <span className="text-red-600 font-bold text-sm">
+                                                                PDF
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600">
+                                                            Aadhar Document
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={
+                                                        verificationDocs.aadhar
+                                                    }
+                                                    alt="Aadhar"
+                                                    className="w-48 h-48 rounded-lg object-cover border border-gray-300"
+                                                />
+                                            )}
+                                            <a
+                                                href={verificationDocs.aadhar}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                                View Full Document
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                                            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                            <p className="text-gray-500">
+                                                No Aadhar document uploaded
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Police Verification Document */}
+                                <div>
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                                        Police Verification Document
+                                    </h4>
+                                    {verificationDocs.policeVerification ? (
+                                        <div className="flex flex-col items-center space-y-3">
+                                            {verificationDocs.policeVerification.endsWith(
+                                                ".pdf"
+                                            ) ? (
+                                                <div className="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                            <span className="text-blue-600 font-bold text-sm">
+                                                                PDF
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600">
+                                                            Police Verification
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={
+                                                        verificationDocs.policeVerification
+                                                    }
+                                                    alt="Police Verification"
+                                                    className="w-48 h-48 rounded-lg object-cover border border-gray-300"
+                                                />
+                                            )}
+                                            <a
+                                                href={
+                                                    verificationDocs.policeVerification
+                                                }
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                                View Full Document
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                                            <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                            <p className="text-gray-500">
+                                                No police verification document
+                                                uploaded
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

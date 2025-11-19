@@ -117,18 +117,26 @@ const SearchResults = ({ results, filters, onBackToSearch }) => {
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-4">
                                     <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg">
-                                        {worker.name
-                                            .split(" ")
+                                        {worker.workerName
+                                            ?.split(" ")
                                             .map((n) => n[0])
-                                            .join("")}
+                                            .join("") || "W"}
                                     </div>
                                     <div>
+                                        {/* Updated worker name */}
                                         <div className="font-semibold text-gray-900 text-lg">
-                                            {worker.name}
+                                            {worker.workerName ||
+                                                "Unknown Worker"}
                                         </div>
                                         <div className="flex items-center space-x-2 text-sm text-gray-600 mt-1">
                                             <MapPin className="w-4 h-4" />
-                                            <span>{worker.distance}</span>
+                                            {/* Updated address */}
+                                            <span>
+                                                {worker.workerAddress?.city ||
+                                                    worker.workerAddress
+                                                        ?.area ||
+                                                    "Location not specified"}
+                                            </span>
                                             <span>•</span>
                                             <span>
                                                 {worker.experience} experience
@@ -146,16 +154,18 @@ const SearchResults = ({ results, filters, onBackToSearch }) => {
                                     <div className="text-sm text-gray-600">
                                         Service
                                     </div>
+                                    {/* Updated service name */}
                                     <div className="font-semibold text-gray-900">
-                                        {worker.service}
+                                        {worker.serviceName || "Service"}
                                     </div>
                                 </div>
                                 <div>
                                     <div className="text-sm text-gray-600">
                                         Skill
                                     </div>
+                                    {/* Updated skill name */}
                                     <div className="font-semibold text-gray-900">
-                                        {worker.skill}
+                                        {worker.skillName || "Skill"}
                                     </div>
                                 </div>
                                 <div>
@@ -180,8 +190,11 @@ const SearchResults = ({ results, filters, onBackToSearch }) => {
                                 <div className="flex items-center space-x-2">
                                     <div className="flex items-center space-x-1">
                                         <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                                        {/* Updated rating */}
                                         <span className="font-semibold text-gray-900">
-                                            {worker.rating}
+                                            {worker.avgRating
+                                                ? worker.avgRating.toFixed(1)
+                                                : "New"}
                                         </span>
                                     </div>
                                     <span className="text-gray-500 text-sm">

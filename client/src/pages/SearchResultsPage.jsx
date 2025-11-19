@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import SearchBar from "../components/customer/SearchBar";
 import { useWorkerSearchStore } from "../store/workerSearch.store";
+import ChatInitiateButton from "../components/ChatInitiateButton";
 
 const SearchResultsPage = () => {
     const navigate = useNavigate();
@@ -71,7 +72,7 @@ const SearchResultsPage = () => {
     };
 
     const handleBookNow = (workerId) => {
-        navigate(`/booking/${workerId}`);
+        navigate(`/customer/worker/profile/${workerId}`);
     };
 
     const handleMessage = (workerId) => {
@@ -240,8 +241,9 @@ const SearchResultsPage = () => {
                                                 Service
                                             </div>
                                             <div className="font-semibold text-gray-900">
-                                                {worker.serviceName ||
-                                                    "Service"}
+                                                {String(
+                                                    worker.serviceName
+                                                ).split(".")[0] || "Service"}
                                             </div>
                                         </div>
                                         <div>
@@ -309,30 +311,15 @@ const SearchResultsPage = () => {
                                             onClick={() =>
                                                 handleBookNow(worker.workerId)
                                             }
-                                            disabled={
-                                                worker.availabilityStatus ===
-                                                "off-duty"
-                                            }
-                                            className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 ${
-                                                worker.availabilityStatus !==
-                                                "off-duty"
-                                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
-                                                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                            }`}
+                                            className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 ${"bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"}`}
                                         >
-                                            {worker.availabilityStatus !==
-                                            "off-duty"
-                                                ? "Book Now"
-                                                : "Not Available"}
+                                            Show Profile
                                         </button>
-                                        <button
-                                            onClick={() =>
-                                                handleMessage(worker.workerId)
-                                            }
-                                            className="w-12 h-12 border border-gray-300 rounded-2xl flex items-center justify-center hover:border-blue-600 hover:text-blue-600 transition-colors"
-                                        >
-                                            <MessageCircle className="w-5 h-5" />
-                                        </button>
+                                        <ChatInitiateButton
+                                            workerId={worker._id}
+                                            workerName={worker.workerName}
+                                            className="py-3 rounded-2xl font-semibold transition-all duration-300 px-2 hover:shadow-lg text-sm"
+                                        />
                                     </div>
                                 </div>
                             ))}

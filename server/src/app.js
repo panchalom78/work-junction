@@ -13,14 +13,20 @@ import workerVerificationRoutes from "./routes/worker-verification.route.js";
 import workerRoutes from "./routes/worker.route.js";
 import adminRoutes from "./routes/admin.route.js";
 
-
 import skillRoutes from "./routes/skill.route.js";
 import serviceAgentRoutes from "./routes/serviceAgent.route.js";
 import workerServiceRoutes from "./routes/worker-service.route.js";
 import workerScheduleRoutes from "./routes/worker-schedule.route.js";
-import bookingRoutes from "./routes/booking.route.js";
+import paymentRoutes from "./routes/payment.route.js";
+import workerPaymentRoutes from "./routes/workerPayment.routes.js";
+
+// import bookingRoutes from "./routes/booking.route.js";
+import bookingRoutes from "./routes/customer-booking.route.js";
+// import bookingRoutes from "./routes/booking.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import workerSearchRoutes from "./routes/workerSearch.routes.js";
+import agentDashboardRoutes from "./routes/agentDashboard.route.js";
+// import workerSearchRoutes from "./routes/workerSearch.routes.js";
 
 const app = express();
 
@@ -51,7 +57,8 @@ app.use((req, res, next) => {
 });
 
 // Database connection
-const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/work-junction";
+const mongoUri =
+    process.env.MONGODB_URI || "mongodb://localhost:27017/work-junction";
 connect(mongoUri)
     .then(() => console.log("MongoDB connected successfully"))
     .catch((err) => console.error("MongoDB connection error:", err));
@@ -62,9 +69,7 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/worker/verification", workerVerificationRoutes);
 app.use("/api/worker", workerRoutes);
 
-
 app.use("/api/admin", adminRoutes);
-
 
 app.use("/api/skill", skillRoutes);
 app.use("/api/customer", customerRoutes);
@@ -72,9 +77,13 @@ app.use("/api/skills", skillRoutes);
 app.use("/api/service-agent", serviceAgentRoutes);
 app.use("/api/worker/services", workerServiceRoutes);
 app.use("/api/workers", workerScheduleRoutes);
+// app.use("/api/bookings", bookingRoutes);
+app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
+app.use("/api/service-agent/dashboard", agentDashboardRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Health check route
 app.get("/health", (req, res) => {
@@ -110,5 +119,3 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
 });
-
-export default app;

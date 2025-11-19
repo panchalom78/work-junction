@@ -636,7 +636,7 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
                             {services.map((service) => (
                                 <div
                                     key={service._id}
@@ -658,7 +658,7 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
 
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    <label className="block text-md font-medium text-gray-700 mb-1">
                                                         Description
                                                     </label>
                                                     <textarea
@@ -675,7 +675,7 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                                                                 })
                                                             )
                                                         }
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                        className="w-full px-3 py-2 border text-2xl border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                         rows="3"
                                                         placeholder="Describe your service..."
                                                     />
@@ -735,30 +735,6 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                                                             </option>
                                                         </select>
                                                     </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Duration
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={
-                                                            editForm.estimatedDuration
-                                                        }
-                                                        onChange={(e) =>
-                                                            setEditForm(
-                                                                (prev) => ({
-                                                                    ...prev,
-                                                                    estimatedDuration:
-                                                                        e.target
-                                                                            .value,
-                                                                })
-                                                            )
-                                                        }
-                                                        placeholder="e.g., 2 hours"
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                    />
                                                 </div>
 
                                                 {/* Portfolio Images Section */}
@@ -914,7 +890,7 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                                                         savingServiceId ===
                                                         service._id
                                                     }
-                                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-xl"
                                                 >
                                                     {savingServiceId ===
                                                     service._id ? (
@@ -986,7 +962,7 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                                                 </div>
                                             </div>
 
-                                            <p className="text-gray-600 text-sm mb-3 line-clamp-3">
+                                            <p className="text-gray-600 text-xl mb-3 line-clamp-3">
                                                 {service.details}
                                             </p>
 

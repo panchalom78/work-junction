@@ -1,12 +1,86 @@
 import { WorkerService } from "../models/workerService.model.js";
 import { Skill } from "../models/skill.model.js";
-import { Booking } from "../models/booking.model.js";
+import User from "../models/user.model.js";
 import mongoose from "mongoose";
 
+const calculateWorkerRating = (bookings) => {
+    const completedBookingsWithReviews = bookings.filter(
+        (booking) => booking.status === "COMPLETED" && booking.review
+    );
+
+    if (completedBookingsWithReviews.length === 0)
+        return { avgRating: 0, totalRatings: 0 };
+
+    const totalRating = completedBookingsWithReviews.reduce(
+        (sum, booking) => sum + booking.review.rating,
+        0
+    );
+
+    return {
+        avgRating: totalRating / completedBookingsWithReviews.length,
+        totalRatings: completedBookingsWithReviews.length,
+    };
+};
 /**
- * Controller to search workers based on various filters
+ * Helper function to parse and validate numeric filters
  */
-export const searchWorkers = async (req, res) => {
+
+/**
+ * @route GET /api/workers/filters
+ * @description Get available filters for search
+ * @access Public
+ */
+export const getSearchFilters = async (req, res) => {
+    try {
+        // Get all skills with their services
+        const skills = await Skill.find({}).select("name services");
+
+        // Get price range from worker services
+        const priceStats = await WorkerService.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    minPrice: { $min: "$price" },
+                    maxPrice: { $max: "$price" },
+                },
+            },
+        ]);
+
+        const priceRange =
+            priceStats.length > 0
+                ? {
+                      minPrice: priceStats[0].minPrice || 0,
+                      maxPrice: priceStats[0].maxPrice || 10000,
+                  }
+                : { minPrice: 0, maxPrice: 10000 };
+
+        res.status(200).json({
+            success: true,
+            filters: {
+                skills,
+                priceRange,
+                ratingRange: {
+                    minRating: 0,
+                    maxRating: 5,
+                },
+            },
+        });
+    } catch (error) {
+        console.error("Get Filters Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to retrieve search filters",
+            error: error.message,
+        });
+    }
+};
+
+/**
+ * @route GET /api/workers/search
+ * @description Search for workers based on various filters and sorting options.
+ * @access Public
+ */
+export const getWorkerSearchResults = async (req, res) => {
     try {
         const {
             skill,
@@ -17,693 +91,520 @@ export const searchWorkers = async (req, res) => {
             maxRating,
             location,
             workerName,
-            workerPhone,
             sortBy = "relevance",
             page = 1,
             limit = 10,
         } = req.query;
 
-        // Build filter object
-        const filters = {};
-        const userFilters = { role: "WORKER", isVerified: true };
-        const workerServiceFilters = { isActive: true };
+        const limitInt = parseInt(limit);
+        const skip = (parseInt(page) - 1) * limitInt;
 
-        // Skill and Service Filter
-        if (skill || service) {
-            const skillFilter = {};
-
-            if (skill) {
-                // Find skill by name
-                const skillDoc = await Skill.findOne({
-                    name: new RegExp(skill, "i"),
-                });
-                if (skillDoc) {
-                    skillFilter.skillId = skillDoc._id;
-
-                    // Service filter within the skill
-                    if (service) {
-                        const serviceInSkill = skillDoc.services.find((s) =>
-                            s.name.toLowerCase().includes(service.toLowerCase())
-                        );
-                        if (serviceInSkill) {
-                            skillFilter.serviceId = serviceInSkill.serviceId;
-                        } else {
-                            // If service not found in skill, return empty results
-                            return res.status(200).json({
-                                success: true,
-                                data: [],
-                                pagination: {
-                                    page: parseInt(page),
-                                    limit: parseInt(limit),
-                                    total: 0,
-                                    pages: 0,
-                                },
-                            });
-                        }
-                    }
-                } else {
-                    // If skill not found, return empty results
-                    return res.status(200).json({
-                        success: true,
-                        data: [],
-                        pagination: {
-                            page: parseInt(page),
-                            limit: parseInt(limit),
-                            total: 0,
-                            pages: 0,
-                        },
-                    });
+        // --- 1. WorkerService Filtering (Skill, Service, Price) ---
+        let targetServiceId = null;
+        if (skill && service) {
+            const skillDoc = await Skill.findOne({ name: skill });
+            if (skillDoc) {
+                const serviceObj = skillDoc.services.find(
+                    (s) => s.name === service
+                );
+                if (serviceObj) {
+                    targetServiceId = serviceObj.serviceId;
                 }
             }
-
-            Object.assign(workerServiceFilters, skillFilter);
         }
 
-        // Price Range Filter
-        if (minPrice || maxPrice) {
-            workerServiceFilters.price = {};
-            if (minPrice)
-                workerServiceFilters.price.$gte = parseFloat(minPrice);
-            if (maxPrice)
-                workerServiceFilters.price.$lte = parseFloat(maxPrice);
+        const workerServiceMatch = {};
+        if (targetServiceId) {
+            workerServiceMatch.serviceId = targetServiceId;
+        } else if (skill) {
+            const skillDoc = await Skill.findOne({ name: skill });
+            if (skillDoc) {
+                workerServiceMatch.skillId = skillDoc._id;
+            }
         }
 
-        // Location Filter
+        const parsedMinPrice = parseNumberFilter(minPrice, 0, 100000);
+        const parsedMaxPrice = parseNumberFilter(maxPrice, 0, 100000);
+        if (parsedMinPrice !== undefined || parsedMaxPrice !== undefined) {
+            workerServiceMatch.price = {};
+            if (parsedMinPrice !== undefined) {
+                workerServiceMatch.price.$gte = parsedMinPrice;
+            }
+            if (parsedMaxPrice !== undefined) {
+                workerServiceMatch.price.$lte = parsedMaxPrice;
+            }
+        }
+
+        // --- 2. User/Worker Filtering ---
+        const userMatch = {
+            role: "WORKER",
+            "workerProfile.verification.status": "APPROVED",
+        };
+
+        if (workerName) {
+            userMatch.name = { $regex: workerName, $options: "i" };
+        }
+
         if (location) {
             const locationRegex = new RegExp(location, "i");
-            userFilters.$or = [
+            userMatch.$or = [
                 { "address.city": locationRegex },
                 { "address.area": locationRegex },
                 { "address.street": locationRegex },
-                { "address.pincode": locationRegex },
             ];
         }
 
-        // Worker Name Filter
-        if (workerName) {
-            userFilters.name = new RegExp(workerName, "i");
-        }
+        // --- 3. Rating Filter Setup ---
+        const parsedMinRating = parseNumberFilter(minRating, 0, 5);
+        const parsedMaxRating = parseNumberFilter(maxRating, 0, 5);
 
-        // Worker Phone Filter (rate-limited on frontend)
-        if (workerPhone) {
-            userFilters.phone = new RegExp(workerPhone, "i");
-        }
+        // --- 3. Aggregation Pipeline ---
+        const pipeline = [];
 
-        // Worker Verification Status Filter
-        userFilters["workerProfile.verification.status"] = "APPROVED";
+        // Stage 1: Filter Users
+        pipeline.push({ $match: userMatch });
 
-        // Get pagination parameters
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-        const skip = (pageNum - 1) * limitNum;
+        // Stage 2: Join with WorkerServices
+        pipeline.push({
+            $lookup: {
+                from: "worker_services",
+                localField: "_id",
+                foreignField: "workerId",
+                as: "workerServices",
+                pipeline: [{ $match: workerServiceMatch }],
+            },
+        });
 
-        // Build aggregation pipeline
-        const aggregationPipeline = [
-            // Match worker services with filters
-            {
-                $match: workerServiceFilters,
+        // Stage 3: Ensure matching services exist
+        pipeline.push({
+            $match: {
+                "workerServices.0": { $exists: true },
             },
-            // Lookup worker details
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "workerId",
-                    foreignField: "_id",
-                    as: "worker",
-                },
+        });
+
+        // Stage 4: Join with bookings for rating calculation
+        pipeline.push({
+            $lookup: {
+                from: "bookings",
+                localField: "_id",
+                foreignField: "workerId",
+                as: "bookings",
             },
-            // Unwind worker array
-            {
-                $unwind: "$worker",
+        });
+
+        // Stage 5: Join with skills for skill names
+        pipeline.push({
+            $lookup: {
+                from: "skills",
+                localField: "workerServices.skillId",
+                foreignField: "_id",
+                as: "skillDetails",
             },
-            // Match worker filters
-            {
-                $match: userFilters,
-            },
-            // Lookup skill details
-            {
-                $lookup: {
-                    from: "skills",
-                    localField: "skillId",
-                    foreignField: "_id",
-                    as: "skill",
-                },
-            },
-            // Unwind skill array
-            {
-                $unwind: "$skill",
-            },
-            // Lookup service details from skill services array
-            {
-                $addFields: {
-                    serviceDetails: {
-                        $arrayElemAt: [
-                            {
+        });
+
+        // Stage 6: Add calculated fields
+        pipeline.push({
+            $addFields: {
+                minServicePrice: { $min: "$workerServices.price" },
+                maxServicePrice: { $max: "$workerServices.price" },
+                primaryService: { $arrayElemAt: ["$workerServices", 0] },
+                primarySkill: { $arrayElemAt: ["$skillDetails", 0] },
+                // Calculate ratings
+                ratingInfo: {
+                    $let: {
+                        vars: {
+                            completedBookings: {
                                 $filter: {
-                                    input: "$skill.services",
-                                    as: "service",
-                                    cond: {
-                                        $eq: [
-                                            "$$service.serviceId",
-                                            "$serviceId",
-                                        ],
-                                    },
-                                },
-                            },
-                            0,
-                        ],
-                    },
-                },
-            },
-            // Lookup completed bookings with reviews for this worker
-            {
-                $lookup: {
-                    from: "bookings",
-                    let: { workerId: "$workerId" },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$workerId", "$$workerId"] },
-                                status: "COMPLETED",
-                                "review.rating": { $exists: true, $ne: null },
-                            },
-                        },
-                        {
-                            $project: {
-                                "review.rating": 1,
-                                "review.comment": 1,
-                                "review.reviewedAt": 1,
-                            },
-                        },
-                    ],
-                    as: "completedBookingsWithReviews",
-                },
-            },
-            // Calculate average rating and total ratings from completed bookings
-            {
-                $addFields: {
-                    avgRating: {
-                        $cond: {
-                            if: {
-                                $gt: [
-                                    { $size: "$completedBookingsWithReviews" },
-                                    0,
-                                ],
-                            },
-                            then: {
-                                $avg: "$completedBookingsWithReviews.review.rating",
-                            },
-                            else: 0,
-                        },
-                    },
-                    totalRatings: { $size: "$completedBookingsWithReviews" },
-                    // Get recent reviews for display
-                    recentReviews: {
-                        $slice: [
-                            {
-                                $filter: {
-                                    input: "$completedBookingsWithReviews",
+                                    input: "$bookings",
                                     as: "booking",
-                                    cond: { $ne: ["$$booking.review", null] },
+                                    cond: {
+                                        $and: [
+                                            {
+                                                $eq: [
+                                                    "$$booking.status",
+                                                    "COMPLETED",
+                                                ],
+                                            },
+                                            { $ne: ["$$booking.review", null] },
+                                        ],
+                                    },
                                 },
                             },
-                            5, // Limit to 5 recent reviews
-                        ],
-                    },
-                },
-            },
-            // Apply rating filter if provided
-            {
-                $match: {
-                    $and: [
-                        minRating
-                            ? { avgRating: { $gte: parseFloat(minRating) } }
-                            : {},
-                        maxRating
-                            ? { avgRating: { $lte: parseFloat(maxRating) } }
-                            : {},
-                    ],
-                },
-            },
-            // Add distance calculation if coordinates are available
-            {
-                $addFields: {
-                    distance: {
-                        $cond: {
-                            if: {
-                                $and: [
-                                    {
-                                        $ne: [
-                                            "$worker.address.coordinates",
-                                            null,
+                        },
+                        in: {
+                            avgRating: {
+                                $cond: {
+                                    if: {
+                                        $gt: [
+                                            { $size: "$$completedBookings" },
+                                            0,
                                         ],
                                     },
-                                    {
-                                        $ne: [
-                                            "$worker.address.coordinates.latitude",
-                                            "",
-                                        ],
-                                    },
-                                    {
-                                        $ne: [
-                                            "$worker.address.coordinates.longitude",
-                                            "",
-                                        ],
-                                    },
-                                ],
-                            },
-                            then: {
-                                // This is a simplified distance calculation
-                                // For production, use proper geospatial queries
-                                $multiply: [
-                                    {
-                                        $sqrt: {
-                                            $add: [
-                                                {
-                                                    $pow: [
-                                                        {
-                                                            $subtract: [
-                                                                "$worker.address.coordinates.latitude",
-                                                                0,
-                                                            ],
-                                                        },
-                                                        2,
-                                                    ],
-                                                },
-                                                {
-                                                    $pow: [
-                                                        {
-                                                            $subtract: [
-                                                                "$worker.address.coordinates.longitude",
-                                                                0,
-                                                            ],
-                                                        },
-                                                        2,
-                                                    ],
-                                                },
-                                            ],
+                                    then: {
+                                        $avg: {
+                                            $map: {
+                                                input: "$$completedBookings",
+                                                as: "booking",
+                                                in: "$$booking.review.rating",
+                                            },
                                         },
                                     },
-                                    111.32, // Approximate km per degree
-                                ],
+                                    else: 0,
+                                },
                             },
-                            else: null,
+                            totalRatings: { $size: "$$completedBookings" },
+                        },
+                    },
+                },
+                // Add total jobs done calculation
+                totalJobsDone: {
+                    $size: {
+                        $filter: {
+                            input: "$bookings",
+                            as: "booking",
+                            cond: {
+                                $eq: ["$$booking.status", "COMPLETED"],
+                            },
                         },
                     },
                 },
             },
-            // Project final fields
-            {
-                $project: {
-                    _id: 1,
-                    workerId: "$worker._id",
-                    workerName: "$worker.name",
-                    workerPhone: "$worker.phone",
-                    workerEmail: "$worker.email",
-                    workerAddress: "$worker.address",
-                    skillName: "$skill.name",
-                    serviceName: "$serviceDetails.name",
-                    serviceId: "$serviceId",
-                    details: 1,
-                    pricingType: 1,
-                    price: 1,
-                    portfolioImages: 1,
-                    avgRating: { $ifNull: ["$avgRating", 0] },
-                    totalRatings: { $ifNull: ["$totalRatings", 0] },
-                    recentReviews: 1,
-                    distance: { $ifNull: ["$distance", null] },
-                    availabilityStatus:
-                        "$worker.workerProfile.availabilityStatus",
-                    isVerified: "$worker.workerProfile.verification.status",
-                    experience: "$worker.workerProfile.experience",
-                    responseTime: "$worker.workerProfile.responseTime",
-                },
-            },
-            // Sort results
-            {
-                $sort: getSortCriteria(sortBy),
-            },
-            // Pagination
-            {
-                $facet: {
-                    metadata: [
-                        { $count: "total" },
-                        {
-                            $addFields: {
-                                page: pageNum,
-                                limit: limitNum,
-                                pages: {
-                                    $ceil: { $divide: ["$total", limitNum] },
-                                },
-                            },
-                        },
-                    ],
-                    data: [{ $skip: skip }, { $limit: limitNum }],
-                },
-            },
-        ];
-
-        // Execute aggregation
-        const results = await WorkerService.aggregate(aggregationPipeline);
-
-        // Format response
-        const response = {
-            success: true,
-            data: results[0].data,
-            pagination: results[0].metadata[0]
-                ? {
-                      page: results[0].metadata[0].page,
-                      limit: results[0].metadata[0].limit,
-                      total: results[0].metadata[0].total,
-                      pages: results[0].metadata[0].pages,
-                  }
-                : {
-                      page: pageNum,
-                      limit: limitNum,
-                      total: 0,
-                      pages: 0,
-                  },
-        };
-
-        res.status(200).json(response);
-    } catch (error) {
-        console.error("Search workers error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            error: error.message,
         });
-    }
-};
 
-/**
- * Helper function to determine sort criteria
- */
-const getSortCriteria = (sortBy) => {
-    switch (sortBy) {
-        case "rating":
-            return { avgRating: -1, totalRatings: -1 };
-        case "price":
-            return { price: 1 };
-        case "distance":
-            return { distance: 1 };
-        case "relevance":
-        default:
-            return {
-                avgRating: -1,
-                totalRatings: -1,
+        // Stage 7: Apply Rating Filter
+        const ratingMatch = {};
+        if (parsedMinRating !== undefined || parsedMaxRating !== undefined) {
+            ratingMatch.$and = [];
+
+            if (parsedMinRating !== undefined) {
+                ratingMatch.$and.push({
+                    "ratingInfo.avgRating": { $gte: parsedMinRating },
+                });
+            }
+
+            if (parsedMaxRating !== undefined) {
+                ratingMatch.$and.push({
+                    "ratingInfo.avgRating": { $lte: parsedMaxRating },
+                });
+            }
+
+            // Handle cases where workers have no ratings (avgRating = 0)
+            if (parsedMinRating !== undefined && parsedMinRating > 0) {
+                // If minRating > 0, we need to ensure they have at least some ratings
+                ratingMatch.$and.push({
+                    "ratingInfo.totalRatings": { $gt: 0 },
+                });
+            }
+        }
+
+        // Only push rating match if we have rating filters
+        if (Object.keys(ratingMatch).length > 0) {
+            pipeline.push({ $match: ratingMatch });
+        }
+
+        // Stage 8: Add fields for frontend compatibility
+        pipeline.push({
+            $addFields: {
+                workerId: "$_id",
+                workerName: "$name",
+                workerPhone: "$phone",
+                workerAddress: "$address",
+                serviceName: "$primaryService.details",
+                skillName: "$primarySkill.name",
+                price: "$minServicePrice",
+                pricingType: "$primaryService.pricingType",
+                isVerified: {
+                    $eq: ["$workerProfile.verification.status", "APPROVED"],
+                },
+                availabilityStatus: "$workerProfile.availabilityStatus",
+                avgRating: "$ratingInfo.avgRating",
+                totalRatings: "$ratingInfo.totalRatings",
+                totalJobsDone: 1, // Include totalJobsDone in the final output
+                experience: "Available",
+            },
+        });
+
+        // Stage 9: Sorting
+        let sortCriteria = {};
+        switch (sortBy) {
+            case "rating":
+                sortCriteria = {
+                    "ratingInfo.avgRating": -1,
+                    "ratingInfo.totalRatings": -1,
+                };
+                break;
+            case "price":
+                sortCriteria = { minServicePrice: 1 };
+                break;
+            case "distance":
+                // For now, using createdAt. You'll need to implement actual distance calculation
+                sortCriteria = { createdAt: -1 };
+                break;
+            case "relevance":
+            default:
+                sortCriteria = {
+                    "ratingInfo.avgRating": -1,
+                    "ratingInfo.totalRatings": -1,
+                    createdAt: -1,
+                };
+                break;
+        }
+        pipeline.push({ $sort: sortCriteria });
+
+        // Stage 10: Total count (before pagination)
+        const countPipeline = [...pipeline];
+        countPipeline.push({ $count: "total" });
+        const totalResult = await User.aggregate(countPipeline);
+        const totalWorkers = totalResult.length > 0 ? totalResult[0].total : 0;
+
+        // Stage 11 & 12: Pagination
+        pipeline.push({ $skip: skip });
+        pipeline.push({ $limit: limitInt });
+
+        // Stage 13: Project final fields
+        pipeline.push({
+            $project: {
+                _id: 1,
+                workerId: 1,
+                workerName: 1,
+                workerPhone: 1,
+                workerAddress: 1,
+                serviceName: 1,
+                skillName: 1,
+                price: 1,
+                pricingType: 1,
+                isVerified: 1,
                 availabilityStatus: 1,
-            };
-    }
-};
-
-/**
- * Controller to get available skills and services for filters
- */
-export const getSearchFilters = async (req, res) => {
-    try {
-        // Get all skills with their services
-        const skills = await Skill.find({})
-            .select("name services")
-            .sort({ name: 1 });
-
-        // Get price ranges from worker services
-        const priceStats = await WorkerService.aggregate([
-            { $match: { isActive: true } },
-            {
-                $group: {
-                    _id: null,
-                    minPrice: { $min: "$price" },
-                    maxPrice: { $max: "$price" },
-                },
+                avgRating: 1,
+                totalRatings: 1,
+                totalJobsDone: 1, // Include in final projection
+                experience: 1,
+                minServicePrice: 1,
+                maxServicePrice: 1,
+                workerServices: 1,
+                createdAt: 1,
+                ratingInfo: 1,
             },
-        ]);
+        });
 
-        // Get rating statistics from completed bookings
-        const ratingStats = await Booking.aggregate([
-            {
-                $match: {
-                    status: "COMPLETED",
-                    "review.rating": { $exists: true, $ne: null },
-                },
-            },
-            {
-                $group: {
-                    _id: "$workerId",
-                    avgRating: { $avg: "$review.rating" },
-                },
-            },
-            {
-                $group: {
-                    _id: null,
-                    minRating: { $min: "$avgRating" },
-                    maxRating: { $max: "$avgRating" },
-                },
-            },
-        ]);
+        const workers = await User.aggregate(pipeline);
 
-        const response = {
+        res.status(200).json({
             success: true,
-            data: {
-                skills,
-                priceRange: priceStats[0] || { minPrice: 0, maxPrice: 10000 },
-                ratingRange: ratingStats[0] || { minRating: 0, maxRating: 5 },
-            },
-        };
-
-        res.status(200).json(response);
+            total: totalWorkers,
+            page: parseInt(page),
+            limit: limitInt,
+            results: workers,
+        });
     } catch (error) {
-        console.error("Get search filters error:", error);
+        console.error("Worker Search Error:", error);
         res.status(500).json({
             success: false,
-            message: "Internal server error",
+            message: "Failed to retrieve worker search results.",
             error: error.message,
         });
     }
 };
 
+// Helper function to parse number filters
+function parseNumberFilter(value, min, max) {
+    if (!value) return undefined;
+
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) return undefined;
+
+    // Clamp the value between min and max
+    return Math.max(min, Math.min(max, parsed));
+}
 /**
- * Controller to get worker details for profile page with reviews
+ * @route GET /api/workers/profile/:workerId
+ * @description Get complete worker profile with portfolio, services, and stats
+ * @access Public
  */
 export const getWorkerProfile = async (req, res) => {
     try {
         const { workerId } = req.params;
 
-        const workerProfile = await WorkerService.aggregate([
+        if (!mongoose.Types.ObjectId.isValid(workerId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid worker ID",
+            });
+        }
+
+        const worker = await User.aggregate([
             {
                 $match: {
-                    workerId: new mongoose.Types.ObjectId(workerId),
-                    isActive: true,
+                    _id: new mongoose.Types.ObjectId(workerId),
+                    role: "WORKER",
                 },
             },
             {
                 $lookup: {
-                    from: "users",
-                    localField: "workerId",
-                    foreignField: "_id",
-                    as: "worker",
+                    from: "worker_services",
+                    localField: "_id",
+                    foreignField: "workerId",
+                    as: "services",
                 },
             },
             {
-                $unwind: "$worker",
+                $lookup: {
+                    from: "bookings",
+                    localField: "_id",
+                    foreignField: "workerId",
+                    as: "bookings",
+                },
             },
             {
                 $lookup: {
                     from: "skills",
-                    localField: "skillId",
+                    localField: "services.skillId",
                     foreignField: "_id",
-                    as: "skill",
+                    as: "skills",
                 },
             },
             {
-                $unwind: "$skill",
-            },
-            {
                 $addFields: {
-                    serviceDetails: {
-                        $arrayElemAt: [
-                            {
+                    // Calculate ratings and stats
+                    ratingStats: {
+                        avgRating: {
+                            $ifNull: [
+                                {
+                                    $avg: {
+                                        $map: {
+                                            input: {
+                                                $filter: {
+                                                    input: "$bookings",
+                                                    as: "booking",
+                                                    cond: {
+                                                        $and: [
+                                                            {
+                                                                $eq: [
+                                                                    "$$booking.status",
+                                                                    "COMPLETED",
+                                                                ],
+                                                            },
+                                                            {
+                                                                $ne: [
+                                                                    "$$booking.review",
+                                                                    null,
+                                                                ],
+                                                            },
+                                                        ],
+                                                    },
+                                                },
+                                            },
+                                            as: "booking",
+                                            in: "$$booking.review.rating",
+                                        },
+                                    },
+                                },
+                                0,
+                            ],
+                        },
+                        totalRatings: {
+                            $size: {
                                 $filter: {
-                                    input: "$skill.services",
-                                    as: "service",
+                                    input: "$bookings",
+                                    as: "booking",
                                     cond: {
-                                        $eq: [
-                                            "$$service.serviceId",
-                                            "$serviceId",
+                                        $and: [
+                                            {
+                                                $eq: [
+                                                    "$$booking.status",
+                                                    "COMPLETED",
+                                                ],
+                                            },
+                                            { $ne: ["$$booking.review", null] },
                                         ],
                                     },
                                 },
                             },
-                            0,
-                        ],
-                    },
-                },
-            },
-            // Get all reviews for this worker from completed bookings
-            {
-                $lookup: {
-                    from: "bookings",
-                    let: { workerId: "$workerId" },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: { $eq: ["$workerId", "$$workerId"] },
-                                status: "COMPLETED",
-                                "review.rating": { $exists: true, $ne: null },
+                        },
+                        ratingDistribution: {
+                            $map: {
+                                input: [5, 4, 3, 2, 1],
+                                as: "star",
+                                in: {
+                                    stars: "$$star",
+                                    count: {
+                                        $size: {
+                                            $filter: {
+                                                input: "$bookings",
+                                                as: "booking",
+                                                cond: {
+                                                    $and: [
+                                                        {
+                                                            $eq: [
+                                                                "$$booking.status",
+                                                                "COMPLETED",
+                                                            ],
+                                                        },
+                                                        {
+                                                            $ne: [
+                                                                "$$booking.review",
+                                                                null,
+                                                            ],
+                                                        },
+                                                        {
+                                                            $eq: [
+                                                                "$$booking.review.rating",
+                                                                "$$star",
+                                                            ],
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
                             },
-                        },
-                        {
-                            $lookup: {
-                                from: "users",
-                                localField: "customerId",
-                                foreignField: "_id",
-                                as: "customer",
-                            },
-                        },
-                        {
-                            $unwind: "$customer",
-                        },
-                        {
-                            $project: {
-                                "review.rating": 1,
-                                "review.comment": 1,
-                                "review.reviewedAt": 1,
-                                "customer.name": 1,
-                                "customer._id": 1,
-                                bookingDate: 1,
-                            },
-                        },
-                        {
-                            $sort: { "review.reviewedAt": -1 },
-                        },
-                    ],
-                    as: "allReviews",
-                },
-            },
-            // Calculate rating statistics
-            {
-                $addFields: {
-                    avgRating: {
-                        $cond: {
-                            if: { $gt: [{ $size: "$allReviews" }, 0] },
-                            then: {
-                                $avg: "$allReviews.review.rating",
-                            },
-                            else: 0,
                         },
                     },
-                    totalRatings: { $size: "$allReviews" },
-                    ratingBreakdown: {
-                        $cond: {
-                            if: { $gt: [{ $size: "$allReviews" }, 0] },
-                            then: {
-                                5: {
-                                    $size: {
-                                        $filter: {
-                                            input: "$allReviews",
-                                            as: "review",
-                                            cond: {
-                                                $eq: [
-                                                    "$$review.review.rating",
-                                                    5,
-                                                ],
-                                            },
-                                        },
-                                    },
-                                },
-                                4: {
-                                    $size: {
-                                        $filter: {
-                                            input: "$allReviews",
-                                            as: "review",
-                                            cond: {
-                                                $eq: [
-                                                    "$$review.review.rating",
-                                                    4,
-                                                ],
-                                            },
-                                        },
-                                    },
-                                },
-                                3: {
-                                    $size: {
-                                        $filter: {
-                                            input: "$allReviews",
-                                            as: "review",
-                                            cond: {
-                                                $eq: [
-                                                    "$$review.review.rating",
-                                                    3,
-                                                ],
-                                            },
-                                        },
-                                    },
-                                },
-                                2: {
-                                    $size: {
-                                        $filter: {
-                                            input: "$allReviews",
-                                            as: "review",
-                                            cond: {
-                                                $eq: [
-                                                    "$$review.review.rating",
-                                                    2,
-                                                ],
-                                            },
-                                        },
-                                    },
-                                },
-                                1: {
-                                    $size: {
-                                        $filter: {
-                                            input: "$allReviews",
-                                            as: "review",
-                                            cond: {
-                                                $eq: [
-                                                    "$$review.review.rating",
-                                                    1,
-                                                ],
-                                            },
-                                        },
-                                    },
+                    totalCompletedJobs: {
+                        $size: {
+                            $filter: {
+                                input: "$bookings",
+                                as: "booking",
+                                cond: {
+                                    $eq: ["$$booking.status", "COMPLETED"],
                                 },
                             },
-                            else: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
                         },
                     },
-                },
-            },
-            // Group by worker to combine all services
-            {
-                $group: {
-                    _id: "$workerId",
-                    worker: { $first: "$worker" },
-                    services: {
-                        $push: {
-                            serviceId: "$serviceId",
-                            serviceName: "$serviceDetails.name",
-                            skillName: "$skill.name",
-                            details: "$details",
-                            pricingType: "$pricingType",
-                            price: "$price",
-                            portfolioImages: "$portfolioImages",
+                    totalEarnings: {
+                        $sum: {
+                            $map: {
+                                input: {
+                                    $filter: {
+                                        input: "$bookings",
+                                        as: "booking",
+                                        cond: {
+                                            $eq: [
+                                                "$$booking.status",
+                                                "COMPLETED",
+                                            ],
+                                        },
+                                    },
+                                },
+                                as: "booking",
+                                in: "$$booking.price",
+                            },
                         },
                     },
-                    avgRating: { $first: "$avgRating" },
-                    totalRatings: { $first: "$totalRatings" },
-                    ratingBreakdown: { $first: "$ratingBreakdown" },
-                    allReviews: { $first: "$allReviews" },
                 },
             },
             {
                 $project: {
-                    "worker.password": 0,
-                    "worker.otp": 0,
+                    password: 0,
+                    otp: 0,
+                    "workerProfile.bankDetails": 0,
+                    bookings: 0, // Remove full bookings array to reduce payload
                 },
             },
         ]);
 
-        if (!workerProfile || workerProfile.length === 0) {
+        if (!worker || worker.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: "Worker not found",
@@ -712,103 +613,13 @@ export const getWorkerProfile = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data: workerProfile[0],
+            data: worker[0],
         });
     } catch (error) {
-        console.error("Get worker profile error:", error);
+        console.error("Get Worker Profile Error:", error);
         res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: error.message,
-        });
-    }
-};
-
-/**
- * Controller to get worker reviews with pagination
- */
-export const getWorkerReviews = async (req, res) => {
-    try {
-        const { workerId } = req.params;
-        const { page = 1, limit = 10 } = req.query;
-
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-        const skip = (pageNum - 1) * limitNum;
-
-        const reviews = await Booking.aggregate([
-            {
-                $match: {
-                    workerId: new mongoose.Types.ObjectId(workerId),
-                    status: "COMPLETED",
-                    "review.rating": { $exists: true, $ne: null },
-                },
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "customerId",
-                    foreignField: "_id",
-                    as: "customer",
-                },
-            },
-            {
-                $unwind: "$customer",
-            },
-            {
-                $project: {
-                    rating: "$review.rating",
-                    comment: "$review.comment",
-                    reviewedAt: "$review.reviewedAt",
-                    customerName: "$customer.name",
-                    customerId: "$customer._id",
-                    bookingDate: 1,
-                },
-            },
-            {
-                $sort: { reviewedAt: -1 },
-            },
-            {
-                $facet: {
-                    metadata: [
-                        { $count: "total" },
-                        {
-                            $addFields: {
-                                page: pageNum,
-                                limit: limitNum,
-                                pages: {
-                                    $ceil: { $divide: ["$total", limitNum] },
-                                },
-                            },
-                        },
-                    ],
-                    data: [{ $skip: skip }, { $limit: limitNum }],
-                },
-            },
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: reviews[0].data,
-            pagination: reviews[0].metadata[0]
-                ? {
-                      page: reviews[0].metadata[0].page,
-                      limit: reviews[0].metadata[0].limit,
-                      total: reviews[0].metadata[0].total,
-                      pages: reviews[0].metadata[0].pages,
-                  }
-                : {
-                      page: pageNum,
-                      limit: limitNum,
-                      total: 0,
-                      pages: 0,
-                  },
-        });
-    } catch (error) {
-        console.error("Get worker reviews error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
+            message: "Failed to retrieve worker profile",
             error: error.message,
         });
     }

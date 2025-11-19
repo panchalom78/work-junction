@@ -14,9 +14,13 @@ import {
     Star,
     Shield,
     MessageCircle,
+    UserRoundPen,
+    House,
 } from "lucide-react";
 
 import { useAuthStore } from "../store/auth.store";
+import toast from "react-hot-toast";
+import RobustGujaratTranslator from "./GujaratTranslator";
 
 const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
     const location = useLocation();
@@ -26,7 +30,7 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
         {
             id: "overview",
             name: "Overview",
-            icon: User,
+            icon: House,
             badge: null,
             path: "/worker",
         },
@@ -59,8 +63,8 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
         },
         {
             id: "settings",
-            name: "Settings",
-            icon: Settings,
+            name: "Profile",
+            icon: UserRoundPen,
             badge: null,
             path: "/worker/settings",
         },
@@ -87,7 +91,7 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
     const blueLight = "rgba(37, 99, 235, 0.1)";
     const purpleLight = "rgba(124, 58, 237, 0.1)";
 
-    const { user } = useAuthStore();
+    const { user, logout, message, error } = useAuthStore();
     const userStats = {
         name: user?.name || "Aarav",
         status: "verified",
@@ -215,6 +219,8 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
                                 </button>
                             );
                         })}
+
+                        <RobustGujaratTranslator />
                     </div>
                 </div>
 
@@ -246,24 +252,27 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
                                 <p className="text-sm font-semibold text-gray-900 truncate">
                                     {userStats.name}
                                 </p>
-                                <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
+                                {/* <div className="flex items-center space-x-1 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
                                     <Star className="w-3 h-3 text-yellow-500 fill-current" />
                                     <span className="text-xs font-semibold text-yellow-700">
                                         {userStats.rating}
                                     </span>
-                                </div>
+                                </div> */}
                             </div>
-                            <p className="text-xs text-gray-500 mb-1">
-                                {userStats.role}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                                {userStats.completedJobs}+ jobs completed
-                            </p>
                         </div>
 
                         <button
                             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg 
                              transition-all duration-200"
+                            onClick={async () => {
+                                const res = await logout();
+                                if (res.success) {
+                                    toast.success("Logged out successfully");
+                                    navigate("/login");
+                                } else {
+                                    toast.error(error);
+                                }
+                            }}
                         >
                             <LogOut className="w-4 h-4" />
                         </button>
@@ -393,46 +402,11 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
                                                 {item.name}
                                             </span>
                                         </div>
-
-                                        <div className="flex items-center space-x-2">
-                                            {item.badge && (
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                        item.badge === "New"
-                                                            ? "bg-green-100 text-green-700 border border-green-200"
-                                                            : "bg-blue-100 text-blue-700 border border-blue-200"
-                                                    }`}
-                                                >
-                                                    {item.badge}
-                                                </span>
-                                            )}
-                                            {active && (
-                                                <ChevronRight className="w-4 h-4 text-blue-600" />
-                                            )}
-                                        </div>
                                     </button>
                                 );
                             })}
 
                             {/* Mobile User Info */}
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                                <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 rounded-xl">
-                                    <div
-                                        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
-                                        style={{ background: primaryGradient }}
-                                    >
-                                        <User className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-gray-900">
-                                            {userStats.name}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {userStats.role}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
