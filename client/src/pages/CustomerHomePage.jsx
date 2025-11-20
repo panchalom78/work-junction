@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Bell,
@@ -179,7 +179,9 @@ const CustomerHomePage = () => {
                                         <span>Logout</span>
                                     </button>
                                     <div className="px-2">
-                                        <RobustGujaratTranslator />
+                                        <Suspense fallback={null}>
+                                            <RobustGujaratTranslator />
+                                        </Suspense>
                                     </div>
                                 </div>
                             </div>

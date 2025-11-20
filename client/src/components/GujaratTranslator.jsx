@@ -197,15 +197,15 @@ const RobustGujaratTranslator = () => {
     return (
         <div className="w-full max-w-sm mx-auto">
             <div className="relative">
+                <p>Language : </p>
                 <select
                     value={currentLanguage}
                     onChange={(e) => onChange(e.target.value)}
-                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 py-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                     {gujaratLanguages.map((language) => (
                         <option key={language.code} value={language.code}>
-                            {getFlagEmoji(language.code)} {language.nativeName}{" "}
-                            - {language.name}
+                            {language.name}
                         </option>
                     ))}
                 </select>
@@ -255,7 +255,7 @@ const RobustGujaratTranslator = () => {
             </div>
 
             {/* hidden container for google widget */}
-            <div id="google_translate_element" className="hidden" />
+            <div id="google_translate_element" className="sr-only" />
         </div>
     );
 };

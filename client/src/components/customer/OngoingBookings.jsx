@@ -61,7 +61,7 @@ const OngoingBookings = () => {
             <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
                 {bookings.length > 0 ? (
                     <div className="space-y-4">
-                        {bookings.map((booking) => (
+                        {bookings.slice(0, 5).map((booking) => (
                             <div
                                 key={booking._id}
                                 className="flex items-center justify-between p-4 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer"

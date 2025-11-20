@@ -45,7 +45,6 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
             id: "bookings",
             name: "Bookings",
             icon: Calendar,
-            badge: "3",
             path: "/worker/bookings",
         },
         {
