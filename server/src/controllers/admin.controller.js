@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 import { Booking } from "../models/booking.model.js";
 import { successResponse, errorResponse } from "../utils/response.js";
-
+import { Parser } from "json2csv";
 
 // Admin Dashboard Stats
 export const getDashboardStats = async (req, res) => {
@@ -185,6 +185,87 @@ export const getVerificationQueue = async (req, res) => {
     } catch (error) {
         console.error("Error fetching verification queue:", error);
         return errorResponse(res, 500, "Failed to fetch verification queue");
+    }
+};
+
+// Export verification queue as CSV
+export const exportVerificationCSV = async (req, res) => {
+    try {
+        const { priority, search, status = "PENDING" } = req.query;
+
+        const filter = {
+            role: "WORKER",
+            "workerProfile.verification.status": status
+        };
+
+        if (priority && priority !== "ALL") {
+            filter["workerProfile.verification.priority"] = priority.toUpperCase();
+        }
+
+        if (search) {
+            filter.$or = [
+                { name: { $regex: search, $options: "i" } },
+                { phone: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        const workers = await User.find(filter)
+            .sort({ "workerProfile.verification.createdAt": -1 })
+            .select("name phone email workerProfile createdAt");
+
+        const csvRows = workers.map((worker) => {
+            const verification = worker.workerProfile?.verification || {};
+            return {
+                "Worker ID": worker._id?.toString(),
+                Name: worker.name,
+                Phone: worker.phone,
+                Email: worker.email,
+                Service: "General Worker",
+                Priority: verification.priority || "MEDIUM",
+                Status: verification.status || "PENDING",
+                "Submitted Date": new Date(
+                    verification.createdAt || worker.createdAt
+                ).toLocaleString(),
+                "Selfie Verified": verification.isSelfieVerified ? "Yes" : "No",
+                "Aadhar Verified": verification.isAddharDocVerified ? "Yes" : "No",
+                "Police Verification": verification.isPoliceVerificationDocVerified ? "Yes" : "No",
+                "Selfie URL": verification.selfieUrl || "Not Provided",
+                "Aadhar URL": verification.addharDocUrl || "Not Provided",
+                "Police Verification URL": verification.policeVerificationDocUrl || "Not Provided"
+            };
+        });
+
+        const fields = [
+            { label: "Worker ID", value: "Worker ID" },
+            { label: "Name", value: "Name" },
+            { label: "Phone", value: "Phone" },
+            { label: "Email", value: "Email" },
+            { label: "Service", value: "Service" },
+            { label: "Priority", value: "Priority" },
+            { label: "Status", value: "Status" },
+            { label: "Submitted Date", value: "Submitted Date" },
+            { label: "Selfie Verified", value: "Selfie Verified" },
+            { label: "Aadhar Verified", value: "Aadhar Verified" },
+            { label: "Police Verification", value: "Police Verification" },
+            { label: "Selfie URL", value: "Selfie URL" },
+            { label: "Aadhar URL", value: "Aadhar URL" },
+            { label: "Police Verification URL", value: "Police Verification URL" }
+        ];
+
+        const parser = new Parser({ fields });
+        const csv = parser.parse(csvRows);
+
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=worker-verifications-${Date.now()}.csv`
+        );
+
+        return res.status(200).send(csv);
+    } catch (error) {
+        console.error("Error exporting verification queue:", error);
+        return errorResponse(res, 500, "Error exporting data to CSV");
     }
 };
 

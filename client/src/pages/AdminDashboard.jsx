@@ -18,12 +18,31 @@ import AdminBookings from '../components/admin/AdminBookings';
 import AdminPayments from '../components/admin/AdminPayments';
 import AdminServiceAgents from '../components/admin/AdminServiceAgents';
 import AdminReports from '../components/admin/AdminReports';
+import AdminSettings from '../components/admin/AdminSettings'
 
 const AdminDashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { getUser, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  // Handle responsive sidebar and mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Authentication check
   useEffect(() => {
@@ -77,28 +96,49 @@ const AdminDashboard = () => {
       case 'reports':
         return <AdminReports />;
       case 'settings':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <Settings className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600">Settings component will be implemented here</p>
-            </div>
-          </div>
-        );
+        return <AdminSettings />;
       default:
         return <AdminOverview />;
     }
   };
 
+  // Navigation items
+  const navItems = [
+    { id: 'overview', label: 'Overview', icon: BarChart3 },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'verification', label: 'Verification', icon: Shield },
+    { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'payments', label: 'Payments', icon: DollarSign },
+    { id: 'agents', label: 'Service Agents', icon: MapPin },
+    { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ];
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+    toast.success('Logged out successfully');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <Toaster
-        position="top-right"
+        position={isMobile ? "top-center" : "top-right"}
         toastOptions={{
           duration: 4000,
           style: {
             background: '#363636',
             color: '#fff',
+            fontSize: isMobile ? '14px' : '16px',
+            margin: isMobile ? '8px' : '0',
+            maxWidth: isMobile ? '90vw' : '400px',
           },
           success: {
             duration: 3000,
@@ -116,52 +156,69 @@ const AdminDashboard = () => {
           },
         }}
       />
+      
       {/* Top Navigation */}
-      <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
-        <div className="px-6 py-4">
+      <nav className="fixed w-full z-50 bg-white/95 backdrop-blur-lg border-b border-gray-200">
+        <div className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            {/* Left Section */}
+            <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Toggle sidebar"
               >
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {sidebarOpen ? (
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
               </button>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-white" />
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Admin Dashboard
+                <span className="text-base sm:text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {isMobile ? 'Admin' : 'Admin Dashboard'}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            {/* Right Section */}
+            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
+              {/* Notifications */}
               <div className="relative">
-                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                <button 
+                  className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                 </button>
               </div>
 
+              {/* User Menu */}
               <div className="relative">
                 <div className="relative group">
-                  <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-white" />
+                  <button 
+                    className="flex items-center space-x-1 sm:space-x-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    aria-label="User menu"
+                  >
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <User className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                     </div>
-                    <span className="font-medium">Admin</span>
-                    <ChevronDown className="w-4 h-4" />
+                    {!isMobile && (
+                      <>
+                        <span className="font-medium text-sm sm:text-base">Admin</span>
+                        <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                      </>
+                    )}
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  {/* Dropdown Menu */}
+                  <div className="absolute right-0 mt-2 w-36 sm:w-44 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                     <button
-                      onClick={async () => {
-                        await logout();
-                        navigate('/login');
-                        toast.success('Logged out successfully');
-                      }}
-                      className="w-full flex items-center space-x-2 px-4 py-2 text-left hover:bg-gray-50 transition-colors text-red-600"
+                      onClick={handleLogout}
+                      className="w-full flex items-center space-x-2 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors text-red-600 text-sm"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Logout</span>
@@ -174,62 +231,118 @@ const AdminDashboard = () => {
         </div>
       </nav>
 
-      <div className="flex pt-16">
+      {/* Main Layout */}
+      <div className="flex pt-12 sm:pt-14 lg:pt-16">
         {/* Sidebar */}
         {sidebarOpen && (
-          <div className="w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 min-h-screen fixed h-full">
-            <div className="p-6 space-y-8">
+          <div className={`fixed lg:relative inset-y-0 left-0 z-40 lg:z-auto 
+            ${isMobile ? 'w-full' : 'w-64'} 
+            bg-white/95 lg:bg-white/80 backdrop-blur-lg lg:backdrop-blur-lg 
+            border-r border-gray-200 min-h-screen`}
+          >
+            <div className="p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 lg:space-y-8">
+              {/* Close button for mobile */}
+              {isMobile && (
+                <div className="flex justify-end lg:hidden">
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    aria-label="Close sidebar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
               {/* Navigation Menu */}
-              <div className="space-y-2">
-                {[
-                  { id: 'overview', label: 'Overview', icon: BarChart3 },
-                  { id: 'users', label: 'User Management', icon: Users },
-                  { id: 'verification', label: 'Verification', icon: Shield },
-                  { id: 'bookings', label: 'Bookings', icon: Calendar },
-                  { id: 'payments', label: 'Payments', icon: DollarSign },
-                  { id: 'agents', label: 'Service Agents', icon: MapPin },
-                  { id: 'reports', label: 'Reports', icon: FileText },
-                  { id: 'settings', label: 'Settings', icon: Settings }
-                ].map((item) => (
+              <div className="space-y-1 sm:space-y-2">
+                {navItems.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${activeTab === item.id
-                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600 border border-blue-100'
-                      : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 text-sm sm:text-base ${
+                      activeTab === item.id
+                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600 border border-blue-100 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
                   >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <item.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                    <span className="font-medium text-left">{item.label}</span>
                   </button>
                 ))}
               </div>
 
-              {/* Quick Stats */}
-              <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Quick Stats</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Verified Today</span>
-                    <span className="font-semibold text-green-600">24</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Pending Actions</span>
-                    <span className="font-semibold text-orange-600">8</span>
-                  </div>
-                </div>
-              </div>
+              {/* Quick Stats Section - Hidden on mobile for better space utilization */}
+             
             </div>
           </div>
         )}
 
         {/* Main Content */}
-        <div className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-0'} transition-all duration-300`}>
-          <div className="p-6">
-            {renderActiveComponent()}
+        <div 
+          className={` transition-all duration-300 min-h-screen ${
+            sidebarOpen ? '' : 'ml-0'
+          }`}
+        >
+          <div className="p-3 sm:p-4 lg:p-6">
+            {/* Mobile Header for Current Section */}
+            {isMobile && (
+              <div className="mb-4 p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+                <h1 className="text-lg font-semibold text-gray-800">
+                  {navItems.find(item => item.id === activeTab)?.label || 'Overview'}
+                </h1>
+              </div>
+            )}
+            
+            {/* Active Component */}
+            <div className={isMobile ? 'space-y-4' : 'space-y-6'}>
+              {renderActiveComponent()}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && isMobile && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation - Alternative for better mobile experience */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 lg:hidden">
+          <div className="flex overflow-x-auto py-2 px-1">
+            {navItems.slice(0, 4).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex flex-col items-center p-2 min-w-16 rounded-lg transition-colors flex-1 mx-1 ${
+                  activeTab === item.id
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <item.icon className="w-4 h-4 mb-1" />
+                <span className="text-xs font-medium truncate max-w-full">
+                  {item.label.split(' ')[0]}
+                </span>
+              </button>
+            ))}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex flex-col items-center p-2 min-w-16 rounded-lg transition-colors flex-1 mx-1 text-gray-600 hover:text-gray-900"
+            >
+              <Menu className="w-4 h-4 mb-1" />
+              <span className="text-xs font-medium">More</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add padding for mobile bottom nav */}
+      {isMobile && <div className="h-16"></div>}
     </div>
   );
 };
