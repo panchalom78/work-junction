@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Bell,
@@ -24,7 +24,9 @@ import OngoingBookings from "../components/customer/OngoingBookings";
 import FeaturedWorkers from "../components/customer/FeaturedWorkers";
 import { useWorkerSearchStore } from "../store/workerSearch.store";
 import { useAuthStore } from "../store/auth.store";
+import { applyPreferredLanguageAsync } from "../components/GujaratTranslator";
 import RobustGujaratTranslator from "../components/GujaratTranslator";
+import RobustGujaratTranslatorDropdown from "../components/RobustGujaratTranslatorDropdown";
 
 const CustomerHomePage = () => {
     const navigate = useNavigate();
@@ -32,7 +34,7 @@ const CustomerHomePage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const { searchWorkers } = useWorkerSearchStore();
-    const { user, logout } = useAuthStore();
+    const { user, logout, getUser } = useAuthStore();
 
     const handleSearch = (filters) => {
         console.log(filters);
@@ -46,17 +48,44 @@ const CustomerHomePage = () => {
         searchWorkers(filters);
     };
 
-    // Close mobile menu when clicking outside
     useEffect(() => {
-        if (mobileMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
+        const navigateUser = async () => {
+            const response = await getUser();
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.verification
+                                ?.status == "APPROVED"
+                        ) {
+                            navigate("/worker");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                navigate("/login");
+            }
         };
-    }, [mobileMenuOpen]);
+        navigateUser();
+    }, []);
+
+    useEffect(() => {
+        // attempt to apply saved language; await is optional
+        applyPreferredLanguageAsync(5000).then((applied) => {
+            console.log("preferred language applied:", applied);
+        });
+    }, []);
+    if (!user) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div
@@ -105,9 +134,7 @@ const CustomerHomePage = () => {
                         {/* Right Side Icons */}
                         <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4 flex-shrink-0">
                             {/* Language Toggle */}
-                            <div className="hidden sm:block">
-                                <RobustGujaratTranslator />
-                            </div>
+                            {/* <RobustGujaratTranslator /> */}
 
                             {/* Chat */}
                             <button
@@ -157,6 +184,11 @@ const CustomerHomePage = () => {
                                         <LogOut className="w-4 h-4" />
                                         <span>Logout</span>
                                     </button>
+                                    <div className="px-2">
+                                        <Suspense fallback={null}>
+                                            <RobustGujaratTranslator />
+                                        </Suspense>
+                                    </div>
                                 </div>
                             </div>
 

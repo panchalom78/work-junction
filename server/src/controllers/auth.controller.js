@@ -19,6 +19,17 @@ const register = async (req, res) => {
     try {
         const { email, password, name, phone, role, address } = req.body;
 
+        // Validate required environment variables
+        if (!process.env.JWT_SECRET) {
+            console.error("JWT_SECRET is not set in environment variables");
+            console.error("Please create a .env file in the server directory with JWT_SECRET");
+            return errorResponse(
+                res,
+                500,
+                "Server configuration error: JWT_SECRET is missing. Please create a .env file in the server directory with JWT_SECRET variable."
+            );
+        }
+
         const existingUser = await User.findOne({
             $or: [{ email }, { phone }],
         });
@@ -30,23 +41,50 @@ const register = async (req, res) => {
             return errorResponse(res, 400, "Phone number already registered");
         }
 
-        const hashedPassword = await hashPassword(password);
+        // Hash password
+        let hashedPassword;
+        try {
+            hashedPassword = await hashPassword(password);
+        } catch (hashError) {
+            console.error("Password hashing error:", hashError);
+            return errorResponse(res, 500, "Error processing password. Please try again.");
+        }
 
-        const user = await User.create({
-            email,
-            password: hashedPassword,
-            name,
-            phone,
-            role,
-            address: address || {},
-            isVerified: false,
-        });
+        // Create user
+        let user;
+        try {
+            user = await User.create({
+                email,
+                password: hashedPassword,
+                name,
+                phone,
+                role,
+                address: address || {},
+                isVerified: false,
+            });
+        } catch (createError) {
+            // Handle duplicate key error during creation
+            if (createError.code === 11000) {
+                const field = Object.keys(createError.keyPattern)[0];
+                return errorResponse(
+                    res,
+                    409,
+                    `${field.charAt(0).toUpperCase() + field.slice(1)} already registered`
+                );
+            }
+            throw createError;
+        }
 
         // Generate OTP for email verification
         const otp = generateOTP(6);
 
         // Set OTP using the model method
-        await user.setOTP(otp, "REGISTRATION", 10);
+        try {
+            await user.setOTP(otp, "REGISTRATION", 10);
+        } catch (otpError) {
+            console.error("Error setting OTP:", otpError);
+            // Continue registration even if OTP setting fails
+        }
 
         // Send OTP email
         try {
@@ -56,7 +94,15 @@ const register = async (req, res) => {
             // Continue registration even if email fails
         }
 
-        generateTokenAndSetCookie(res, user);
+        // Generate token and set cookie
+        try {
+            generateTokenAndSetCookie(res, user);
+        } catch (tokenError) {
+            console.error("Token generation error:", tokenError);
+            // User is created, but token generation failed
+            // Still return success but log the error
+            console.warn("User created but token generation failed. User ID:", user._id);
+        }
 
         return successResponse(
             res,
@@ -70,7 +116,40 @@ const register = async (req, res) => {
         );
     } catch (error) {
         console.error("Register error:", error);
-        return errorResponse(res, 500, "Server error during registration");
+
+        // Handle validation errors
+        if (error.name === "ValidationError") {
+            const errors = Object.values(error.errors).map(
+                (err) => err.message
+            );
+            return errorResponse(res, 400, "Validation error", errors);
+        }
+
+        // Handle duplicate key error (email or phone already exists)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return errorResponse(
+                res,
+                409,
+                `${field.charAt(0).toUpperCase() + field.slice(1)} already registered`
+            );
+        }
+
+        // Handle mongoose errors
+        if (error.name === "MongoServerError") {
+            return errorResponse(
+                res,
+                400,
+                "Database error. Please check your input and try again."
+            );
+        }
+
+        // Provide detailed error in development, generic in production
+        const errorMessage = process.env.NODE_ENV === "development"
+            ? error.message || "Server error during registration"
+            : "Server error during registration. Please try again later.";
+
+        return errorResponse(res, 500, errorMessage);
     }
 };
 

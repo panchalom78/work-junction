@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Search, Filter, MoreVertical, Eye, Edit, 
+import {
+  Users, Search, Filter, MoreVertical, Eye, Edit,
   Ban, CheckCircle, XCircle, Phone, Mail, MapPin,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -39,7 +39,7 @@ const AdminUserManagement = () => {
       });
 
       const response = await axiosInstance.get(`/api/admin/users?${params}`);
-      
+
       if (response.data.success) {
         setUsers(response.data.data.users);
         setTotalPages(response.data.data.pagination.pages);
@@ -58,7 +58,7 @@ const AdminUserManagement = () => {
         const response = await axiosInstance.put(`/api/admin/users/${userId}/status`, {
           isActive: !user.isActive
         });
-        
+
         if (response.data.success) {
           fetchUsers(); // Refresh the list
         }
@@ -104,7 +104,7 @@ const AdminUserManagement = () => {
         <div className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">User Details</h2>
-            <button 
+            <button
               onClick={() => setShowUserModal(false)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -133,7 +133,7 @@ const AdminUserManagement = () => {
                   <p className="font-medium">{selectedUser.email}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-gray-400" />
                 <div>
@@ -172,14 +172,13 @@ const AdminUserManagement = () => {
                     </span>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={() => handleUserAction(selectedUser._id, 'toggleStatus')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    selectedUser.isActive 
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                      : 'bg-green-100 text-green-700 hover:bg-green-200'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedUser.isActive
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
                 >
                   {selectedUser.isActive ? 'Deactivate' : 'Activate'}
                 </button>
@@ -269,72 +268,83 @@ const AdminUserManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{user.name}</p>
-                            <p className="text-sm text-gray-500">{user.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="text-gray-900">{user.phone}</p>
-                          <p className="text-gray-500">{user.address?.city || 'N/A'}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          {user.isActive ? (
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-500" />
-                          )}
-                          <span className={`font-medium ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                            {user.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatDate(user.createdAt)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowUserModal(true);
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleUserAction(user._id, 'toggleStatus')}
-                            className={`p-2 rounded-lg transition-colors ${
-                              user.isActive 
-                                ? 'text-red-600 hover:bg-red-100' 
-                                : 'text-green-600 hover:bg-green-100'
-                            }`}
-                            title={user.isActive ? 'Deactivate' : 'Activate'}
-                          >
-                            {user.isActive ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                          </button>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Users className="w-12 h-12 text-gray-400 mb-3" />
+                          <p className="text-gray-600 font-medium">No users found</p>
+                          <p className="text-sm text-gray-500 mt-1">Try adjusting your filters or search term</p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    users.map((user) => (
+                      <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                              <Users className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{user.name}</p>
+                              <p className="text-sm text-gray-500">{user.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm">
+                            <p className="text-gray-900">{user.phone}</p>
+                            <p className="text-gray-500">{user.address?.city || 'N/A'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            {user.isActive ? (
+                              <CheckCircle className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            <span className={`font-medium ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {formatDate(user.createdAt)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setShowUserModal(true);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleUserAction(user._id, 'toggleStatus')}
+                              className={`p-2 rounded-lg transition-colors ${user.isActive
+                                ? 'text-red-600 hover:bg-red-100'
+                                : 'text-green-600 hover:bg-green-100'
+                                }`}
+                              title={user.isActive ? 'Deactivate' : 'Activate'}
+                            >
+                              {user.isActive ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

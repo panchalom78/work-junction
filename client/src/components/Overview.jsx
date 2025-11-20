@@ -10,6 +10,16 @@ import {
 } from "lucide-react";
 import StatsCard from "./StatsCard";
 import axiosInstance from "../utils/axiosInstance";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer,
+    CartesianGrid,
+} from "recharts";
+import { useNavigate } from "react-router-dom";
 
 const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
     const [workerData, setWorkerData] = useState({
@@ -24,6 +34,7 @@ const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchOverviewData();
@@ -216,40 +227,26 @@ const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
                                 </p>
                             </div>
                         ) : (
-                            <div className="flex items-end justify-between h-48 mt-4 space-x-4">
-                                {workerData.earningsData.map((item, index) => {
-                                    const height =
-                                        (item.amount / maxEarning) * 100;
-                                    return (
-                                        <div
-                                            key={index}
-                                            className="flex flex-col items-center flex-1"
-                                        >
-                                            <div className="text-center mb-2">
-                                                <span className="text-sm font-medium text-gray-600">
-                                                    ₹
-                                                    {(
-                                                        item.amount / 1000
-                                                    ).toFixed(0)}
-                                                    k
-                                                </span>
-                                            </div>
-                                            <div
-                                                className="w-full max-w-12 bg-blue-600 rounded-t-lg transition-all duration-300 hover:bg-blue-700 cursor-pointer"
-                                                style={{
-                                                    height: `${Math.max(
-                                                        height,
-                                                        10
-                                                    )}%`,
-                                                }}
-                                                title={`₹${item.amount}`}
-                                            ></div>
-                                            <span className="text-xs text-gray-500 mt-2">
-                                                {item.month}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                            <div className="h-64 mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={workerData.earningsData}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip
+                                            formatter={(value) =>
+                                                `₹${value.toLocaleString(
+                                                    "en-IN"
+                                                )}`
+                                            }
+                                        />
+                                        <Bar
+                                            dataKey="amount"
+                                            fill="#2563eb"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         )}
                     </div>
@@ -330,7 +327,7 @@ const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
                             </div>
                             {bookings.length > 0 && (
                                 <button
-                                    onClick={() => onSetActiveTab("bookings")}
+                                    onClick={() => navigate("/worker/bookings")}
                                     className="w-full mt-4 text-center text-blue-600 hover:text-blue-700 font-medium text-sm"
                                 >
                                     View All Bookings →

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, use } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     User,
     MapPin,
@@ -10,6 +10,11 @@ import {
     X,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.store";
+
+// Compact translator used across the app (dropdown-friendly)
+import RobustGujaratTranslatorDropdown from "../components/RobustGujaratTranslatorDropdown";
+import RobustGujaratTranslator from "./GujaratTranslator";
+
 const Settings = () => {
     const { user, loading, error, getUser, updateProfile } = useAuthStore();
 
@@ -31,7 +36,6 @@ const Settings = () => {
     });
 
     // Loading states
-
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
@@ -170,14 +174,14 @@ const Settings = () => {
 
         setUploadingSelfie(true);
         try {
-            const formData = new FormData();
-            formData.append("selfie", newSelfieFile);
+            const form = new FormData();
+            form.append("selfie", newSelfieFile);
 
             const response = await fetch(
                 "/api/worker/verification/upload-selfie",
                 {
                     method: "POST",
-                    body: formData,
+                    body: form,
                 }
             );
 
@@ -200,8 +204,8 @@ const Settings = () => {
 
             // Refresh user data
             getUser();
-        } catch (error) {
-            console.error("Error uploading selfie:", error);
+        } catch (err) {
+            console.error("Error uploading selfie:", err);
             alert("Failed to upload selfie. Please try again.");
         } finally {
             setUploadingSelfie(false);
@@ -275,12 +279,14 @@ const Settings = () => {
                                     address.suburb ||
                                     address.neighbourhood ||
                                     address.city_district ||
+                                    address.county ||
                                     prev.address.area,
                                 city:
                                     address.city ||
                                     address.town ||
                                     address.village ||
                                     address.municipality ||
+                                    address.state_district ||
                                     prev.address.city,
                                 state:
                                     address.state ||
@@ -492,13 +498,20 @@ const Settings = () => {
 
     return (
         <div className="space-y-6 p-4">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                    Profile Settings
-                </h2>
-                <p className="text-base text-gray-600">
-                    Manage your personal information and address
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                        Profile Settings
+                    </h2>
+                    <p className="text-base text-gray-600">
+                        Manage your personal information and address
+                    </p>
+                </div>
+
+                {/* Compact translator placed in header (top-right) */}
+                <div className="ml-4 w-40 hidden sm:block">
+                    <RobustGujaratTranslator />
+                </div>
             </div>
 
             {/* Error and Success Messages */}

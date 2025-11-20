@@ -25,53 +25,6 @@ const AdminBookings = () => {
     { value: 'CANCELLED', label: 'Cancelled' }
   ];
 
-  // Generate dummy data
-  const generateDummyData = () => {
-    const dummyBookings = [];
-    const names = ['John Doe', 'Alice Smith', 'Bob Johnson', 'Emma Wilson', 'Mike Brown', 'Sarah Davis', 'Tom Wilson', 'Lisa Anderson'];
-    const services = ['AC Repair', 'Plumbing', 'Electrical', 'Carpentry', 'Cleaning', 'Painting', 'Appliance Repair'];
-
-    for (let i = 1; i <= 25; i++) {
-      const customerName = names[Math.floor(Math.random() * names.length)];
-      const workerName = names[Math.floor(Math.random() * names.length)];
-      const status = statuses[Math.floor(Math.random() * (statuses.length - 1)) + 1].value;
-
-      dummyBookings.push({
-        _id: `booking_${i}_${Date.now()}`,
-        customerId: {
-          name: customerName,
-          phone: `+91 ${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-          email: `${customerName.toLowerCase().replace(' ', '.')}@gmail.com`
-        },
-        workerId: {
-          name: workerName,
-          phone: `+91 ${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-          email: `${workerName.toLowerCase().replace(' ', '.')}@gmail.com`
-        },
-        bookingDate: new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
-        bookingTime: `${Math.floor(9 + Math.random() * 8)}:${Math.random() > 0.5 ? '30' : '00'} ${Math.random() > 0.5 ? 'AM' : 'PM'}`,
-        price: Math.floor(500 + Math.random() * 2000),
-        status: status,
-        createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
-        payment: {
-          status: Math.random() > 0.3 ? 'COMPLETED' : 'PENDING',
-          paymentType: Math.random() > 0.5 ? 'ONLINE' : 'CASH',
-          transactionId: Math.random() > 0.5 ? `txn_${Math.random().toString(36).substr(2, 9)}` : null,
-          transactionDate: Math.random() > 0.5 ? new Date().toISOString() : null
-        },
-        serviceType: services[Math.floor(Math.random() * services.length)],
-        cancellationReason: status === 'CANCELLED' ? 'Customer changed plans' : null,
-        declineReason: status === 'DECLINED' ? 'Worker unavailable' : null,
-        review: Math.random() > 0.7 ? {
-          rating: Math.floor(1 + Math.random() * 5),
-          comment: Math.random() > 0.5 ? 'Great service! Highly recommended.' : null
-        } : null
-      });
-    }
-
-    return dummyBookings;
-  };
-
   useEffect(() => {
     fetchBookings();
   }, [currentPage, searchTerm, statusFilter]);
@@ -91,48 +44,9 @@ const AdminBookings = () => {
       if (response.data.success) {
         setBookings(response.data.data.bookings);
         setTotalPages(response.data.data.pagination.pages);
-      } else {
-        // Fallback to dummy data
-        let allBookings = generateDummyData();
-        if (statusFilter !== 'ALL') {
-          allBookings = allBookings.filter(booking => booking.status === statusFilter);
-        }
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          allBookings = allBookings.filter(booking =>
-            booking.customerId.name.toLowerCase().includes(term) ||
-            booking.workerId.name.toLowerCase().includes(term) ||
-            booking._id.toLowerCase().includes(term) ||
-            booking.customerId.phone.includes(term) ||
-            booking.workerId.phone.includes(term)
-          );
-        }
-        const startIndex = (currentPage - 1) * 10;
-        const endIndex = startIndex + 10;
-        setBookings(allBookings.slice(startIndex, endIndex));
-        setTotalPages(Math.ceil(allBookings.length / 10));
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
-      // Fallback to dummy data on error
-      let allBookings = generateDummyData();
-      if (statusFilter !== 'ALL') {
-        allBookings = allBookings.filter(booking => booking.status === statusFilter);
-      }
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        allBookings = allBookings.filter(booking =>
-          booking.customerId.name.toLowerCase().includes(term) ||
-          booking.workerId.name.toLowerCase().includes(term) ||
-          booking._id.toLowerCase().includes(term) ||
-          booking.customerId.phone.includes(term) ||
-          booking.workerId.phone.includes(term)
-        );
-      }
-      const startIndex = (currentPage - 1) * 10;
-      const endIndex = startIndex + 10;
-      setBookings(allBookings.slice(startIndex, endIndex));
-      setTotalPages(Math.ceil(allBookings.length / 10));
     } finally {
       setLoading(false);
     }
@@ -436,68 +350,80 @@ const AdminBookings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {bookings.map((booking) => (
-                    <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <p className="font-mono text-sm text-gray-900">#{booking._id.slice(-8)}</p>
-                        <p className="text-xs text-gray-500">{formatDate(booking.createdAt)}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{booking.customerId?.name}</p>
-                            <p className="text-sm text-gray-500">{booking.customerId?.phone}</p>
-                          </div>
+                  {bookings.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <Calendar className="w-12 h-12 text-gray-400 mb-3" />
+                          <p className="text-gray-600 font-medium">No bookings found</p>
+                          <p className="text-sm text-gray-500 mt-1">Try adjusting your filters or search term</p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{booking.workerId?.name}</p>
-                            <p className="text-sm text-gray-500">{booking.workerId?.phone}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <p className="text-gray-900">{formatDate(booking.bookingDate)}</p>
-                          <p className="text-gray-500">{formatTime(booking.bookingTime)}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-green-600">{formatCurrency(booking.price)}</p>
-                        <p className="text-xs text-gray-500">
-                          {booking.payment?.status === 'COMPLETED' ? 'Paid' : 'Pending'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(booking.status)}
-                            <span>{booking.status}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowBookingModal(true);
-                          }}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    bookings.map((booking) => (
+                      <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="font-mono text-sm text-gray-900">#{booking._id.slice(-8)}</p>
+                          <p className="text-xs text-gray-500">{formatDate(booking.createdAt)}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{booking.customerId?.name}</p>
+                              <p className="text-sm text-gray-500">{booking.customerId?.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{booking.workerId?.name}</p>
+                              <p className="text-sm text-gray-500">{booking.workerId?.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm">
+                            <p className="text-gray-900">{formatDate(booking.bookingDate)}</p>
+                            <p className="text-gray-500">{formatTime(booking.bookingTime)}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-green-600">{formatCurrency(booking.price)}</p>
+                          <p className="text-xs text-gray-500">
+                            {booking.payment?.status === 'COMPLETED' ? 'Paid' : 'Pending'}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                            <div className="flex items-center space-x-1">
+                              {getStatusIcon(booking.status)}
+                              <span>{booking.status}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowBookingModal(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

@@ -17,54 +17,6 @@ const AdminOverview = () => {
   const [verificationQueue, setVerificationQueue] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Generate dummy stats data
-  const generateStats = () => {
-    return {
-      totalUsers: 1247,
-      pendingVerifications: 23,
-      activeBookings: 89,
-      totalRevenue: 284500
-    };
-  };
-
-  // Generate dummy activities data
-  const generateActivities = () => {
-    const activityTypes = [
-      { type: 'verification', actions: ['submitted verification documents', 'completed profile verification'] },
-      { type: 'booking', actions: ['created a new booking', 'completed a service booking'] },
-      { type: 'payment', actions: ['processed payment for booking', 'received payment for service'] },
-      { type: 'agent', actions: ['registered as service agent', 'updated agent profile'] }
-    ];
-
-    const users = ['John Smith', 'Emma Wilson', 'Mike Johnson', 'Sarah Brown', 'David Lee', 'Lisa Anderson', 'Robert Taylor', 'Maria Garcia'];
-
-    return Array.from({ length: 8 }, (_, i) => {
-      const activityType = activityTypes[Math.floor(Math.random() * activityTypes.length)];
-      const action = activityType.actions[Math.floor(Math.random() * activityType.actions.length)];
-
-      return {
-        type: activityType.type,
-        user: users[i],
-        action: action,
-        time: new Date(Date.now() - Math.floor(Math.random() * 24) * 60 * 60 * 1000).toISOString()
-      };
-    });
-  };
-
-  // Generate dummy verification queue data
-  const generateVerificationQueue = () => {
-    const services = ['Plumbing', 'Electrical', 'AC Repair', 'Carpentry', 'Cleaning', 'Painting', 'Appliance Repair'];
-    const names = ['Raj Kumar', 'Priya Sharma', 'Amit Patel', 'Sneha Gupta', 'Vikram Singh', 'Anjali Mehta', 'Rahul Verma', 'Pooja Joshi'];
-    const priorities = ['HIGH', 'MEDIUM', 'LOW'];
-
-    return Array.from({ length: 6 }, (_, i) => ({
-      name: names[i],
-      service: services[Math.floor(Math.random() * services.length)],
-      priority: priorities[Math.floor(Math.random() * priorities.length)],
-      submitted: new Date(Date.now() - Math.floor(Math.random() * 72) * 60 * 60 * 1000).toISOString()
-    }));
-  };
-
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -94,11 +46,7 @@ const AdminOverview = () => {
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data. Using sample data.');
-      // Fallback to dummy data on error
-      setStats(generateStats());
-      setActivities(generateActivities());
-      setVerificationQueue(generateVerificationQueue());
+      toast.error('Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }

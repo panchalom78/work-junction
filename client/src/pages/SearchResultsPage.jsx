@@ -311,21 +311,9 @@ const SearchResultsPage = () => {
                                             onClick={() =>
                                                 handleBookNow(worker.workerId)
                                             }
-                                            disabled={
-                                                worker.availabilityStatus ===
-                                                "off-duty"
-                                            }
-                                            className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 ${
-                                                worker.availabilityStatus !==
-                                                "off-duty"
-                                                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
-                                                    : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                            }`}
+                                            className={`flex-1 py-3 rounded-2xl font-semibold transition-all duration-300 ${"bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"}`}
                                         >
-                                            {worker.availabilityStatus !==
-                                            "off-duty"
-                                                ? "Show Profile"
-                                                : "Not Available"}
+                                            Show Profile
                                         </button>
                                         <ChatInitiateButton
                                             workerId={worker._id}

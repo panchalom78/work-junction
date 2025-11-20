@@ -217,6 +217,7 @@ const userSchema = new Schema(
             default: undefined,
         },
         isVerified: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true },
 
         // Role-specific nested profiles
         serviceAgentProfile: {

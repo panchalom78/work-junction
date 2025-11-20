@@ -27,6 +27,7 @@ import chatRoutes from "./routes/chat.route.js";
 import workerSearchRoutes from "./routes/workerSearch.routes.js";
 import agentDashboardRoutes from "./routes/agentDashboard.route.js";
 // import workerSearchRoutes from "./routes/workerSearch.routes.js";
+import landingRoutes from "./routes/landing.route.js";
 
 const app = express();
 
@@ -82,7 +83,10 @@ app.use("/api/workers-search", workerSearchRoutes); // More consistent naming
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chats", chatRoutes);
 app.use("/api/customers", workerSearchRoutes);
+app.use("/api/service-agent/dashboard", agentDashboardRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/landing", landingRoutes);
+
 // Health check route
 app.get("/health", (req, res) => {
     res.json({
