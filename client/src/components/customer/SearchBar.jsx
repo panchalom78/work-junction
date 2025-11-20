@@ -217,26 +217,26 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
         );
     };
 
-    if (loading) return <div>Loading filters...</div>;
+    if (loading) return <div className="text-center py-4">Loading filters...</div>;
 
     return (
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100 w-full overflow-hidden">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 break-words">
                 Find Trusted Professionals Near You
             </h1>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 {/* Main Search Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                     {/* Skill Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="w-full">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             Skill *
                         </label>
                         <select
                             value={filters.skill}
                             onChange={(e) => handleSkillChange(e.target.value)}
-                            className={`w-full border rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500 ${
+                            className={`w-full border rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 ${
                                 errors.skill
                                     ? "border-red-500"
                                     : "border-gray-300"
@@ -259,8 +259,8 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                     </div>
 
                     {/* Service Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="w-full">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             Service
                         </label>
                         <select
@@ -268,7 +268,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             onChange={(e) =>
                                 setFilter("service", e.target.value)
                             }
-                            className="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500"
+                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                             disabled={!filters.skill}
                         >
                             <option value="">Select Service</option>
@@ -284,8 +284,8 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                     </div>
 
                     {/* Location */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="w-full">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                             Location *
                         </label>
 
@@ -294,14 +294,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             <button
                                 type="button"
                                 onClick={handleUseAddress}
-                                className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-2xl border transition-all duration-200 ${
+                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
                                     locationType === "address"
                                         ? "bg-blue-100 border-blue-500 text-blue-700"
                                         : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
                                 }`}
                             >
-                                <Home className="w-4 h-4" />
-                                <span className="text-sm font-medium">
+                                <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
                                     Use Address
                                 </span>
                             </button>
@@ -310,7 +310,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 type="button"
                                 onClick={handleUseCurrentLocation}
                                 disabled={isGettingLocation}
-                                className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-2xl border transition-all duration-200 ${
+                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
                                     locationType === "current"
                                         ? "bg-green-100 border-green-500 text-green-700"
                                         : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
@@ -321,21 +321,21 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 }`}
                             >
                                 {isGettingLocation ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin flex-shrink-0" />
                                 ) : (
-                                    <Navigation className="w-4 h-4" />
+                                    <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                                 )}
-                                <span className="text-sm font-medium">
+                                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
                                     {isGettingLocation
                                         ? "Detecting..."
-                                        : "Current Location"}
+                                        : "Current"}
                                 </span>
                             </button>
                         </div>
 
                         {/* Location Input */}
-                        <div className="relative">
-                            <MapPin className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <div className="relative w-full">
+                            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 flex-shrink-0" />
 
                             {locationType === "address" ? (
                                 <>
@@ -345,8 +345,8 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                         onChange={(e) =>
                                             handleLocationChange(e.target.value)
                                         }
-                                        placeholder="Enter your address (street, area, city)"
-                                        className={`w-full border rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-blue-500 ${
+                                        placeholder="Enter your address"
+                                        className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-9 sm:pr-10 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 ${
                                             errors.location
                                                 ? "border-red-500"
                                                 : "border-gray-300"
@@ -358,40 +358,40 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                             onClick={clearLocation}
                                             className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
                                         >
-                                            <X className="w-4 h-4" />
+                                            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                         </button>
                                     )}
                                 </>
                             ) : (
                                 <div
-                                    className={`w-full border rounded-2xl pl-10 pr-4 py-3 ${
+                                    className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 ${
                                         errors.location
                                             ? "border-red-500 bg-red-50"
                                             : "border-green-200 bg-green-50"
                                     }`}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-2">
                                         <span
-                                            className={`font-medium ${
+                                            className={`font-medium text-xs sm:text-sm break-words flex-1 ${
                                                 errors.location
                                                     ? "text-red-800"
                                                     : "text-green-800"
                                             }`}
                                         >
                                             {filters.location ||
-                                                'Click "Current Location" to detect your location'}
+                                                'Click "Current" to detect'}
                                         </span>
                                         {filters.location && (
                                             <button
                                                 type="button"
                                                 onClick={clearLocation}
-                                                className={`p-1 transition-colors ${
+                                                className={`p-1 transition-colors flex-shrink-0 ${
                                                     errors.location
                                                         ? "text-red-600 hover:text-red-800"
                                                         : "text-green-600 hover:text-green-800"
                                                 }`}
                                             >
-                                                <X className="w-4 h-4" />
+                                                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                             </button>
                                         )}
                                     </div>
@@ -402,8 +402,8 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         {/* Location Help Text */}
                         <p className="text-xs text-gray-500 mt-2">
                             {locationType === "address"
-                                ? "Enter your complete address for accurate service matching"
-                                : "We'll use your current location to find nearby professionals"}
+                                ? "Enter complete address for accurate matching"
+                                : "We'll find nearby professionals"}
                         </p>
                         {errors.location && (
                             <p className="text-red-500 text-xs mt-1">
@@ -413,40 +413,40 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                     </div>
                 </div>
 
-                {/* Filters Toggle */}
-                <div className="flex items-center justify-between">
+                {/* Filters Toggle and Actions - Now Inside Form */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200">
                     <button
                         type="button"
                         onClick={() => setShowFilters(!showFilters)}
-                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium"
+                        className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base"
                     >
-                        <Filter className="w-5 h-5" />
+                        <Filter className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                         <span>Advanced Filters</span>
                         <ChevronDown
-                            className={`w-4 h-4 transition-transform ${
+                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform flex-shrink-0 ${
                                 showFilters ? "rotate-180" : ""
                             }`}
                         />
                     </button>
 
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-between sm:justify-end space-x-3 sm:space-x-4">
                         <button
                             type="button"
                             onClick={handleClearFilters}
-                            className="text-gray-600 hover:text-gray-700 font-medium"
+                            className="text-gray-600 hover:text-gray-700 font-medium text-sm sm:text-base"
                         >
                             Clear All
                         </button>
                         <button
                             type="submit"
                             disabled={isSearchDisabled()}
-                            className={`px-8 py-3 rounded-2xl hover:shadow-lg transition-all duration-300 font-semibold flex items-center space-x-2 ${
+                            className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold flex items-center justify-center space-x-2 text-sm sm:text-base ${
                                 isSearchDisabled()
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                     : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
                             }`}
                         >
-                            <Search className="w-5 h-5" />
+                            <Search className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                             <span>Search</span>
                         </button>
                     </div>
@@ -454,10 +454,10 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
 
                 {/* Advanced Filters */}
                 {showFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-6 border-t border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-200">
                         {/* Price Range */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="w-full">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                                 Price Range (₹
                                 {availableFilters.priceRange?.minPrice || 0} - ₹
                                 {availableFilters.priceRange?.maxPrice || 10000}
@@ -479,7 +479,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("minPrice", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                                 />
                                 <input
                                     type="number"
@@ -496,14 +496,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("maxPrice", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                                 />
                             </div>
                         </div>
 
                         {/* Rating Range */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="w-full">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                                 Rating (
                                 {availableFilters.ratingRange?.minRating || 0} -{" "}
                                 {availableFilters.ratingRange?.maxRating || 5})
@@ -525,7 +525,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("minRating", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                                 />
                                 <input
                                     type="number"
@@ -543,14 +543,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("maxRating", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                                 />
                             </div>
                         </div>
 
                         {/* Worker Name */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="w-full">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                                 Worker Name
                             </label>
                             <input
@@ -560,13 +560,13 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 onChange={(e) =>
                                     setFilter("workerName", e.target.value)
                                 }
-                                className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                             />
                         </div>
 
                         {/* Sort By */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="w-full">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                                 Sort By
                             </label>
                             <select
@@ -574,7 +574,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 onChange={(e) =>
                                     setFilter("sortBy", e.target.value)
                                 }
-                                className="w-full border border-gray-300 rounded-2xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                             >
                                 <option value="relevance">Relevance</option>
                                 <option value="rating">Rating</option>

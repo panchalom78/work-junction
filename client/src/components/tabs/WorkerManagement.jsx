@@ -54,6 +54,12 @@ const WorkerManagement = () => {
     // MASTER SKILLS & SELECTED SKILL IDS
     const [masterSkills, setMasterSkills] = useState([]);
     const [selectedSkillIds, setSelectedSkillIds] = useState([]);
+    const [showSuspendModal, setShowSuspendModal] = useState(false);
+    const [suspendWorkerData, setSuspendWorkerData] = useState({
+        id: null,
+        name: "",
+        reason: ""
+    });
 
     // DEBOUNCE
     const debounce = (func, wait) => {
@@ -190,26 +196,38 @@ const WorkerManagement = () => {
 
     // ACTIONS
     const handleSuspendWorker = async (id, name) => {
-        const reason = prompt(`Reason for suspending ${name}:`);
-        if (!reason?.trim()) return toast.error("Reason required");
-        if (!window.confirm(`Suspend ${name}?`)) return;
+    setSuspendWorkerData({
+        id,
+        name,
+        reason: ""
+    });
+    setShowSuspendModal(true);
+};
 
-        try {
-            setActionLoading(id);
-            await axiosInstance.patch(
-                `/api/service-agent/suspend-worker/${id}`,
-                { reason: reason.trim() }
-            );
-            toast.success("Worker suspended successfully");
-            fetchWorkers(pagination.currentPage);
-        } catch (e) {
-            toast.error(
-                e.response?.data?.message || "Failed to suspend worker"
-            );
-        } finally {
-            setActionLoading(null);
-        }
-    };
+const confirmSuspendWorker = async () => {
+    const { id, name, reason } = suspendWorkerData;
+    
+    if (!reason?.trim()) {
+        toast.error("Please provide a reason for suspension");
+        return;
+    }
+
+    try {
+        setActionLoading(id);
+        await axiosInstance.patch(
+            `/api/service-agent/suspend-worker/${id}`,
+            { reason: reason.trim() }
+        );
+        toast.success("Worker suspended successfully");
+        setShowSuspendModal(false);
+        setSuspendWorkerData({ id: null, name: "", reason: "" });
+        fetchWorkers(pagination.currentPage);
+    } catch (e) {
+        toast.error(e.response?.data?.message || "Failed to suspend worker");
+    } finally {
+        setActionLoading(null);
+    }
+};
 
     const handleActivateWorker = async (id, name) => {
         if (!window.confirm(`Activate ${name}?`)) return;
@@ -413,7 +431,7 @@ const WorkerManagement = () => {
         } catch (e) {
             toast.error(
                 e.response?.data?.message ||
-                    "Failed to update skills & services"
+                "Failed to update skills & services"
             );
         } finally {
             setSaveLoading((prev) => ({ ...prev, skills: false }));
@@ -446,21 +464,19 @@ const WorkerManagement = () => {
         return (
             <div className="flex flex-col gap-1.5 min-w-[100px]">
                 <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold text-center ${
-                        accountStatusMap[accountStatus] ||
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold text-center ${accountStatusMap[accountStatus] ||
                         "bg-gray-100 text-gray-800"
-                    }`}
+                        }`}
                 >
                     {accountStatus
                         ? accountStatus.charAt(0).toUpperCase() +
-                          accountStatus.slice(1)
+                        accountStatus.slice(1)
                         : "Unknown"}
                 </span>
                 <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium text-center ${
-                        availabilityStatusMap[availabilityStatus] ||
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium text-center ${availabilityStatusMap[availabilityStatus] ||
                         "bg-gray-100 text-gray-600"
-                    }`}
+                        }`}
                 >
                     {availabilityStatus
                         ? availabilityStatus.replace("-", " ").toUpperCase()
@@ -490,13 +506,12 @@ const WorkerManagement = () => {
                     {[...Array(5)].map((_, i) => (
                         <span
                             key={i}
-                            className={`text-sm ${
-                                i < fullStars
-                                    ? "text-yellow-400"
-                                    : i === fullStars && hasHalfStar
+                            className={`text-sm ${i < fullStars
+                                ? "text-yellow-400"
+                                : i === fullStars && hasHalfStar
                                     ? "text-yellow-300"
                                     : "text-gray-300"
-                            }`}
+                                }`}
                         >
                             ★
                         </span>
@@ -713,9 +728,9 @@ const WorkerManagement = () => {
                                                     className="text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                                                     disabled={
                                                         actionLoading ===
-                                                            worker._id ||
+                                                        worker._id ||
                                                         worker.status ===
-                                                            "suspended"
+                                                        "suspended"
                                                     }
                                                 >
                                                     <option value="available">
@@ -784,19 +799,10 @@ const WorkerManagement = () => {
                                                         </svg>
                                                     </button>
 
-                                                    {worker.status ===
-                                                        "active" && (
+                                                    {worker.status === "active" && (
                                                         <button
-                                                            onClick={() =>
-                                                                handleSuspendWorker(
-                                                                    worker._id,
-                                                                    worker.name
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                actionLoading ===
-                                                                worker._id
-                                                            }
+                                                            onClick={() => handleSuspendWorker(worker._id, worker.name)}
+                                                            disabled={actionLoading === worker._id}
                                                             className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
                                                             title="Suspend Worker"
                                                         >
@@ -809,48 +815,45 @@ const WorkerManagement = () => {
                                                                 <path
                                                                     strokeLinecap="round"
                                                                     strokeLinejoin="round"
-                                                                    strokeWidth={
-                                                                        2
-                                                                    }
+                                                                    strokeWidth={2}
                                                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                                                 />
                                                             </svg>
                                                         </button>
                                                     )}
-
                                                     {worker.status ===
                                                         "suspended" && (
-                                                        <button
-                                                            onClick={() =>
-                                                                handleActivateWorker(
-                                                                    worker._id,
-                                                                    worker.name
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                actionLoading ===
-                                                                worker._id
-                                                            }
-                                                            className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors disabled:opacity-50"
-                                                            title="Activate Worker"
-                                                        >
-                                                            <svg
-                                                                className="w-4 h-4"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                viewBox="0 0 24 24"
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleActivateWorker(
+                                                                        worker._id,
+                                                                        worker.name
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    actionLoading ===
+                                                                    worker._id
+                                                                }
+                                                                className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                                                title="Activate Worker"
                                                             >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={
-                                                                        2
-                                                                    }
-                                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                    )}
+                                                                <svg
+                                                                    className="w-4 h-4"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                                    />
+                                                                </svg>
+                                                            </button>
+                                                        )}
                                                 </div>
                                             </div>
                                         </td>
@@ -1031,15 +1034,8 @@ const WorkerManagement = () => {
 
                                         {worker.status === "active" && (
                                             <button
-                                                onClick={() =>
-                                                    handleSuspendWorker(
-                                                        worker._id,
-                                                        worker.name
-                                                    )
-                                                }
-                                                disabled={
-                                                    actionLoading === worker._id
-                                                }
+                                                onClick={() => handleSuspendWorker(worker._id, worker.name)}
+                                                disabled={actionLoading === worker._id}
                                                 className="flex-1 bg-amber-50 text-amber-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
                                             >
                                                 <svg
@@ -1058,7 +1054,6 @@ const WorkerManagement = () => {
                                                 <span>Suspend</span>
                                             </button>
                                         )}
-
                                         {worker.status === "suspended" && (
                                             <button
                                                 onClick={() =>
@@ -1175,11 +1170,10 @@ const WorkerManagement = () => {
                                             onClick={() =>
                                                 handlePageChange(page)
                                             }
-                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                                                page === pagination.currentPage
-                                                    ? "bg-blue-600 text-white border border-blue-600"
-                                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                            }`}
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${page === pagination.currentPage
+                                                ? "bg-blue-600 text-white border border-blue-600"
+                                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                                                }`}
                                         >
                                             {page}
                                         </button>
@@ -1204,7 +1198,7 @@ const WorkerManagement = () => {
             </div>
             {/* ==================== DETAILS MODAL ==================== */}
             {showDetailsModal && selectedWorker && (
-                <div className="fixed inset-0 bg-black/80 bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className=" absolute inset-0 bg-white/20 backdrop-blur-lg shadow-xl rounded-xl flex items-center justify-center p-4 z-50 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             {/* Header */}
@@ -1253,28 +1247,26 @@ const WorkerManagement = () => {
                                     </p>
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                selectedWorker.status ===
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedWorker.status ===
                                                 "active"
-                                                    ? "bg-green-100 text-green-800 border border-green-200"
-                                                    : selectedWorker.status ===
-                                                      "suspended"
+                                                ? "bg-green-100 text-green-800 border border-green-200"
+                                                : selectedWorker.status ===
+                                                    "suspended"
                                                     ? "bg-red-100 text-red-800 border border-red-200"
                                                     : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                            }`}
+                                                }`}
                                         >
                                             {selectedWorker.status?.toUpperCase()}
                                         </span>
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                selectedWorker.availabilityStatus ===
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedWorker.availabilityStatus ===
                                                 "available"
-                                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                                    : selectedWorker.availabilityStatus ===
-                                                      "busy"
+                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                : selectedWorker.availabilityStatus ===
+                                                    "busy"
                                                     ? "bg-orange-100 text-orange-800 border border-orange-200"
                                                     : "bg-gray-100 text-gray-800 border border-gray-200"
-                                            }`}
+                                                }`}
                                         >
                                             {selectedWorker.availabilityStatus
                                                 ?.replace("-", " ")
@@ -1538,12 +1530,11 @@ const WorkerManagement = () => {
                                                                     }
                                                                 </h6>
                                                                 <span
-                                                                    className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                                                        service.pricingType ===
+                                                                    className={`px-2 py-1 rounded-full text-xs font-bold ${service.pricingType ===
                                                                         "FIXED"
-                                                                            ? "bg-green-100 text-green-800"
-                                                                            : "bg-orange-100 text-orange-800"
-                                                                    }`}
+                                                                        ? "bg-green-100 text-green-800"
+                                                                        : "bg-orange-100 text-orange-800"
+                                                                        }`}
                                                                 >
                                                                     {
                                                                         service.pricingType
@@ -1666,13 +1657,12 @@ const WorkerManagement = () => {
                                     {/* Selfie Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${
-                                                selectedWorker.workerProfile
-                                                    ?.verification
-                                                    ?.isSelfieVerified
-                                                    ? "bg-green-500"
-                                                    : "bg-gray-300"
-                                            }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
+                                                ?.verification
+                                                ?.isSelfieVerified
+                                                ? "bg-green-500"
+                                                : "bg-gray-300"
+                                                }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Selfie Verified
@@ -1688,13 +1678,12 @@ const WorkerManagement = () => {
                                     {/* Aadhaar Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${
-                                                selectedWorker.workerProfile
-                                                    ?.verification
-                                                    ?.isAddharDocVerified
-                                                    ? "bg-green-500"
-                                                    : "bg-gray-300"
-                                            }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
+                                                ?.verification
+                                                ?.isAddharDocVerified
+                                                ? "bg-green-500"
+                                                : "bg-gray-300"
+                                                }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Aadhaar Verified
@@ -1711,13 +1700,12 @@ const WorkerManagement = () => {
                                     {/* Police Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${
-                                                selectedWorker.workerProfile
-                                                    ?.verification
-                                                    ?.isPoliceVerificationDocVerified
-                                                    ? "bg-green-500"
-                                                    : "bg-gray-300"
-                                            }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
+                                                ?.verification
+                                                ?.isPoliceVerificationDocVerified
+                                                ? "bg-green-500"
+                                                : "bg-gray-300"
+                                                }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Police Verified
@@ -1734,19 +1722,18 @@ const WorkerManagement = () => {
                                     {/* Overall Status */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`px-3 py-1 rounded-full mb-2 text-xs font-bold ${
-                                                selectedWorker.workerProfile
-                                                    ?.verification?.status ===
+                                            className={`px-3 py-1 rounded-full mb-2 text-xs font-bold ${selectedWorker.workerProfile
+                                                ?.verification?.status ===
                                                 "APPROVED"
-                                                    ? "bg-green-100 text-green-800 border border-green-200"
-                                                    : selectedWorker
-                                                          .workerProfile
-                                                          ?.verification
-                                                          ?.status ===
-                                                      "REJECTED"
+                                                ? "bg-green-100 text-green-800 border border-green-200"
+                                                : selectedWorker
+                                                    .workerProfile
+                                                    ?.verification
+                                                    ?.status ===
+                                                    "REJECTED"
                                                     ? "bg-red-100 text-red-800 border border-red-200"
                                                     : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                            }`}
+                                                }`}
                                         >
                                             {selectedWorker.workerProfile
                                                 ?.verification?.status ||
@@ -1809,10 +1796,7 @@ const WorkerManagement = () => {
                                 {selectedWorker.status === "active" ? (
                                     <button
                                         onClick={() =>
-                                            handleSuspendWorker(
-                                                selectedWorker._id,
-                                                selectedWorker.name
-                                            )
+                                            handleSuspendWorker(selectedWorker._id, selectedWorker.name)
                                         }
                                         disabled={actionLoading}
                                         className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center disabled:opacity-50"
@@ -1830,17 +1814,12 @@ const WorkerManagement = () => {
                                                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                             />
                                         </svg>
-                                        {actionLoading
-                                            ? "Suspending..."
-                                            : "Suspend Worker"}
+                                        {actionLoading ? "Suspending..." : "Suspend Worker"}
                                     </button>
                                 ) : selectedWorker.status === "suspended" ? (
                                     <button
                                         onClick={() =>
-                                            handleActivateWorker(
-                                                selectedWorker._id,
-                                                selectedWorker.name
-                                            )
+                                            handleActivateWorker(selectedWorker._id, selectedWorker.name)
                                         }
                                         disabled={actionLoading}
                                         className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center disabled:opacity-50"
@@ -1858,9 +1837,7 @@ const WorkerManagement = () => {
                                                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                                             />
                                         </svg>
-                                        {actionLoading
-                                            ? "Activating..."
-                                            : "Activate Worker"}
+                                        {actionLoading ? "Activating..." : "Activate Worker"}
                                     </button>
                                 ) : null}
                             </div>
@@ -1872,7 +1849,7 @@ const WorkerManagement = () => {
             {/* EDIT MODAL */}
             {/* ==================== EDIT MODAL ==================== */}
             {showEditModal && selectedWorker && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="fixed absolute inset-0 bg-white/20 backdrop-blur-lg shadow-xl rounded-xl flex items-center justify-center p-4 z-50 overflow-y-auto">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             {/* Header */}
@@ -1933,11 +1910,10 @@ const WorkerManagement = () => {
                                     <button
                                         key={tab.key}
                                         onClick={() => setEditTab(tab.key)}
-                                        className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                                            editTab === tab.key
-                                                ? "border-blue-600 text-blue-600 bg-blue-50"
-                                                : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                                        }`}
+                                        className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${editTab === tab.key
+                                            ? "border-blue-600 text-blue-600 bg-blue-50"
+                                            : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                            }`}
                                     >
                                         <span className="mr-2 text-base">
                                             {tab.icon}
@@ -2066,7 +2042,7 @@ const WorkerManagement = () => {
                                                     name={`address.${field.key}`}
                                                     value={
                                                         editFormData.address[
-                                                            field.key
+                                                        field.key
                                                         ]
                                                     }
                                                     onChange={handleEditChange}
@@ -2116,7 +2092,7 @@ const WorkerManagement = () => {
                                                     value={
                                                         editFormData
                                                             .bankDetails[
-                                                            field.key
+                                                        field.key
                                                         ]
                                                     }
                                                     onChange={handleEditChange}
@@ -2287,33 +2263,33 @@ const WorkerManagement = () => {
                                                                                                             services:
                                                                                                                 existing
                                                                                                                     ? p.services.map(
-                                                                                                                          (
-                                                                                                                              s
-                                                                                                                          ) =>
-                                                                                                                              s.serviceId ===
-                                                                                                                              service.serviceId
-                                                                                                                                  ? {
-                                                                                                                                        ...s,
-                                                                                                                                        details:
-                                                                                                                                            val,
-                                                                                                                                    }
-                                                                                                                                  : s
-                                                                                                                      )
+                                                                                                                        (
+                                                                                                                            s
+                                                                                                                        ) =>
+                                                                                                                            s.serviceId ===
+                                                                                                                                service.serviceId
+                                                                                                                                ? {
+                                                                                                                                    ...s,
+                                                                                                                                    details:
+                                                                                                                                        val,
+                                                                                                                                }
+                                                                                                                                : s
+                                                                                                                    )
                                                                                                                     : [
-                                                                                                                          ...p.services,
-                                                                                                                          {
-                                                                                                                              serviceId:
-                                                                                                                                  service.serviceId,
-                                                                                                                              skillId:
-                                                                                                                                  skillId,
-                                                                                                                              name: service.name,
-                                                                                                                              details:
-                                                                                                                                  val,
-                                                                                                                              pricingType:
-                                                                                                                                  "FIXED",
-                                                                                                                              price: "",
-                                                                                                                          },
-                                                                                                                      ],
+                                                                                                                        ...p.services,
+                                                                                                                        {
+                                                                                                                            serviceId:
+                                                                                                                                service.serviceId,
+                                                                                                                            skillId:
+                                                                                                                                skillId,
+                                                                                                                            name: service.name,
+                                                                                                                            details:
+                                                                                                                                val,
+                                                                                                                            pricingType:
+                                                                                                                                "FIXED",
+                                                                                                                            price: "",
+                                                                                                                        },
+                                                                                                                    ],
                                                                                                         })
                                                                                                     );
                                                                                                 }}
@@ -2349,33 +2325,33 @@ const WorkerManagement = () => {
                                                                                                                 services:
                                                                                                                     existing
                                                                                                                         ? p.services.map(
-                                                                                                                              (
-                                                                                                                                  s
-                                                                                                                              ) =>
-                                                                                                                                  s.serviceId ===
-                                                                                                                                  service.serviceId
-                                                                                                                                      ? {
-                                                                                                                                            ...s,
-                                                                                                                                            pricingType:
-                                                                                                                                                val,
-                                                                                                                                        }
-                                                                                                                                      : s
-                                                                                                                          )
+                                                                                                                            (
+                                                                                                                                s
+                                                                                                                            ) =>
+                                                                                                                                s.serviceId ===
+                                                                                                                                    service.serviceId
+                                                                                                                                    ? {
+                                                                                                                                        ...s,
+                                                                                                                                        pricingType:
+                                                                                                                                            val,
+                                                                                                                                    }
+                                                                                                                                    : s
+                                                                                                                        )
                                                                                                                         : [
-                                                                                                                              ...p.services,
-                                                                                                                              {
-                                                                                                                                  serviceId:
-                                                                                                                                      service.serviceId,
-                                                                                                                                  skillId:
-                                                                                                                                      skillId,
-                                                                                                                                  name: service.name,
-                                                                                                                                  details:
-                                                                                                                                      "",
-                                                                                                                                  pricingType:
-                                                                                                                                      val,
-                                                                                                                                  price: "",
-                                                                                                                              },
-                                                                                                                          ],
+                                                                                                                            ...p.services,
+                                                                                                                            {
+                                                                                                                                serviceId:
+                                                                                                                                    service.serviceId,
+                                                                                                                                skillId:
+                                                                                                                                    skillId,
+                                                                                                                                name: service.name,
+                                                                                                                                details:
+                                                                                                                                    "",
+                                                                                                                                pricingType:
+                                                                                                                                    val,
+                                                                                                                                price: "",
+                                                                                                                            },
+                                                                                                                        ],
                                                                                                             })
                                                                                                         );
                                                                                                     }}
@@ -2425,32 +2401,32 @@ const WorkerManagement = () => {
                                                                                                                 services:
                                                                                                                     existing
                                                                                                                         ? p.services.map(
-                                                                                                                              (
-                                                                                                                                  s
-                                                                                                                              ) =>
-                                                                                                                                  s.serviceId ===
-                                                                                                                                  service.serviceId
-                                                                                                                                      ? {
-                                                                                                                                            ...s,
-                                                                                                                                            price: val,
-                                                                                                                                        }
-                                                                                                                                      : s
-                                                                                                                          )
+                                                                                                                            (
+                                                                                                                                s
+                                                                                                                            ) =>
+                                                                                                                                s.serviceId ===
+                                                                                                                                    service.serviceId
+                                                                                                                                    ? {
+                                                                                                                                        ...s,
+                                                                                                                                        price: val,
+                                                                                                                                    }
+                                                                                                                                    : s
+                                                                                                                        )
                                                                                                                         : [
-                                                                                                                              ...p.services,
-                                                                                                                              {
-                                                                                                                                  serviceId:
-                                                                                                                                      service.serviceId,
-                                                                                                                                  skillId:
-                                                                                                                                      skillId,
-                                                                                                                                  name: service.name,
-                                                                                                                                  details:
-                                                                                                                                      "",
-                                                                                                                                  pricingType:
-                                                                                                                                      "FIXED",
-                                                                                                                                  price: val,
-                                                                                                                              },
-                                                                                                                          ],
+                                                                                                                            ...p.services,
+                                                                                                                            {
+                                                                                                                                serviceId:
+                                                                                                                                    service.serviceId,
+                                                                                                                                skillId:
+                                                                                                                                    skillId,
+                                                                                                                                name: service.name,
+                                                                                                                                details:
+                                                                                                                                    "",
+                                                                                                                                pricingType:
+                                                                                                                                    "FIXED",
+                                                                                                                                price: val,
+                                                                                                                            },
+                                                                                                                        ],
                                                                                                             })
                                                                                                         );
                                                                                                     }}
@@ -2701,6 +2677,128 @@ const WorkerManagement = () => {
                                         )}
                                     </button>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Suspend Confirmation Modal */}
+            {showSuspendModal && (
+                <div className="absolute inset-0 bg-white/20 backdrop-blur-lg shadow-xl rounded-xl flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-scaleIn">
+                        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                            <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                                <svg
+                                    className="w-5 h-5 mr-2 text-amber-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                    />
+                                </svg>
+                                Suspend Worker
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setShowSuspendModal(false);
+                                    setSuspendWorkerData({ id: null, name: "", reason: "" });
+                                }}
+                                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                                <svg
+                                    className="w-6 h-6"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="mb-4">
+                                <p className="text-gray-700 mb-2">
+                                    You are about to suspend <span className="font-semibold text-gray-900">{suspendWorkerData.name}</span>.
+                                </p>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Please provide a reason for suspension. This will be recorded and visible to the worker.
+                                </p>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Reason for Suspension *
+                                </label>
+                                <textarea
+                                    value={suspendWorkerData.reason}
+                                    onChange={(e) => setSuspendWorkerData(prev => ({
+                                        ...prev,
+                                        reason: e.target.value
+                                    }))}
+                                    placeholder="Enter the reason for suspending this worker..."
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white transition-colors resize-none"
+                                    rows="4"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Minimum 10 characters required
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowSuspendModal(false);
+                                        setSuspendWorkerData({ id: null, name: "", reason: "" });
+                                    }}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmSuspendWorker}
+                                    disabled={!suspendWorkerData.reason.trim() || suspendWorkerData.reason.trim().length < 10 || actionLoading === suspendWorkerData.id}
+                                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
+                                    {actionLoading === suspendWorkerData.id ? (
+                                        <>
+                                            <svg
+                                                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                ></circle>
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>
+                                            Suspending...
+                                        </>
+                                    ) : (
+                                        "Confirm Suspend"
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
