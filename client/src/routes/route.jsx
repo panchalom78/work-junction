@@ -27,6 +27,7 @@ import CustomerBookings from "../pages/CustomerBookings";
 import WorkerBookings from "../pages/WorkerBookings";
 import CustomerProfile from "../pages/CustomerProfile";
 import CustomerChatPage from "../pages/CustomerChatPage";
+import ProtectedRoute from "./ProtectedRoute";
 
 const Routers = () => {
     return (
@@ -56,8 +57,13 @@ const Routers = () => {
                     />
                     <Route
                         path="/serviceAgentDashboard"
-                        element={<ServiceAgentDashboard />}
+                        element={
+                            <ProtectedRoute>
+                                <ServiceAgentDashboard />
+                            </ProtectedRoute>
+                        }
                     />
+
                     <Route
                         path="/customer/dashboard"
                         element={<CustomerDashboard />}
