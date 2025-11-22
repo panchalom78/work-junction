@@ -6,6 +6,7 @@ import {
     getDashboardStats,
     getRecentActivities,
     getVerificationQueue,
+    exportVerificationCSV,
     getAllUsers,
     getAllBookings,
     getAllPayments,
@@ -42,6 +43,7 @@ router.put("/users/:userId/status", updateUserStatus);
 // Verification routes
 router.get("/verification/queue", getVerificationQueue);
 router.put("/verification/:workerId", updateWorkerVerification);
+router.get("/verification/export", exportVerificationCSV);
 
 // Booking management routes
 router.get("/bookings", getAllBookings);

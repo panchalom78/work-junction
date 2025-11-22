@@ -10,6 +10,8 @@ import {
     ChevronLeft,
     Loader2,
     Home,
+    Navigation,
+    X,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";
 import { useWorkerSearchStore } from "../store/workerSearch.store";
@@ -28,8 +30,18 @@ const BookingPage = () => {
         bookingDate: "",
         bookingTime: "",
         specialInstructions: "",
+        address: "",
     });
     const [step, setStep] = useState(1); // 1: Service, 2: DateTime, 3: Address, 4: Confirmation
+    const [locationType, setLocationType] = useState("saved"); // saved, current, manual
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [manualAddress, setManualAddress] = useState({
+        street: "",
+        area: "",
+        city: "",
+        state: "",
+        pincode: "",
+    });
 
     useEffect(() => {
         getUser();
@@ -57,11 +69,180 @@ const BookingPage = () => {
         }
     }, [workerId, getWorkerProfile]);
 
+    // Set saved address when user data loads
+    useEffect(() => {
+        if (user?.address && locationType === "saved") {
+            const { street, area, city, state, pincode } = user.address;
+            const addressParts = [street, area, city, state, pincode].filter(
+                Boolean
+            );
+            setBookingData((prev) => ({
+                ...prev,
+                address: addressParts.join(", "),
+            }));
+        }
+    }, [user, locationType]);
+
     const handleInputChange = (field, value) => {
         setBookingData((prev) => ({
             ...prev,
             [field]: value,
         }));
+    };
+
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        setIsGettingLocation(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+
+                try {
+                    const response = await fetch(
+                        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const locationName =
+                            data.locality ||
+                            data.city ||
+                            data.principalSubdivision ||
+                            "Current Location";
+
+                        const fullAddress = [
+                            data.locality,
+                            data.city,
+                            data.principalSubdivision,
+                            data.countryName,
+                        ]
+                            .filter(Boolean)
+                            .join(", ");
+
+                        setBookingData((prev) => ({
+                            ...prev,
+                            address: fullAddress || `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                        }));
+                    } else {
+                        setBookingData((prev) => ({
+                            ...prev,
+                            address: `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                        }));
+                    }
+                } catch (error) {
+                    console.error("Error getting location:", error);
+                    setBookingData((prev) => ({
+                        ...prev,
+                        address: `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                    }));
+                } finally {
+                    setIsGettingLocation(false);
+                }
+            },
+            (error) => {
+                setIsGettingLocation(false);
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert(
+                            "Location access denied. Please allow location access to use this feature."
+                        );
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Location information unavailable.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("Location request timed out.");
+                        break;
+                    default:
+                        alert(
+                            "An unknown error occurred while getting location."
+                        );
+                        break;
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000,
+            }
+        );
+    };
+
+    const handleUseSavedAddress = () => {
+        setLocationType("saved");
+        if (user?.address) {
+            const { street, area, city, state, pincode } = user.address;
+            const addressParts = [street, area, city, state, pincode].filter(
+                Boolean
+            );
+            setBookingData((prev) => ({
+                ...prev,
+                address: addressParts.join(", "),
+            }));
+        }
+    };
+
+    const handleUseCurrentLocation = () => {
+        setLocationType("current");
+        getCurrentLocation();
+    };
+
+    const handleUseManualAddress = () => {
+        setLocationType("manual");
+        setManualAddress({
+            street: "",
+            area: "",
+            city: "",
+            state: "",
+            pincode: "",
+        });
+        setBookingData((prev) => ({
+            ...prev,
+            address: "",
+        }));
+    };
+
+    const handleManualAddressChange = (field, value) => {
+        setManualAddress((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+
+        // Update booking address
+        const updatedAddress = { ...manualAddress, [field]: value };
+        const addressParts = [
+            updatedAddress.street,
+            updatedAddress.area,
+            updatedAddress.city,
+            updatedAddress.state,
+            updatedAddress.pincode,
+        ].filter(Boolean);
+        
+        setBookingData((prev) => ({
+            ...prev,
+            address: addressParts.join(", "),
+        }));
+    };
+
+    const clearAddress = () => {
+        setBookingData((prev) => ({
+            ...prev,
+            address: "",
+        }));
+        if (locationType === "manual") {
+            setManualAddress({
+                street: "",
+                area: "",
+                city: "",
+                state: "",
+                pincode: "",
+            });
+        }
     };
 
     const handleNextStep = () => {
@@ -76,9 +257,10 @@ const BookingPage = () => {
         if (
             !selectedService ||
             !bookingData.bookingDate ||
-            !bookingData.bookingTime
+            !bookingData.bookingTime ||
+            !bookingData.address
         ) {
-            alert("Please fill all required fields");
+            alert("Please fill all required fields including address");
             return;
         }
 
@@ -90,9 +272,9 @@ const BookingPage = () => {
                 bookingDate: bookingData.bookingDate,
                 bookingTime: bookingData.bookingTime,
                 price: selectedService.price,
-                paymentType: "CASH", // Default to cash payment after service
+                paymentType: "CASH",
                 specialInstructions: bookingData.specialInstructions,
-                // Address will be taken from user's profile automatically
+                serviceAddress: bookingData.address,
             };
 
             const response = await createBooking(bookingPayload);
@@ -106,31 +288,12 @@ const BookingPage = () => {
     };
 
     const timeSlots = [
-        "09:00",
-        "09:30",
-        "10:00",
-        "10:30",
-        "11:00",
-        "11:30",
-        "12:00",
-        "12:30",
-        "13:00",
-        "13:30",
-        "14:00",
-        "14:30",
-        "15:00",
-        "15:30",
-        "16:00",
-        "16:30",
-        "17:00",
-        "17:30",
-        "18:00",
-        "18:30",
-        "19:00",
-        "19:30",
+        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+        "18:00", "18:30", "19:00", "19:30",
     ];
 
-    // Format user address for display
     const getUserAddress = () => {
         if (!user?.address) return "No address saved in your profile";
 
@@ -143,10 +306,10 @@ const BookingPage = () => {
 
     if (!worker) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                    <div className="text-gray-600">
+                    <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                    <div className="text-gray-600 text-sm sm:text-base">
                         Loading worker information...
                     </div>
                 </div>
@@ -155,22 +318,22 @@ const BookingPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-4xl mx-auto px-6 py-4">
-                    <div className="flex items-center space-x-4">
+            <div className="bg-white shadow-sm border-b border-gray-200 w-full">
+                <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
                         <button
                             onClick={() => navigate(-1)}
-                            className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+                            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-xl sm:rounded-2xl transition-colors flex-shrink-0"
                         >
-                            <ChevronLeft className="w-6 h-6" />
+                            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                         </button>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">
+                        <div className="min-w-0">
+                            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 break-words">
                                 Book Service
                             </h1>
-                            <p className="text-gray-600">
+                            <p className="text-gray-600 text-xs sm:text-sm md:text-base break-words">
                                 Book a service with {worker.name}
                             </p>
                         </div>
@@ -178,58 +341,60 @@ const BookingPage = () => {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
                     {/* Booking Steps */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
+                    <div className="lg:col-span-2 w-full">
+                        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 mb-4 sm:mb-6 w-full overflow-hidden">
                             {/* Progress Steps */}
-                            <div className="flex justify-between mb-8">
-                                {[1, 2, 3, 4].map((stepNumber) => (
-                                    <div
-                                        key={stepNumber}
-                                        className="flex flex-col items-center"
-                                    >
+                            <div className="flex justify-between mb-6 sm:mb-8 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                                <div className="flex justify-between w-full min-w-max sm:min-w-0">
+                                    {[1, 2, 3, 4].map((stepNumber) => (
                                         <div
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 font-semibold ${
-                                                stepNumber < step
-                                                    ? "bg-green-500 border-green-500 text-white"
-                                                    : stepNumber === step
-                                                    ? "bg-blue-600 border-blue-600 text-white"
-                                                    : "bg-white border-gray-300 text-gray-500"
-                                            }`}
+                                            key={stepNumber}
+                                            className="flex flex-col items-center flex-1 px-2"
                                         >
-                                            {stepNumber < step ? (
-                                                <CheckCircle className="w-5 h-5" />
-                                            ) : (
-                                                stepNumber
-                                            )}
+                                            <div
+                                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 font-semibold text-sm sm:text-base ${
+                                                    stepNumber < step
+                                                        ? "bg-green-500 border-green-500 text-white"
+                                                        : stepNumber === step
+                                                        ? "bg-blue-600 border-blue-600 text-white"
+                                                        : "bg-white border-gray-300 text-gray-500"
+                                                }`}
+                                            >
+                                                {stepNumber < step ? (
+                                                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                ) : (
+                                                    stepNumber
+                                                )}
+                                            </div>
+                                            <div className="text-xs mt-2 text-gray-600 text-center whitespace-nowrap">
+                                                {
+                                                    [
+                                                        "Service",
+                                                        "Date & Time",
+                                                        "Address",
+                                                        "Confirm",
+                                                    ][stepNumber - 1]
+                                                }
+                                            </div>
                                         </div>
-                                        <div className="text-xs mt-2 text-gray-600 text-center">
-                                            {
-                                                [
-                                                    "Service",
-                                                    "Date & Time",
-                                                    "Review",
-                                                    "Confirm",
-                                                ][stepNumber - 1]
-                                            }
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Step 1: Service Selection */}
                             {step === 1 && (
-                                <div className="space-y-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
                                         Select Service
                                     </h3>
-                                    <div className="space-y-4">
+                                    <div className="space-y-3 sm:space-y-4">
                                         {worker.services?.map((service) => (
                                             <div
                                                 key={service._id}
-                                                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all ${
+                                                className={`border-2 rounded-xl sm:rounded-2xl p-3 sm:p-4 cursor-pointer transition-all ${
                                                     selectedService?._id ===
                                                     service._id
                                                         ? "border-blue-500 bg-blue-50"
@@ -239,12 +404,12 @@ const BookingPage = () => {
                                                     setSelectedService(service)
                                                 }
                                             >
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-900">
+                                                <div className="flex justify-between items-start gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-semibold text-gray-900 text-sm sm:text-base break-words">
                                                             {service.details}
                                                         </h4>
-                                                        <p className="text-gray-600 text-sm mt-1">
+                                                        <p className="text-gray-600 text-xs sm:text-sm mt-1">
                                                             {worker.skills?.find(
                                                                 (s) =>
                                                                     s._id.toString() ===
@@ -253,7 +418,7 @@ const BookingPage = () => {
                                                                 "General Service"}
                                                         </p>
                                                         {service.pricingType && (
-                                                            <p className="text-gray-500 text-sm">
+                                                            <p className="text-gray-500 text-xs sm:text-sm">
                                                                 {service.pricingType ===
                                                                 "HOURLY"
                                                                     ? "Hourly rate"
@@ -261,13 +426,13 @@ const BookingPage = () => {
                                                             </p>
                                                         )}
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="text-2xl font-bold text-gray-900">
+                                                    <div className="text-right flex-shrink-0">
+                                                        <div className="text-xl sm:text-2xl font-bold text-gray-900">
                                                             ₹{service.price}
                                                         </div>
                                                         {service.pricingType ===
                                                             "HOURLY" && (
-                                                            <div className="text-gray-500 text-sm">
+                                                            <div className="text-gray-500 text-xs sm:text-sm">
                                                                 / hour
                                                             </div>
                                                         )}
@@ -281,14 +446,14 @@ const BookingPage = () => {
 
                             {/* Step 2: Date & Time */}
                             {step === 2 && (
-                                <div className="space-y-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
                                         Select Date & Time
                                     </h3>
 
                                     {/* Date Selection */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                             Select Date *
                                         </label>
                                         <input
@@ -305,7 +470,7 @@ const BookingPage = () => {
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500"
+                                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
                                             required
                                         />
                                     </div>
@@ -313,10 +478,10 @@ const BookingPage = () => {
                                     {/* Time Selection */}
                                     {bookingData.bookingDate && (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                                 Select Time *
                                             </label>
-                                            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 sm:gap-3">
                                                 {timeSlots.map((time) => (
                                                     <button
                                                         key={time}
@@ -327,7 +492,7 @@ const BookingPage = () => {
                                                                 time
                                                             )
                                                         }
-                                                        className={`py-3 px-4 border rounded-2xl text-sm font-medium transition-all ${
+                                                        className={`py-2 sm:py-3 px-2 sm:px-4 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium transition-all ${
                                                             bookingData.bookingTime ===
                                                             time
                                                                 ? "bg-blue-600 text-white border-blue-600"
@@ -343,37 +508,171 @@ const BookingPage = () => {
                                 </div>
                             )}
 
-                            {/* Step 3: Review Details */}
+                            {/* Step 3: Address Selection */}
                             {step === 3 && (
-                                <div className="space-y-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">
-                                        Review Booking Details
+                                <div className="space-y-4 sm:space-y-6">
+                                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                                        Select Service Address
                                     </h3>
 
-                                    {/* Service Address (Read-only) */}
-                                    <div className="border-2 border-gray-200 rounded-2xl p-4">
-                                        <div className="flex items-start space-x-3">
-                                            <Home className="w-5 h-5 text-gray-500 mt-0.5" />
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold text-gray-900 mb-2">
-                                                    Service Address
-                                                </h4>
-                                                <p className="text-gray-700 mb-3">
-                                                    {getUserAddress()}
-                                                </p>
-                                                <p className="text-sm text-gray-500">
-                                                    This is your saved address
-                                                    from your profile. The
-                                                    professional will come to
-                                                    this location.
-                                                </p>
+                                    {/* Address Type Toggle */}
+                                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleUseSavedAddress}
+                                            disabled={!user?.address}
+                                            className={`flex flex-col items-center justify-center space-y-1.5 sm:space-y-2 py-3 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
+                                                locationType === "saved"
+                                                    ? "bg-blue-100 border-blue-500 text-blue-700"
+                                                    : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+                                            } ${
+                                                !user?.address
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                        >
+                                            <Home className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                                            <span className="text-xs sm:text-sm font-medium text-center">
+                                                Saved Address
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleUseCurrentLocation}
+                                            disabled={isGettingLocation}
+                                            className={`flex flex-col items-center justify-center space-y-1.5 sm:space-y-2 py-3 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
+                                                locationType === "current"
+                                                    ? "bg-green-100 border-green-500 text-green-700"
+                                                    : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+                                            } ${
+                                                isGettingLocation
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                        >
+                                            {isGettingLocation ? (
+                                                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin flex-shrink-0" />
+                                            ) : (
+                                                <Navigation className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                                            )}
+                                            <span className="text-xs sm:text-sm font-medium text-center">
+                                                {isGettingLocation
+                                                    ? "Detecting..."
+                                                    : "Current"}
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleUseManualAddress}
+                                            className={`flex flex-col items-center justify-center space-y-1.5 sm:space-y-2 py-3 sm:py-4 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
+                                                locationType === "manual"
+                                                    ? "bg-purple-100 border-purple-500 text-purple-700"
+                                                    : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+                                            }`}
+                                        >
+                                            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                                            <span className="text-xs sm:text-sm font-medium text-center">
+                                                Enter Manual
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {/* Address Display/Input */}
+                                    {locationType === "saved" && user?.address && (
+                                        <div className="border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gray-50">
+                                            <div className="flex items-start space-x-2 sm:space-x-3">
+                                                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
+                                                        Service Address
+                                                    </h4>
+                                                    <p className="text-gray-700 mb-2 sm:mb-3 text-xs sm:text-sm break-words">
+                                                        {getUserAddress()}
+                                                    </p>
+                                                    <p className="text-xs sm:text-sm text-gray-500">
+                                                        This is your saved address from your profile.
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
+
+                                    {locationType === "current" && (
+                                        <div className={`relative w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 ${
+                                            bookingData.address
+                                                ? "border-green-200 bg-green-50"
+                                                : "border-gray-300 bg-gray-50"
+                                        }`}>
+                                            <MapPin className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 flex-shrink-0" />
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className={`font-medium text-xs sm:text-sm break-words flex-1 ${
+                                                    bookingData.address
+                                                        ? "text-green-800"
+                                                        : "text-gray-600"
+                                                }`}>
+                                                    {bookingData.address ||
+                                                        'Click "Current" to detect your location'}
+                                                </span>
+                                                {bookingData.address && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={clearAddress}
+                                                        className="p-1 transition-colors flex-shrink-0 text-green-600 hover:text-green-800"
+                                                    >
+                                                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {locationType === "manual" && (
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div>
+                                                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                                                    Street / House No *
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter street address"
+                                                    value={manualAddress.street}
+                                                    onChange={(e) =>
+                                                        handleManualAddressChange(
+                                                            "street",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                <div>
+                                                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                                                        Pincode *
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter pincode"
+                                                        value={manualAddress.pincode}
+                                                        onChange={(e) =>
+                                                            handleManualAddressChange(
+                                                                "pincode",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Special Instructions */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                             Special Instructions (Optional)
                                         </label>
                                         <textarea
@@ -388,19 +687,19 @@ const BookingPage = () => {
                                             }
                                             placeholder="Any special requirements or instructions for the worker..."
                                             rows="3"
-                                            className="w-full border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-500 resize-none"
+                                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 resize-none"
                                         />
                                     </div>
 
                                     {/* Payment Information */}
-                                    <div className="border-2 border-green-200 bg-green-50 rounded-2xl p-4">
-                                        <div className="flex items-center space-x-3">
-                                            <CheckCircle className="w-6 h-6 text-green-600" />
-                                            <div>
-                                                <h4 className="font-semibold text-green-800">
+                                    <div className="border-2 border-green-200 bg-green-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                                        <div className="flex items-start space-x-2 sm:space-x-3">
+                                            <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <h4 className="font-semibold text-green-800 text-sm sm:text-base">
                                                     Payment after Service
                                                 </h4>
-                                                <p className="text-green-700 text-sm">
+                                                <p className="text-green-700 text-xs sm:text-sm break-words">
                                                     Pay directly to the
                                                     professional after the
                                                     service is completed. No
@@ -414,47 +713,47 @@ const BookingPage = () => {
 
                             {/* Step 4: Confirmation */}
                             {step === 4 && (
-                                <div className="text-center py-8">
-                                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                                <div className="text-center py-6 sm:py-8">
+                                    <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-500 mx-auto mb-4" />
+                                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                                         Booking Confirmed!
                                     </h3>
-                                    <p className="text-gray-600 mb-6">
+                                    <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base px-4">
                                         Your booking with {worker.name} has been
                                         confirmed successfully.
                                     </p>
                                     <div className="space-y-4">
-                                        <div className="bg-gray-50 rounded-2xl p-4 text-left">
-                                            <h4 className="font-semibold text-gray-900 mb-2">
+                                        <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-left">
+                                            <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
                                                 Booking Details:
                                             </h4>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-xs sm:text-sm text-gray-600 break-words">
                                                 <strong>Service:</strong>{" "}
                                                 {selectedService?.details}
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-xs sm:text-sm text-gray-600">
                                                 <strong>Date:</strong>{" "}
                                                 {new Date(
                                                     bookingData.bookingDate
                                                 ).toLocaleDateString()}
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-xs sm:text-sm text-gray-600">
                                                 <strong>Time:</strong>{" "}
                                                 {bookingData.bookingTime}
                                             </p>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-xs sm:text-sm text-gray-600 break-words">
                                                 <strong>Address:</strong>{" "}
-                                                {getUserAddress()}
+                                                {bookingData.address}
                                             </p>
                                         </div>
-                                        <div className="flex space-x-4 justify-center">
+                                        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">
                                             <button
                                                 onClick={() =>
                                                     navigate(
                                                         "/customer/bookings"
                                                     )
                                                 }
-                                                className="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition-colors font-semibold"
+                                                className="bg-blue-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base"
                                             >
                                                 View Bookings
                                             </button>
@@ -462,7 +761,7 @@ const BookingPage = () => {
                                                 onClick={() =>
                                                     navigate("/customer")
                                                 }
-                                                className="border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-2xl hover:border-gray-400 transition-colors font-semibold"
+                                                className="border-2 border-gray-300 text-gray-700 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl hover:border-gray-400 transition-colors font-semibold text-sm sm:text-base"
                                             >
                                                 Back to Home
                                             </button>
@@ -473,11 +772,11 @@ const BookingPage = () => {
 
                             {/* Navigation Buttons */}
                             {step < 4 && (
-                                <div className="flex justify-between pt-6 border-t border-gray-200">
+                                <div className="flex justify-between pt-4 sm:pt-6 border-t border-gray-200">
                                     <button
                                         onClick={handlePrevStep}
                                         disabled={step === 1}
-                                        className={`px-6 py-3 rounded-2xl font-semibold transition-colors ${
+                                        className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold transition-colors text-sm sm:text-base ${
                                             step === 1
                                                 ? "text-gray-400 cursor-not-allowed"
                                                 : "text-gray-700 hover:bg-gray-100"
@@ -495,9 +794,10 @@ const BookingPage = () => {
                                             loading ||
                                             (step === 2 &&
                                                 (!bookingData.bookingDate ||
-                                                    !bookingData.bookingTime))
+                                                    !bookingData.bookingTime)) ||
+                                            (step === 3 && !bookingData.address)
                                         }
-                                        className="bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 transition-colors font-semibold flex items-center space-x-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        className="bg-blue-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl hover:bg-blue-700 transition-colors font-semibold flex items-center space-x-2 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm sm:text-base"
                                     >
                                         {loading && (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -514,37 +814,37 @@ const BookingPage = () => {
 
                         {/* Error Display */}
                         {error && (
-                            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-                                <div className="flex items-center space-x-2 text-red-800">
-                                    <AlertCircle className="w-5 h-5" />
-                                    <span>{error}</span>
+                            <div className="bg-red-50 border border-red-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 w-full">
+                                <div className="flex items-center space-x-2 text-red-800 text-sm sm:text-base">
+                                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                                    <span className="break-words">{error}</span>
                                 </div>
                             </div>
                         )}
                     </div>
 
                     {/* Order Summary */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-3xl shadow-lg p-6 sticky top-8">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    <div className="lg:col-span-1 w-full">
+                        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 sticky top-4 sm:top-8">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">
                                 Order Summary
                             </h3>
 
                             {/* Worker Info */}
-                            <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-200">
-                                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold">
+                            <div className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-6 pb-4 border-b border-gray-200">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
                                     {worker.name
                                         ?.split(" ")
                                         .map((n) => n[0])
                                         .join("")}
                                 </div>
-                                <div>
-                                    <div className="font-semibold text-gray-900">
+                                <div className="min-w-0">
+                                    <div className="font-semibold text-gray-900 text-sm sm:text-base break-words">
                                         {worker.name}
                                     </div>
-                                    <div className="flex items-center space-x-1 text-sm text-gray-600">
-                                        <MapPin className="w-4 h-4" />
-                                        <span>
+                                    <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
+                                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                                        <span className="break-words">
                                             {worker.address?.city || "City"}
                                         </span>
                                     </div>
@@ -553,31 +853,31 @@ const BookingPage = () => {
 
                             {/* Service Details */}
                             {selectedService && (
-                                <div className="space-y-4 mb-6">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">
+                                <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+                                    <div className="flex justify-between text-xs sm:text-sm gap-2">
+                                        <span className="text-gray-600 flex-shrink-0">
                                             Service:
                                         </span>
-                                        <span className="font-medium text-gray-900 text-right">
+                                        <span className="font-medium text-gray-900 text-right break-words">
                                             {selectedService.details}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">
+                                    <div className="flex justify-between text-xs sm:text-sm">
+                                        <span className="text-gray-600 flex-shrink-0">
                                             Price:
                                         </span>
-                                        <span className="font-bold text-gray-900">
+                                        <span className="font-bold text-gray-900 whitespace-nowrap">
                                             ₹{selectedService.price}
                                             {selectedService.pricingType ===
                                                 "HOURLY" && "/hour"}
                                         </span>
                                     </div>
                                     {bookingData.bookingDate && (
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">
+                                        <div className="flex justify-between text-xs sm:text-sm">
+                                            <span className="text-gray-600 flex-shrink-0">
                                                 Date:
                                             </span>
-                                            <span className="font-medium text-gray-900">
+                                            <span className="font-medium text-gray-900 whitespace-nowrap">
                                                 {new Date(
                                                     bookingData.bookingDate
                                                 ).toLocaleDateString()}
@@ -585,11 +885,11 @@ const BookingPage = () => {
                                         </div>
                                     )}
                                     {bookingData.bookingTime && (
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">
+                                        <div className="flex justify-between text-xs sm:text-sm">
+                                            <span className="text-gray-600 flex-shrink-0">
                                                 Time:
                                             </span>
-                                            <span className="font-medium text-gray-900">
+                                            <span className="font-medium text-gray-900 whitespace-nowrap">
                                                 {bookingData.bookingTime}
                                             </span>
                                         </div>
@@ -600,30 +900,30 @@ const BookingPage = () => {
                             {/* Total */}
                             <div className="border-t border-gray-200 pt-4">
                                 <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-gray-900">
+                                    <span className="font-semibold text-gray-900 text-sm sm:text-base">
                                         Total Amount:
                                     </span>
-                                    <span className="text-2xl font-bold text-gray-900">
+                                    <span className="text-xl sm:text-2xl font-bold text-gray-900">
                                         ₹{selectedService?.price || 0}
                                     </span>
                                 </div>
-                                <p className="text-sm text-gray-600 mt-2">
+                                <p className="text-xs sm:text-sm text-gray-600 mt-2">
                                     Pay after service completion
                                 </p>
                             </div>
 
                             {/* Trust Badges */}
-                            <div className="mt-6 space-y-3">
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                            <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
+                                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                                    <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
                                     <span>Pay After Service</span>
                                 </div>
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                                    <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
                                     <span>Verified Professional</span>
                                 </div>
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                                    <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
                                     <span>Secure Booking</span>
                                 </div>
                             </div>
