@@ -138,6 +138,7 @@ const nonAvailabilitySchema = new Schema(
 const serviceAgentProfileSchema = new Schema(
     {
         assignedArea: { type: String, trim: true },
+        assignedAreaPincode: { type: Number, trim: true },
         isSuspended: { type: Boolean, default: false },
         suspendedUntil: { type: Date },
     },

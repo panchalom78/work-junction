@@ -20,9 +20,11 @@ const NonSmartphoneWorkers = () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get('/api/service-agent/non-smartphone-workers');
+
       if (data.success) setWorkers(data.data || []);
     } catch {
       toast.error('Failed to load workers');
+      console.error('Error fetching non-smartphone workers');
     } finally {
       setLoading(false);
     }
