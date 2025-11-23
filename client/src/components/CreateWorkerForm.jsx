@@ -260,7 +260,8 @@ const CreateWorkerProfile = () => {
           serviceId: s.serviceId,
           details: detail.details || '',
           pricingType: (detail.pricingType || 'fixed').toUpperCase(),
-          price: parseFloat(detail.price) || 0
+          price: parseFloat(detail.price) || 0,
+          estimatedDuration: detail.estimatedDuration || 60, // Default to 60 mins if not provided
         };
       });
 
@@ -336,25 +337,11 @@ const CreateWorkerProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* BACK BUTTON - TOP */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <button
-          onClick={() => setActiveView('workers')}
-          className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Back</span>
-        </button>
-      </div>
+     
 
       <div className="max-w-3xl mx-auto p-4 pb-20">
         {/* TITLE */}
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Create Worker</h1>
-          <p className="text-xs text-gray-600 mt-1">Add non-smartphone worker</p>
-        </div>
+      
 
         {/* PROGRESS BAR */}
         <div className="flex items-center justify-between mb-6">
@@ -516,6 +503,13 @@ const CreateWorkerProfile = () => {
                                           placeholder="Price"
                                           value={detail.price || ''}
                                           onChange={e => handleServiceDetailsChange(service.serviceId, 'price', e.target.value)}
+                                          className="p-2 border rounded text-xs"
+                                        />
+                                        <input
+                                          type="number"
+                                          placeholder="Est. Duration (mins)"
+                                          value={detail.estimatedDuration || ''}
+                                          onChange={e => handleServiceDetailsChange(service.serviceId, 'estimatedDuration', e.target.value)}
                                           className="p-2 border rounded text-xs"
                                         />
                                       </div>

@@ -24,7 +24,7 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
     { id: 'verification', label: 'Verification', icon: Shield },
     { id: 'workers', label: 'Worker Management', icon: Users },
     { id: 'requests', label: 'Worker Requests', icon: MessageCircle },
-    { id: 'non-smartphone-workers', label: 'Non Smartphone Workers', icon: Smartphone }
+    { id: 'non-smartphone-workers', label: 'Non Smartphone Workers', icon: Smartphone },
   ];
 
   // Find the component for the currently active tab

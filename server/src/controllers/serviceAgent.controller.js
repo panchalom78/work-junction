@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import User from "../models//user.model.js";
 import ServiceAgent from "../models/serviceAgent.model.js"
+import {WorkerService} from "../models/workerService.model.js";
 
 import { successResponse, errorResponse } from "../utils/response.js";
 // Setup or update service agent deta
@@ -289,41 +290,161 @@ export const getWorkersForVerification = async (req, res) => {
  * Get details of a worker (for verification by Service Agent)
  */
 export const getWorkerDetails = async (req, res) => {
-  try {
-    const { workerId } = req.params;
+    try {
+        const { workerId } = req.params;
 
-    // Find worker by ID and role
-    const worker = await User.findOne({
-      _id: workerId,
-      role: "WORKER",
-    }).select("name email phone address workerProfile createdAt");
+        // Validate ObjectId
+        if (!mongoose.Types.ObjectId.isValid(workerId)) {
+            return errorResponse(res, 400, "Invalid worker ID");
+        }
 
-    if (!worker) {
-      return errorResponse(res, 404, "Worker not found");
+        // Fetch worker with populated skills
+        const worker = await User.findById(workerId)
+            .select("-password -otp")
+            .populate({
+                path: "workerProfile.skills.skillId",
+                select: "name services description",
+            });
+
+        if (!worker || worker.role !== "WORKER") {
+            return errorResponse(res, 404, "Worker not found");
+        }
+
+        // Fetch worker services with detailed population
+        const workerServices = await WorkerService.find({ 
+            workerId: workerId 
+        })
+        .populate({
+            path: "skillId",
+            select: "name services description",
+            model: "Skill"
+        })
+        .sort({ isActive: -1, createdAt: -1 });
+
+        // Process services with enhanced details
+        const processedServices = await Promise.all(
+            workerServices.map(async (service) => {
+                const skill = service.skillId;
+                let serviceDetails = {
+                    name: "General Service",
+                    description: ""
+                };
+
+                // Find service details from skill's services array
+                if (skill && skill.services) {
+                    const foundService = skill.services.find(
+                        s => s.serviceId.toString() === service.serviceId.toString()
+                    );
+                    if (foundService) {
+                        serviceDetails = {
+                            name: foundService.name,
+                            description: foundService.description || ""
+                        };
+                    }
+                }
+
+                return {
+                    _id: service._id,
+                    skill: {
+                        _id: skill?._id,
+                        name: skill?.name,
+                        description: skill?.description
+                    },
+                    service: {
+                        _id: service.serviceId,
+                        name: serviceDetails.name,
+                        description: serviceDetails.description
+                    },
+                    details: service.details,
+                    pricingType: service.pricingType,
+                    price: service.price,
+                    estimatedDuration: service.estimatedDuration,
+                    durationUnit: service.pricingType === "HOURLY" ? "hours" : "fixed",
+                    portfolioImages: service.portfolioImages || [],
+                    isActive: service.isActive,
+                    createdAt: service.createdAt,
+                    updatedAt: service.updatedAt
+                };
+            })
+        );
+
+        // Get worker statistics
+        const [bookings, activeServices, completedBookings] = await Promise.all([
+            Booking.find({ workerId: workerId }),
+            WorkerService.countDocuments({ workerId: workerId, isActive: true }),
+            Booking.find({ 
+                workerId: workerId, 
+                status: "COMPLETED",
+                review: { $exists: true, $ne: null }
+            }).populate("review")
+        ]);
+
+        const stats = {
+            totalBookings: bookings.length,
+            completed: bookings.filter(b => b.status === 'COMPLETED').length,
+            pending: bookings.filter(b => b.status === 'PENDING').length,
+            active: bookings.filter(b => b.status === 'ACCEPTED' || b.status === 'PAYMENT_PENDING').length,
+            cancelled: bookings.filter(b => b.status === 'CANCELLED' || b.status === 'DECLINED').length,
+            activeServices: activeServices,
+            totalServices: workerServices.length
+        };
+
+        // Calculate earnings and rating
+        const earnings = bookings
+            .filter(b => b.status === 'COMPLETED')
+            .reduce((total, booking) => total + (booking.price || 0), 0);
+
+        const averageRating = completedBookings.length > 0 
+            ? completedBookings.reduce((sum, booking) => sum + (booking.review?.rating || 0), 0) / completedBookings.length
+            : 0;
+
+        // Build comprehensive response
+        const workerData = {
+            _id: worker._id,
+            personalInfo: {
+                name: worker.name,
+                phone: worker.phone,
+                email: worker.email,
+                isActive: worker.isActive,
+                joinDate: worker.createdAt
+            },
+            address: worker.address,
+            professionalInfo: {
+                status: worker.workerProfile?.availabilityStatus || "available",
+                rating: parseFloat(averageRating.toFixed(1)),
+                totalReviews: completedBookings.length,
+                completedJobs: stats.completed,
+                totalEarnings: earnings,
+                verificationStatus: worker.workerProfile?.verification?.status || "PENDING",
+                preferredLanguage: worker.workerProfile?.preferredLanguage
+            },
+            skills: (worker.workerProfile?.skills || []).map((s) => ({
+                _id: s.skillId?._id,
+                name: s.skillId?.name,
+                description: s.skillId?.description,
+                availableServices: s.skillId?.services || []
+            })).filter(skill => skill._id),
+            services: processedServices,
+            bankDetails: worker.workerProfile?.bankDetails || null,
+            timetable: worker.workerProfile?.timetable || null,
+            stats: stats,
+            meta: {
+                createdByAgent: worker.workerProfile?.createdByAgent || false,
+                isSuspended: worker.workerProfile?.isSuspended || false,
+                lastUpdated: worker.updatedAt
+            }
+        };
+
+        return successResponse(
+            res,
+            200,
+            "Worker details fetched successfully",
+            workerData
+        );
+    } catch (error) {
+        console.error("Error in getWorkerDetails:", error);
+        return errorResponse(res, 500, "Server error. Please try again later.");
     }
-
-    // If the requester is a service agent, check if the area matches with worker
-    if (req.user.role === "SERVICE_AGENT") {
-      // Get the service agent document (linked with user)
-      const serviceAgent = await ServiceAgent.findOne({ user: req.user._id });
-      // agent may have one or more areas assigned (usually an array, fallback to string if your model differs)
-      let agentArea = null;
-      if (serviceAgent) {
-        agentArea =
-          (Array.isArray(serviceAgent.areasAssigned) && serviceAgent.areasAssigned.length > 0)
-            ? serviceAgent.areasAssigned[0]
-            : serviceAgent.areasAssigned;
-      }
-      if (agentArea && worker.address?.area !== agentArea) {
-        return errorResponse(res, 403, "Access denied for this worker’s area");
-      }
-    }
-
-    return successResponse(res, 200, "Worker details fetched", { worker });
-  } catch (error) {
-    console.error("Error fetching worker details:", error);
-    return errorResponse(res, 500, "Failed to fetch worker details");
-  }
 };
 
 /**

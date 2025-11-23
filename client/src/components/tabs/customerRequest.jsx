@@ -78,32 +78,32 @@ const NonSmartphoneWorkers = () => {
     };
 
     // FETCH ALL WORKERS
-    const fetchWorkers = async () => {
-        try {
-            setLoading(true);
-            const { data } = await axiosInstance.get("/api/service-agent/non-smartphone-workers");
-            
-            if (data.success) {
-                if (Array.isArray(data.data)) {
-                    setWorkers(data.data);
-                } else if (data.data && Array.isArray(data.data.workers)) {
-                    setWorkers(data.data.workers);
-                } else if (Array.isArray(data.workers)) {
-                    setWorkers(data.workers);
-                } else {
-                    setWorkers([]);
-                }
-            } else {
-                setWorkers([]);
-            }
-        } catch (error) {
-            console.error("Fetch workers error:", error);
-            toast.error("Failed to load workers");
-            setWorkers([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // components/NonSmartphoneWorkerDashboard.js - Updated fetch function
+
+const fetchWorkers = async () => {
+  try {
+    setLoading(true);
+    const { data } = await axiosInstance.get("/api/service-agent/workers-with-pending-bookings");
+    
+    if (data.success) {
+      if (Array.isArray(data.data)) {
+        setWorkers(data.data);
+      } else {
+        setWorkers([]);
+      }
+    } else {
+      setWorkers([]);
+    }
+  } catch (error) {
+    console.error("Fetch workers with pending bookings error:", error);
+    toast.error("Failed to load workers with pending bookings");
+    setWorkers([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
     // FETCH WORKER'S JOBS
     const fetchWorkerJobs = async (workerId) => {

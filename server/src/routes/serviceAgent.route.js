@@ -25,11 +25,16 @@ import {
   getPaymentDetails,
   updatePaymentStatus,
   getWorkerBookings,
-  getWorkerProfile
+  getWorkerProfile,
+  getWorkerCompletedJobsCount,
+  getWorkersWithPendingBookings,
+  getAgentWorkersWithStats,
+  getWorkerPendingBookings,
+
 } from "../controllers/physicalWorker.controller.js";
 import { uploadVerificationDoc } from "../config/cloudinary.js";
 import { authorize } from "../middlewares/auth.middleware.js";
-import { getAllWorkers, suspendWorker, getWorkerDetails, activateWorker, updatePersonal, updateAddress, updateBank, updateSkillsAndServices, getSkills } from "../controllers/workerManagement.controller.js";
+import { getAllWorkers, suspendWorker, activateWorker,getWorkerDetails, updatePersonal, updateAddress, updateBank, updateSkillsAndServices, getSkills } from "../controllers/workerManagement.controller.js";
 
 const router = express.Router();
 router.use(protect);
@@ -125,4 +130,9 @@ router.get('/bookings/:workerId', getWorkerBookings);
 router.get('/bookings/:bookingId/payment', getPaymentDetails);
 router.patch('/bookings/:bookingId/payment', updatePaymentStatus);
 router.get('/profile', getWorkerProfile);
+router.get('/jobCount/:workerId', getWorkerCompletedJobsCount);
+router.get("/workers-with-pending-bookings", getWorkersWithPendingBookings);
+router.get("/agent-workers-with-stats", getAgentWorkersWithStats);
+router.get("/worker/:workerId/pending-bookings", getWorkerPendingBookings);
+
 export default router;
