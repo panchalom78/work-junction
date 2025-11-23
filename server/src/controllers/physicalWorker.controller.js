@@ -5,7 +5,7 @@ import { cloudinary } from "../config/cloudinary.js";
 import { WorkerService } from "../models/workerService.model.js";
 import { Booking } from "../models/booking.model.js";
 import mongoose from "mongoose";
-
+import { Skill } from "../models/skill.model.js";
 export const createWorker = async (req, res) => {
     try {
         const {
@@ -1613,81 +1613,385 @@ export const getAllBookings = createHandler("ALL");
  * @route GET /api/service-agent/worker/:workerId/bookings
  */
 
-const getWorkerBookings = async (req, res) => {
-    const { workerId } = req.params;
-
+export const getWorkerBookings = async (req, res) => {
     try {
-        // Convert to ObjectId
-        const workerObjectId = new mongoose.Types.ObjectId(workerId);
+        const { workerId } = req.params;
+        
+        // Validate workerId
+        if (!workerId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid worker ID format'
+            });
+        }
 
-        // Find the worker (agent-created or not)
-        const worker = await User.findById(workerObjectId)
-            .select("name phone createdByAgent workerProfile")
-            .populate("workerProfile.services.serviceId", "name")
-            .populate("workerProfile.skills.skillId", "name");
+        // Check if worker exists and is actually a worker
+        const worker = await User.findOne({
+            _id: workerId,
+            role: 'WORKER',
+            isActive: true
+        })
+        .select('name phone email workerProfile address isActive')
+        .lean();
 
         if (!worker) {
             return res.status(404).json({
                 success: false,
-                message: "Worker not found",
+                message: 'Worker not found or inactive'
             });
         }
 
-        // ✅ FIXED QUERY: Use workerId instead of worker
-        const bookings = await Booking.find({ workerId: workerObjectId })
-            .populate("customerId", "name phone address")
-            .populate({
-                path: "workerServiceId",
-                populate: [
-                    { path: "serviceId", select: "name" },
-                    { path: "skillId", select: "name" },
-                ],
-            })
-            .sort({ createdAt: -1 })
-            .lean();
+        // Get all bookings for this worker with populated data
+        const bookings = await Booking.find({ 
+            workerId: workerId 
+        })
+        .populate('customerId', 'name phone email address')
+        .populate('serviceId', 'name category description')
+        .populate('workerServiceId', 'price skills experience serviceId')
+        .sort({ createdAt: -1 })
+        .lean();
 
-        const formattedBookings = bookings.map((b) => ({
-            _id: b._id,
-            status: b.status || "PENDING",
-            date: b.bookingDate,
-            time: b.bookingTime,
-            price: b.price || 0,
-            serviceName: b.workerServiceId?.serviceId?.name || "—",
-            skillName: b.workerServiceId?.skillId?.name || "—",
-            customer: {
-                name: b.customerId?.name || "Unknown",
-                phone: b.customerId?.phone || "N/A",
-                address: b.customerId?.address || {},
-            },
-            payment: b.payment || { status: "PENDING" },
+        // Transform the data for frontend
+        const transformedBookings = await Promise.all(bookings.map(async (booking) => {
+            const customer = booking.customerId || {};
+            const service = booking.serviceId || {};
+            const workerService = booking.workerServiceId || {};
+
+            // Get skill name and service name from Skill collection
+            let skillName = 'N/A';
+            let serviceName = 'N/A';
+            
+            if (workerService.serviceId) {
+                try {
+                    const skillData = await Skill.findOne({
+                        'services.serviceId': workerService.serviceId
+                    }).select('name services').lean();
+
+                    if (skillData) {
+                        skillName = skillData.name || 'N/A';
+                        
+                        // Find the specific service within the skill
+                        const specificService = skillData.services.find(
+                            service => service.serviceId.toString() === workerService.serviceId.toString()
+                        );
+                        serviceName = specificService?.name || service.name || 'N/A';
+                    }
+                } catch (error) {
+                    console.error('Error fetching skill data:', error);
+                    // Fallback to service name if skill lookup fails
+                    serviceName = service.name || 'N/A';
+                }
+            } else {
+                // Fallback if no serviceId in workerService
+                serviceName = service.name || 'N/A';
+            }
+
+            return {
+                _id: booking._id,
+                status: booking.status,
+                customer: {
+                    _id: customer._id,
+                    name: customer.name || 'N/A',
+                    phone: customer.phone || 'N/A',
+                    email: customer.email,
+                    address: customer.address || {}
+                },
+                worker: {
+                    _id: worker._id,
+                    name: worker.name,
+                    phone: worker.phone,
+                    email: worker.email
+                },
+                serviceDetails: {
+                    serviceId: service,
+                    skillName: skillName,
+                    serviceName: serviceName,
+                    price: workerService.price || booking.price || 0,
+                    category: service.category,
+                    description: service.description
+                },
+                bookingInfo: {
+                    date: booking.bookingDate,
+                    time: booking.bookingTime
+                },
+                timeline: {
+                    serviceInitiatedAt: booking.serviceInitiatedAt,
+                    serviceStartedAt: booking.serviceStartedAt,
+                    serviceCompletedAt: booking.serviceCompletedAt,
+                    createdAt: booking.createdAt
+                },
+                payment: booking.payment || {},
+                review: booking.review || null,
+                cancellationReason: booking.cancellationReason,
+                declineReason: booking.declineReason
+            };
         }));
 
-        return res.json({
+        // Calculate counts by status
+        const statusCounts = {
+            PENDING: transformedBookings.filter(b => b.status === 'PENDING').length,
+            ACCEPTED: transformedBookings.filter(b => b.status === 'ACCEPTED').length,
+            IN_PROGRESS: transformedBookings.filter(b => b.status === 'PAYMENT_PENDING').length,
+            COMPLETED: transformedBookings.filter(b => b.status === 'COMPLETED').length,
+            CANCELLED: transformedBookings.filter(b => b.status === 'CANCELLED').length,
+            DECLINED: transformedBookings.filter(b => b.status === 'DECLINED').length,
+            ALL: transformedBookings.length
+        };
+
+        return res.status(200).json({
             success: true,
-            worker: {
-                _id: worker._id,
-                name: worker.name,
-                phone: worker.phone,
-                createdByAgent: worker.createdByAgent,
-                availabilityStatus:
-                    worker.workerProfile?.availabilityStatus || "available",
-                services:
-                    worker.workerProfile?.services
-                        ?.map((s) => s.serviceId?.name)
-                        .filter(Boolean) || [],
-                skills:
-                    worker.workerProfile?.skills
-                        ?.map((s) => s.skillId?.name)
-                        .filter(Boolean) || [],
-            },
-            bookings: formattedBookings,
+            message: 'Worker bookings retrieved successfully',
+            data: {
+                worker: {
+                    _id: worker._id,
+                    name: worker.name,
+                    phone: worker.phone,
+                    email: worker.email,
+                    address: worker.address,
+                    availabilityStatus: worker.workerProfile?.availabilityStatus || 'available',
+                    isActive: worker.isActive,
+                    createdByAgent: worker.workerProfile?.createdByAgent || false
+                },
+                bookings: transformedBookings,
+                stats: statusCounts,
+                totalBookings: transformedBookings.length
+            }
         });
+
     } catch (error) {
-        console.error("Error in getWorkerBookings:", error);
-        return res
-            .status(500)
-            .json({ success: false, message: "Server Error" });
+        console.error('Get worker bookings error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+// controllers/serviceAgentController.js
+export const updatePaymentStatus = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const { paymentType, status, transactionId, transactionDate, updatedBy = 'agent' } = req.body;
+
+        // Validate booking ID
+        if (!bookingId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid booking ID format'
+            });
+        }
+
+        // Validate required fields
+        if (!paymentType) {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment type is required'
+            });
+        }
+
+        if (!status) {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment status is required'
+            });
+        }
+
+        // Validate payment type
+        const validPaymentTypes = ['CASH', 'RAZORPAY'];
+        if (!validPaymentTypes.includes(paymentType)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid payment type. Must be CASH, UPI, or RAZORPAY'
+            });
+        }
+
+        // Validate payment status
+        const validPaymentStatuses = ['PENDING', 'COMPLETED', 'FAILED'];
+        if (!validPaymentStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid payment status. Must be PENDING, COMPLETED, or FAILED'
+            });
+        }
+
+        // Find booking
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        // Check if booking is in a state that allows payment updates
+        if (booking.status === 'CANCELLED' || booking.status === 'DECLINED') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot update payment for cancelled or declined booking'
+            });
+        }
+
+        // Prepare payment update data
+        const paymentUpdateData = {
+            paymentType,
+            status,
+            amount: booking.price, // Use booking price as payment amount
+            updatedBy
+        };
+
+        // Add transaction details if provided
+        if (transactionId) {
+            paymentUpdateData.transactionId = transactionId;
+        }
+
+        if (transactionDate) {
+            paymentUpdateData.transactionDate = new Date(transactionDate);
+        } else if (status === 'COMPLETED') {
+            paymentUpdateData.transactionDate = new Date();
+        }
+
+        // If payment is being marked as completed, also update booking status if needed
+        if (status === 'COMPLETED' && booking.status === 'PAYMENT_PENDING') {
+            booking.status = 'COMPLETED';
+            booking.serviceCompletedAt = new Date();
+        }
+
+        // Update payment data
+        booking.payment = {
+            ...booking.payment,
+            ...paymentUpdateData
+        };
+
+        await booking.save();
+
+        // Get updated booking with populated data
+        const updatedBooking = await Booking.findById(bookingId)
+            .populate('customerId', 'name phone email address')
+            .populate('serviceId', 'name category description')
+            .populate('workerId', 'name phone')
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            message: `Payment status updated to ${status}`,
+            data: {
+                booking: updatedBooking,
+                payment: booking.payment
+            }
+        });
+
+    } catch (error) {
+        console.error('Update payment status error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
     }
 };
 
-export { getWorkerBookings };
+/**
+ * @desc    Get payment details for a booking
+ * @route   GET /api/service-agent/bookings/:bookingId/payment
+ * @access  Private (Service Agent)
+ */
+export const getPaymentDetails = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+
+        // Validate booking ID
+        if (bookingId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid booking ID format'
+            });
+        }
+
+        // Find booking with payment details
+        const booking = await Booking.findById(bookingId)
+            .select('payment price status serviceDetails')
+            .populate('customerId', 'name phone')
+            .populate('serviceId', 'name category')
+            .lean();
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        // Prepare payment response
+        const paymentDetails = {
+            bookingId: booking._id,
+            customer: booking.customerId,
+            service: booking.serviceId,
+            amount: booking.price,
+            status: booking.status,
+            payment: booking.payment || {
+                status: 'PENDING',
+                paymentType: null,
+                amount: booking.price
+            }
+        };
+
+        return res.status(200).json({
+            success: true,
+            message: 'Payment details retrieved successfully',
+            data: paymentDetails
+        });
+
+    } catch (error) {
+        console.error('Get payment details error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * @desc    Process refund for a booking
+ * @route   POST /api/service-agent/bookings/:bookingId/refund
+ * @access  Private (Service Agent)
+ */
+// controllers/workerController.js
+
+
+/**
+ * @desc    Get worker profile
+ * @route   GET /api/worker/profile
+ * @access  Private (Worker)
+ */
+export const getWorkerProfile = async (req, res) => {
+    try {
+        const workerId = req.user._id;
+
+        const worker = await User.findById(workerId)
+            .select('name phone email address workerProfile isActive')
+            .lean();
+
+        if (!worker) {
+            return res.status(404).json({
+                success: false,
+                message: 'Worker not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Worker profile retrieved successfully',
+            data: worker
+        });
+
+    } catch (error) {
+        console.error('Get worker profile error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+

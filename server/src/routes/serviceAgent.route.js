@@ -22,7 +22,10 @@ import {
   getCompletedBookings,
   getCancelledBookings,
   getAllBookings,
-  getWorkerBookings
+  getPaymentDetails,
+  updatePaymentStatus,
+  getWorkerBookings,
+  getWorkerProfile
 } from "../controllers/physicalWorker.controller.js";
 import { uploadVerificationDoc } from "../config/cloudinary.js";
 import { authorize } from "../middlewares/auth.middleware.js";
@@ -119,5 +122,7 @@ router.get('/all', getAllBookings);
 
 // GET bookings for a specific worker
 router.get('/bookings/:workerId', getWorkerBookings);
-
+router.get('/bookings/:bookingId/payment', getPaymentDetails);
+router.patch('/bookings/:bookingId/payment', updatePaymentStatus);
+router.get('/profile', getWorkerProfile);
 export default router;

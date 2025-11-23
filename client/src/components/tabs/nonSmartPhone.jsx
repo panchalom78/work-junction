@@ -1,591 +1,779 @@
-// components/NonSmartphoneWorkers.js
-import React, { useState, useEffect, useMemo } from 'react';
-import axiosInstance from '../../utils/axiosInstance';
-import { toast } from 'react-hot-toast';
-import CreateWorkerProfile from '../CreateWorkerForm';
+// components/NonSmartphoneWorkerDashboard.js
+import React, { useState, useEffect, useMemo } from "react";
+import axiosInstance from "../../utils/axiosInstance";
+import { toast } from "react-hot-toast";
+import { format, subDays } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  RefreshCw,
+  Phone,
+  Calendar,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Wrench,
+  Trophy,
+  Eye,
+  IndianRupee,
+  User,
+  MapPin,
+  AlertCircle,
+  TrendingUp,
+  FileText,
+  Briefcase,
+  ChevronRight,
+  Bell,
+  Activity,
+  BarChart3,
+  Home,
+  Users,
+  Settings,
+  LogOut,
+  Filter,
+  MoreHorizontal,
+  Star,
+  Shield,
+  CreditCard,
+  Navigation
+} from "lucide-react";
 
-const NonSmartphoneWorkers = () => {
-  const [activeView, setActiveView] = useState('workers');
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [workers, setWorkers] = useState([]);
+const NonSmartphoneWorkerDashboard = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [worker, setWorker] = useState(null);
   const [bookings, setBookings] = useState([]);
-  const [filteredBookings, setFilteredBookings] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingAvailability, setUpdatingAvailability] = useState(null);
-  const [showCallModal, setShowCallModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    active: 0,
+    completed: 0,
+    today: 0
+  });
+  const [activeFilter, setActiveFilter] = useState("create");
 
-  // FETCH ALL NON-SMARTPHONE WORKERS
-  const fetchWorkers = async () => {
+  // Safe Date Formatter
+  const safeFormat = (dateStr, fallback = "—") => {
+    if (!dateStr) return fallback;
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? fallback : format(d, "dd MMM, yyyy");
+    } catch {
+      return fallback;
+    }
+  };
+
+  // Safe Time Formatter
+  const safeTimeFormat = (timeStr, fallback = "—") => {
+    if (!timeStr) return fallback;
+    return timeStr;
+  };
+
+  // Safe DateTime Formatter
+  const safeDateTimeFormat = (dateStr, fallback = "—") => {
+    if (!dateStr) return fallback;
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? fallback : format(d, "dd MMM, yyyy 'at' hh:mm a");
+    } catch {
+      return fallback;
+    }
+  };
+
+  // FETCH WORKER PROFILE AND BOOKINGS
+  const fetchWorkerData = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get('/api/service-agent/non-smartphone-workers');
 
-      if (data.success) setWorkers(data.data || []);
-    } catch {
-      toast.error('Failed to load workers');
-      console.error('Error fetching non-smartphone workers');
+      // Get worker profile
+      const workerResponse = await axiosInstance.get("/api/service-agent/profile");
+      if (workerResponse.data.success) {
+        setWorker(workerResponse.data.data);
+      }
+
+      // Get worker bookings
+      const bookingsResponse = await axiosInstance.get("/api/service-agent/bookings");
+      if (bookingsResponse.data.success) {
+        const bookingsData = bookingsResponse.data.data?.bookings || bookingsResponse.data.data || [];
+        setBookings(bookingsData);
+
+        // Calculate stats
+        const today = new Date().toDateString();
+        const todayBookings = bookingsData.filter(booking =>
+          new Date(booking.bookingInfo?.date).toDateString() === today
+        );
+
+        setStats({
+          total: bookingsData.length,
+          pending: bookingsData.filter(b => b.status === 'PENDING').length,
+          active: bookingsData.filter(b => b.status === 'ACCEPTED' || b.status === 'PAYMENT_PENDING').length,
+          completed: bookingsData.filter(b => b.status === 'COMPLETED').length,
+          today: todayBookings.length
+        });
+
+        // Generate recent activity
+        generateRecentActivity(bookingsData);
+      }
+    } catch (error) {
+      console.error("Fetch worker data error:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
   };
 
-  // FETCH BOOKINGS FOR A PARTICULAR WORKER
-  const fetchBookings = async (workerId) => {
-    if (!workerId) return;
-    try {
-      const { data } = await axiosInstance.get(`/api/service-agent/bookings/${workerId}`);
-      if (data.success) {
-        setBookings(data.bookings || []);
-        setFilteredBookings(data.bookings || []);
+  // GENERATE RECENT ACTIVITY
+  const generateRecentActivity = (bookingsData) => {
+    const activity = [];
+
+    bookingsData.slice(0, 10).forEach(booking => {
+      // Booking created activity
+      activity.push({
+        id: `${booking._id}_created`,
+        type: 'booking_created',
+        title: 'New Booking Created',
+        description: `Booking #${booking._id?.slice(-6)} for ${booking.serviceDetails?.serviceName || 'Service'}`,
+        timestamp: booking.createdAt,
+        bookingId: booking._id,
+        status: booking.status
+      });
+
+      // Status change activities
+      if (booking.timeline?.serviceInitiatedAt) {
+        activity.push({
+          id: `${booking._id}_accepted`,
+          type: 'booking_accepted',
+          title: 'Booking Accepted',
+          description: `Accepted booking #${booking._id?.slice(-6)}`,
+          timestamp: booking.timeline.serviceInitiatedAt,
+          bookingId: booking._id,
+          status: 'ACCEPTED'
+        });
       }
-      console.log(data);
+
+      if (booking.timeline?.serviceStartedAt) {
+        activity.push({
+          id: `${booking._id}_started`,
+          type: 'work_started',
+          title: 'Work Started',
+          description: `Started work on booking #${booking._id?.slice(-6)}`,
+          timestamp: booking.timeline.serviceStartedAt,
+          bookingId: booking._id,
+          status: 'IN_PROGRESS'
+        });
+      }
+
+      if (booking.timeline?.serviceCompletedAt) {
+        activity.push({
+          id: `${booking._id}_completed`,
+          type: 'work_completed',
+          title: 'Work Completed',
+          description: `Completed booking #${booking._id?.slice(-6)}`,
+          timestamp: booking.timeline.serviceCompletedAt,
+          bookingId: booking._id,
+          status: 'COMPLETED'
+        });
+      }
+    });
+
+    // Sort by timestamp (newest first) and take latest 8
+    const sortedActivity = activity
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 8);
+
+    setRecentActivity(sortedActivity);
+  };
+
+  // QUICK ACTIONS
+  const handleQuickAction = async (booking, action) => {
+    try {
+      let status = action;
+      let remarks = "";
+
+      switch (action) {
+        case "ACCEPTED":
+          remarks = "Job accepted by worker";
+          break;
+        case "DECLINED":
+          remarks = "Job declined by worker";
+          break;
+        case "PAYMENT_PENDING":
+          remarks = "Work started";
+          break;
+        case "COMPLETED":
+          remarks = "Work completed successfully";
+          break;
+      }
+
+      const { data } = await axiosInstance.patch(
+        `/api/worker/bookings/${booking._id}/status`,
+        { status, remarks }
+      );
+
+      if (data.success) {
+        toast.success(`Job ${action.toLowerCase().replace('_', ' ')}`);
+        await fetchWorkerData();
+      }
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to load bookings');
-      setBookings([]);
-      setFilteredBookings([]);
+      toast.error("Action failed");
     }
+  };
+
+  // NAVIGATE TO BOOKING DETAILS
+  const handleViewBooking = (booking) => {
+    navigate(`/worker/booking/${booking._id}`);
   };
 
   useEffect(() => {
-    fetchWorkers();
+    fetchWorkerData();
   }, []);
 
-  // SEARCH FILTER
-  const filteredWorkers = useMemo(() => {
-    if (!searchQuery.trim()) return workers;
-    const q = searchQuery.toLowerCase();
-    return workers.filter(w =>
-      w.name?.toLowerCase().includes(q) ||
-      w.phone?.includes(q) ||
-      w.address?.area?.toLowerCase().includes(q) ||
-      w.address?.city?.toLowerCase().includes(q)
-    );
-  }, [workers, searchQuery]);
+  // FILTER BOOKINGS BY STATUS
+  const getBookingsByStatus = (status) => {
+    if (!bookings.length) return [];
 
-  // UPDATE AVAILABILITY
-  const updateStatusDirectly = async (workerId, newStatus) => {
-    try {
-      setUpdatingAvailability(workerId);
-      await axiosInstance.patch(`/api/service-agent/worker/${workerId}/availability`, { availabilityStatus: newStatus });
-      toast.success(`Status updated to ${newStatus.replace('-', ' ')}`);
-      fetchWorkers();
-    } catch {
-      toast.error('Failed to update status');
-    } finally {
-      setUpdatingAvailability(null);
+    switch (status) {
+      case 'pending':
+        return bookings.filter(b => b.status === 'PENDING');
+      case 'active':
+        return bookings.filter(b => b.status === 'ACCEPTED' || b.status === 'PAYMENT_PENDING');
+      case 'completed':
+        return bookings.filter(b => b.status === 'COMPLETED');
+      case 'today':
+        const today = new Date().toDateString();
+        return bookings.filter(booking =>
+          new Date(booking.bookingInfo?.date).toDateString() === today
+        );
+      default:
+        return bookings;
     }
   };
 
-  // BADGE - Optimized for mobile
-  const getStatusBadge = (status) => {
-    const s = (status || '').toString().toLowerCase();
-    const map = {
-      pending: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      accepted: 'bg-blue-100 text-blue-800 border border-blue-200',
-      'in-progress': 'bg-purple-100 text-purple-800 border border-purple-200',
-      completed: 'bg-green-100 text-green-800 border border-green-200',
-      cancelled: 'bg-red-100 text-red-800 border border-red-200',
-      declined: 'bg-red-100 text-red-800 border border-red-200',
-      available: 'bg-green-100 text-green-800 border border-green-200',
-      busy: 'bg-orange-100 text-orange-800 border border-orange-200',
-      'off-duty': 'bg-gray-100 text-gray-700 border border-gray-200'
-    };
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${map[s] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
-      {s.replace('-', ' ')}
-    </span>;
-  };
-
-  // WORKER CARD – Optimized for mobile
-  const WorkerCard = ({ worker }) => {
-    const location = [
-      worker.address?.houseNo,
-      worker.address?.street,
-      worker.address?.area,
-      worker.address?.city,
-      worker.address?.state,
-    ].filter(Boolean).join(', ') || '—';
-
-    const serviceInfo = worker.workerProfile?.services?.[0] || {};
-    const serviceName = serviceInfo.skillId?.name || '—';
-    const servicePrice = serviceInfo.price ? `₹${serviceInfo.price}` : '—';
-    const serviceDetails = serviceInfo.details || '—';
-
-    const assignedCount = bookings.filter(b => b.worker?._id === worker._id).length;
-
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all duration-200">
-        {/* HEADER - Mobile optimized */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                {worker.name?.[0]?.toUpperCase() || 'W'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-base font-semibold text-gray-900 truncate">{worker.name}</h4>
-                <p className="text-xs text-gray-600 truncate">{worker.phone}</p>
-              </div>
-            </div>
-            
-            {/* LOCATION & SERVICE INFO */}
-            <div className="space-y-1 text-xs">
-              <div className="flex items-start space-x-1">
-                <i className="far fa-map-marker-alt text-gray-400 mt-0.5 flex-shrink-0 text-xs"></i>
-                <p className="text-gray-600 line-clamp-2 text-xs">{location}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1">
-                  <i className="far fa-tools text-gray-400 text-xs"></i>
-                  <span className="text-gray-700 font-medium text-xs">{serviceName}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <i className="far fa-rupee-sign text-gray-400 text-xs"></i>
-                  <span className="text-gray-700 font-medium text-xs">{servicePrice}</span>
-                </div>
-              </div>
-            </div>
+  // STATS CARDS COMPONENT
+  const StatsCards = () => (
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      {/* Total Bookings */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+            <p className="text-gray-600 text-sm">Total Jobs</p>
           </div>
-          
-          {/* STATUS & COUNT */}
-          <div className="text-right flex-shrink-0 ml-2">
-            {getStatusBadge(worker.workerProfile?.availabilityStatus)}
-            <div className="flex items-center justify-end space-x-1 mt-1">
-              <i className="far fa-briefcase text-gray-400 text-xs"></i>
-              <p className="text-xs text-gray-500">{assignedCount}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* SERVICE DETAILS */}
-        {serviceDetails && serviceDetails !== '—' && (
-          <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="flex items-start space-x-1">
-              <i className="far fa-info-circle text-blue-500 mt-0.5 flex-shrink-0 text-xs"></i>
-              <p className="text-xs text-blue-800 leading-relaxed line-clamp-2">{serviceDetails}</p>
-            </div>
-          </div>
-        )}
-
-        {/* SKILLS */}
-        {worker.workerProfile?.skills?.length > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center space-x-1 mb-1">
-              <i className="far fa-star text-gray-400 text-xs"></i>
-              <h4 className="text-xs font-medium text-gray-700">Skills</h4>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {worker.workerProfile.skills.slice(0, 3).map((s, i) => (
-                <span key={i} className="px-2 py-1 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
-                  {s.skillId?.name || '—'}
-                </span>
-              ))}
-              {worker.workerProfile.skills.length > 3 && (
-                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border border-gray-200">
-                  +{worker.workerProfile.skills.length - 3}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* AVAILABILITY BUTTONS - Mobile optimized */}
-        <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-1">
-              <i className="far fa-clock text-gray-500 text-xs"></i>
-              <span className="text-xs font-medium text-gray-700">Status</span>
-            </div>
-            <div className="flex space-x-1">
-              {['available', 'busy', 'off-duty'].map(status => (
-                <button
-                  key={status}
-                  onClick={() => updateStatusDirectly(worker._id, status)}
-                  disabled={updatingAvailability === worker._id}
-                  className={`flex-1 px-2 py-1.5 text-xs rounded-lg font-medium transition-all duration-200 ${
-                    worker.workerProfile?.availabilityStatus === status
-                      ? status === 'available'
-                        ? 'bg-green-500 text-white shadow-sm'
-                        : status === 'busy'
-                        ? 'bg-orange-500 text-white shadow-sm'
-                        : 'bg-red-500 text-white shadow-sm'
-                      : 'bg-white text-gray-600 border border-gray-300 hover:border-gray-400'
-                  } ${updatingAvailability === worker._id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {updatingAvailability === worker._id ? (
-                    <i className="far fa-spinner-third animate-spin"></i>
-                  ) : status === 'off-duty' ? (
-                    'Off'
-                  ) : (
-                    status.charAt(0).toUpperCase() + status.slice(1)
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ACTION BUTTONS - Mobile optimized */}
-        <div className="flex space-x-2">
-          <button
-            onClick={() => {
-              setSelectedWorker(worker);
-              setShowCallModal(true);
-            }}
-            className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg text-xs font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-1"
-          >
-            <i className="far fa-phone text-xs"></i>
-            <span>Call</span>
-          </button>
-          <button
-            onClick={() => {
-              setSelectedWorker(worker);
-              setActiveView('work-list');
-              fetchBookings(worker._id);
-            }}
-            className="flex-1  bg-gradient-to-br from-blue-500 to-purple-600 text-white py-2 rounded-lg text-xs font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-1"
-          >
-            <i className="far fa-list-check text-xs"></i>
-            <span>Work List</span>
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // WORK HISTORY VIEW - Mobile optimized
-  const WorkListView = () => {
-    const active = filteredBookings.filter(b =>
-      ['PENDING', 'ACCEPTED', 'IN_PROGRESS'].includes(b.status?.toUpperCase())
-    );
-    const done = filteredBookings.filter(b =>
-      ['COMPLETED', 'CANCELLED', 'DECLINED'].includes(b.status?.toUpperCase())
-    );
-
-    const formatDate = (isoDate) => {
-      try {
-        const d = new Date(isoDate);
-        return d.toLocaleDateString('en-IN', { 
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        });
-      } catch {
-        return '—';
-      }
-    };
-
-    const BookingCard = ({ booking, type }) => (
-      <div className={`bg-white p-3 rounded-lg border shadow-sm transition-all duration-200 ${
-        type === 'active' ? 'border-blue-200' : 'border-gray-200'
-      }`}>
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{booking.serviceName || 'Service'}</h4>
-            <p className="text-xs text-purple-600 font-semibold mb-1">{booking.skillName || '—'}</p>
-          </div>
-          <div className="text-right flex-shrink-0 ml-2">
-            {getStatusBadge(booking.status)}
-            <p className="text-xs text-gray-500 mt-1">{formatDate(booking.date)}</p>
-          </div>
-        </div>
-
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 text-gray-700">
-              <i className="far fa-user text-gray-400 text-xs"></i>
-              <span className="font-medium truncate">{booking.customer?.name || '—'}</span>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1">
-              <i className="far fa-phone text-gray-400 text-xs"></i>
-              <span className="text-gray-600">{booking.customer?.phone || '—'}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <i className="far fa-rupee-sign text-gray-400 text-xs"></i>
-              <span className="font-semibold text-green-600">₹{booking.payment?.amount || 0}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 text-xs text-gray-500">
-            <span>{booking.time}</span>
-            <span>•</span>
-            <span>{booking.payment?.paymentType || '—'}</span>
-            <span>{booking.payment?.status}</span>
-          </div>
-        </div>
-
-        {type === 'active' && (
-          <div className="mt-3 pt-2 border-t border-gray-200">
-            <div className="flex space-x-2">
-              <button className="flex-1 bg-blue-500 text-white py-1.5 rounded text-xs font-medium hover:bg-blue-600 transition-colors">
-                Update
-              </button>
-              <button 
-                onClick={() => window.open(`tel:${booking.customer?.phone}`)}
-                className="flex-1 bg-green-500 text-white py-1.5 rounded text-xs font-medium hover:bg-green-600 transition-colors"
-              >
-                Contact
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* HEADER - Mobile optimized */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => setActiveView('workers')}
-                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium transition-colors p-2 hover:bg-blue-50 rounded-lg"
-              >
-                <i className="far fa-arrow-left"></i>
-                <span className="text-sm">Back</span>
-              </button>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-lg font-bold text-gray-900 truncate">{selectedWorker.name}'s Work</h4>
-                <p className="text-xs text-gray-600 flex items-center space-x-1 mt-1">
-                  <i className="far fa-phone text-gray-400"></i>
-                  <span>{selectedWorker.phone}</span>
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-gray-700">Total</p>
-                <p className="text-lg font-bold text-blue-600">{bookings.length}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* ACTIVE BOOKINGS */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span>Active ({active.length})</span>
-              </h4>
-            </div>
-            
-            {active.length > 0 ? (
-              <div className="space-y-3">
-                {active.map(booking => (
-                  <BookingCard key={booking._id} booking={booking} type="active" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <i className="far fa-clipboard-list text-3xl text-gray-300 mb-2"></i>
-                <p className="text-sm text-gray-500">No active bookings</p>
-              </div>
-            )}
-          </div>
-
-          {/* COMPLETED BOOKINGS */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                <i className="far fa-check-circle text-blue-500"></i>
-                <span>Completed ({done.length})</span>
-              </h4>
-            </div>
-            
-            {done.length > 0 ? (
-              <div className="space-y-3">
-                {done.map(booking => (
-                  <BookingCard key={booking._id} booking={booking} type="completed" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <i className="far fa-history text-3xl text-gray-300 mb-2"></i>
-                <p className="text-sm text-gray-500">No completed bookings</p>
-              </div>
-            )}
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <FileText className="w-6 h-6 text-blue-600" />
           </div>
         </div>
       </div>
-    );
-  };
 
-  // LOADING STATE - Mobile optimized
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            {/* Header Skeleton */}
-            <div className="bg-white p-4 rounded-xl shadow-sm">
-              <div className="flex justify-between items-center">
-                <div className="space-y-2">
-                  <div className="h-6 bg-gray-200 rounded w-48"></div>
-                  <div className="h-3 bg-gray-200 rounded w-64"></div>
-                </div>
-                <div className="w-24 h-8 bg-gray-200 rounded-lg"></div>
-              </div>
-            </div>
-            
-            {/* Search Bar Skeleton */}
-            <div className="bg-white p-4 rounded-xl shadow-sm">
-              <div className="h-10 bg-gray-200 rounded-lg"></div>
-            </div>
-            
-            {/* Worker Cards Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="bg-white p-4 rounded-xl shadow-sm space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                    <div className="space-y-1 flex-1">
-                      <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-2 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="h-2 bg-gray-200 rounded"></div>
-                    <div className="h-2 bg-gray-200 rounded w-5/6"></div>
-                  </div>
-                  <div className="h-8 bg-gray-200 rounded-lg"></div>
-                </div>
-              ))}
-            </div>
+      {/* Pending Bookings */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+            <p className="text-gray-600 text-sm">Pending</p>
+          </div>
+          <div className="p-2 bg-yellow-100 rounded-lg">
+            <Clock className="w-6 h-6 text-yellow-600" />
           </div>
         </div>
       </div>
-    );
-  }
 
-  // CREATE WORKER VIEW
-  if (activeView === 'create') return <CreateWorkerProfile />;
-
-  // WORK LIST VIEW
-  if (activeView === 'work-list' && selectedWorker) {
-    return <WorkListView />;
-  }
-
-  // MAIN WORKERS VIEW
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-3">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* HEADER - Mobile optimized */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Non-Smartphone Workers
-              </h1>
-              
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="text-right">
-                <p className="text-xs font-semibold text-gray-700">Total</p>
-                <p className="text-lg sm:text-xl font-bold text-blue-600">{workers.length}</p>
-              </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow">
-                <i className="far fa-users text-sm"></i>
-              </div>
-            </div>
+      {/* Active Bookings */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-blue-600">{stats.active}</p>
+            <p className="text-gray-600 text-sm">Active</p>
+          </div>
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <Briefcase className="w-6 h-6 text-blue-600" />
           </div>
         </div>
+      </div>
 
-        {/* SEARCH & ACTIONS - Mobile optimized */}
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+      {/* Completed Bookings */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+            <p className="text-gray-600 text-sm">Completed</p>
+          </div>
+          <div className="p-2 bg-green-100 rounded-lg">
+            <Trophy className="w-6 h-6 text-green-600" />
+          </div>
+        </div>
+      </div>
+
+      {/* Today's Bookings */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-purple-600">{stats.today}</p>
+            <p className="text-gray-600 text-sm">Today</p>
+          </div>
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <Calendar className="w-6 h-6 text-purple-600" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // QUICK ACTIONS COMPONENT
+  const QuickActions = () => (
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <Activity className="w-5 h-5 text-blue-600" />
+        Quick Actions
+      </h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <button
+          onClick={() => setActiveTab('today')}
+          className="p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors text-center"
+        >
+          <Calendar className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+          <p className="font-medium text-blue-700">Today's Jobs</p>
+          <p className="text-blue-600 text-sm">{stats.today} jobs</p>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('pending')}
+          className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors text-center"
+        >
+          <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+          <p className="font-medium text-yellow-700">Pending</p>
+          <p className="text-yellow-600 text-sm">{stats.pending} jobs</p>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('active')}
+          className="p-4 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors text-center"
+        >
+          <Briefcase className="w-8 h-8 text-green-600 mx-auto mb-2" />
+          <p className="font-medium text-green-700">Active</p>
+          <p className="text-green-600 text-sm">{stats.active} jobs</p>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('completed')}
+          className="p-4 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors text-center"
+        >
+          <Trophy className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+          <p className="font-medium text-purple-700">Completed</p>
+          <p className="text-purple-600 text-sm">{stats.completed} jobs</p>
+        </button>
+      </div>
+    </div>
+  );
+
+  // RECENT ACTIVITY COMPONENT
+  const RecentActivity = () => (
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <Bell className="w-5 h-5 text-orange-600" />
+        Recent Activity
+      </h3>
+      <div className="space-y-4">
+        {recentActivity.map((activity, index) => (
+          <div key={activity.id} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+            <div className={`p-2 rounded-full ${activity.type === 'booking_created' ? 'bg-blue-100' :
+                activity.type === 'booking_accepted' ? 'bg-green-100' :
+                  activity.type === 'work_started' ? 'bg-purple-100' :
+                    'bg-orange-100'
+              }`}>
+              {activity.type === 'booking_created' && <FileText className="w-4 h-4 text-blue-600" />}
+              {activity.type === 'booking_accepted' && <CheckCircle className="w-4 h-4 text-green-600" />}
+              {activity.type === 'work_started' && <Wrench className="w-4 h-4 text-purple-600" />}
+              {activity.type === 'work_completed' && <Trophy className="w-4 h-4 text-orange-600" />}
+            </div>
             <div className="flex-1">
-              <div className="relative">
-                <i className="far fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
-                <input
-                  type="text"
-                  placeholder="Search workers..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
-                />
-              </div>
+              <p className="font-medium text-gray-900 text-sm">{activity.title}</p>
+              <p className="text-gray-600 text-xs">{activity.description}</p>
+              <p className="text-gray-500 text-xs mt-1">
+                {safeDateTimeFormat(activity.timestamp)}
+              </p>
             </div>
-            <button 
-              onClick={() => setActiveView('create')}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-2 text-sm w-full sm:w-auto"
+            <button
+              onClick={() => {
+                const booking = bookings.find(b => b._id === activity.bookingId);
+                if (booking) handleViewBooking(booking);
+              }}
+              className="text-blue-600 hover:text-blue-700 p-1"
             >
-              <i className="far fa-user-plus"></i>
-              <span>Add Worker</span>
+              <Eye className="w-4 h-4" />
             </button>
           </div>
-        </div>
+        ))}
 
-        {/* WORKERS GRID - Mobile optimized */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWorkers.map(w => <WorkerCard key={w._id} worker={w} />)}
-        </div>
-
-        {/* EMPTY STATE - Mobile optimized */}
-        {filteredWorkers.length === 0 && (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <i className="far fa-users text-4xl text-gray-300 mb-3"></i>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No Workers Found</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {searchQuery ? 'Try adjusting your search terms' : 'Get started by adding your first worker'}
-            </p>
-            <button 
-              onClick={() => setActiveView('create')}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:shadow-md transition-all duration-200 inline-flex items-center space-x-2 text-sm"
-            >
-              <i className="far fa-user-plus"></i>
-              <span>Add First Worker</span>
-            </button>
-          </div>
-        )}
-
-        {/* CALL MODAL - Improved design without black background */}
-        {showCallModal && selectedWorker && (
-          <div className="fixed inset-0 flex items-end justify-center p-4 z-50 sm:items-center sm:p-6">
-            {/* Backdrop with blur effect */}
-            <div 
-              className="fixed inset-0 bg-white/80 backdrop-blur-sm"
-              onClick={() => setShowCallModal(false)}
-            ></div>
-            
-            {/* Modal Content */}
-            <div className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all duration-300 scale-100">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white text-xl mx-auto mb-4 shadow-lg">
-                  <i className="far fa-phone"></i>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Call Worker</h3>
-                <p className="text-sm text-gray-600 mb-3">Ready to connect with {selectedWorker.name}?</p>
-                <p className="text-xl font-mono font-bold text-gray-900 mb-4 bg-gray-100 py-2 rounded-lg">
-                  {selectedWorker.phone}
-                </p>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      window.open(`tel:${selectedWorker.phone}`);
-                      setShowCallModal(false);
-                    }}
-                    className="w-full py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 text-sm"
-                  >
-                    <i className="far fa-phone"></i>
-                    <span>Call Now</span>
-                  </button>
-                  <button 
-                    onClick={() => setShowCallModal(false)}
-                    className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
+        {recentActivity.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <Activity className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+            <p>No recent activity</p>
           </div>
         )}
       </div>
     </div>
   );
+
+  // BOOKING CARD COMPONENT
+  const BookingCard = ({ booking }) => {
+    const customer = booking.customer || {};
+    const service = booking.serviceDetails || {};
+
+    const getStatusIcon = (status) => {
+      switch (status) {
+        case 'PENDING': return <Clock className="w-4 h-4 text-yellow-600" />;
+        case 'ACCEPTED': return <CheckCircle className="w-4 h-4 text-blue-600" />;
+        case 'PAYMENT_PENDING': return <Wrench className="w-4 h-4 text-purple-600" />;
+        case 'COMPLETED': return <Trophy className="w-4 h-4 text-green-600" />;
+        default: return <AlertCircle className="w-4 h-4 text-gray-600" />;
+      }
+    };
+
+    const getActionButtons = () => {
+      const actions = [];
+
+      switch (booking.status) {
+        case "PENDING":
+          actions.push(
+            {
+              label: "Accept",
+              color: "bg-green-600 hover:bg-green-700",
+              action: "ACCEPTED",
+              icon: <CheckCircle className="w-4 h-4" />
+            },
+            {
+              label: "Decline",
+              color: "bg-red-600 hover:bg-red-700",
+              action: "DECLINED",
+              icon: <XCircle className="w-4 h-4" />
+            }
+          );
+          break;
+
+        case "ACCEPTED":
+          actions.push({
+            label: "Start Work",
+            color: "bg-blue-600 hover:bg-blue-700",
+            action: "PAYMENT_PENDING",
+            icon: <Wrench className="w-4 h-4" />
+          });
+          break;
+
+        case "PAYMENT_PENDING":
+          actions.push({
+            label: "Complete",
+            color: "bg-purple-600 hover:bg-purple-700",
+            action: "COMPLETED",
+            icon: <Trophy className="w-4 h-4" />
+          });
+          break;
+      }
+
+      return actions;
+    };
+
+    const actions = getActionButtons();
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+              {customer.name?.[0]?.toUpperCase() || "C"}
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900">{customer.name || "—"}</h4>
+              <p className="text-gray-600 text-sm flex items-center gap-1">
+                <Phone className="w-3 h-3" />
+                {customer.phone || "—"}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-1 mb-1">
+              {getStatusIcon(booking.status)}
+              <span className={`text-xs font-bold ${booking.status === "PENDING" ? "text-yellow-600" :
+                  booking.status === "ACCEPTED" ? "text-blue-600" :
+                    booking.status === "PAYMENT_PENDING" ? "text-purple-600" :
+                      booking.status === "COMPLETED" ? "text-green-600" :
+                        "text-red-600"
+                }`}>
+                {booking.status?.replace("_", " ")}
+              </span>
+            </div>
+            <p className="text-gray-500 text-xs flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {safeFormat(booking.bookingInfo?.date)} • {safeTimeFormat(booking.bookingInfo?.time)}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-4">
+          {/* Service Details */}
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-semibold text-gray-900">{service.serviceName || "—"}</p>
+              <p className="text-gray-600 text-sm">{service.skillName || "General Service"}</p>
+            </div>
+            <p className="font-bold text-green-600 text-lg flex items-center gap-1">
+              <IndianRupee className="w-4 h-4" />
+              {service.price || booking.price || 0}
+            </p>
+          </div>
+
+          {/* Address */}
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-gray-700 text-sm">
+                {customer.address?.area || "—"}, {customer.address?.city || "—"}
+              </p>
+              <p className="text-gray-600 text-xs">
+                {customer.address?.pincode || "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {actions.map((action, index) => (
+            <button
+              key={index}
+              onClick={() => handleQuickAction(booking, action.action)}
+              className={`flex-1 py-2 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${action.color}`}
+            >
+              {action.icon} {action.label}
+            </button>
+          ))}
+          <button
+            onClick={() => handleViewBooking(booking)}
+            className="flex-1 py-2 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center gap-1"
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </button>
+          <a
+            href={`tel:${customer.phone}`}
+            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center gap-1"
+          >
+            <Phone className="w-4 h-4" />
+            Call
+          </a>
+        </div>
+      </div>
+    );
+  };
+
+  // BOOKINGS LIST COMPONENT
+  const BookingsList = ({ status }) => {
+    const filteredBookings = getBookingsByStatus(status);
+    const titleMap = {
+      overview: "All Bookings",
+      pending: "Pending Requests",
+      active: "Active Jobs",
+      completed: "Completed Jobs",
+      today: "Today's Schedule"
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            {titleMap[status] || "Bookings"}
+            <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+              {filteredBookings.length}
+            </span>
+          </h2>
+          <button
+            onClick={fetchWorkerData}
+            className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
+
+        {filteredBookings.length > 0 ? (
+          <div className="grid gap-4">
+            {filteredBookings.map(booking => (
+              <BookingCard key={booking._id} booking={booking} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-900 font-medium text-lg">No bookings found</p>
+            <p className="text-gray-600 text-sm mt-1">
+              {status === 'today' ? "No bookings scheduled for today" :
+                status === 'pending' ? "No pending requests" :
+                  status === 'active' ? "No active jobs" :
+                    status === 'completed' ? "No completed jobs" :
+                      "No bookings available"}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // LOADING SKELETON
+  const LoadingSkeleton = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="h-6 bg-gray-200 rounded w-8 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+              </div>
+              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="p-4 bg-gray-100 rounded-lg">
+              <div className="w-12 h-12 bg-gray-200 rounded-lg mx-auto mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-20 mx-auto mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded w-12 mx-auto"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-3 p-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                {worker?.name?.[0]?.toUpperCase() || "W"}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Worker Dashboard</h1>
+                <p className="text-gray-600 text-sm">Welcome back, {worker?.name || "Worker"}!</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={fetchWorkerData}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                <RefreshCw className="w-4 h-4" />
+
+              </button>
+              <button onClick={() => setActiveView('create')} className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:shadow-md transition-all duration-200 flex items-center justify-center space-x-2 text-sm w-full sm:w-auto"             >               <i className="far fa-user-plus"></i>               <span>Add Worker</span>             </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8 overflow-x-auto">
+            {[
+              { id: 'overview', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
+              { id: 'today', label: "Today's Jobs", icon: <Calendar className="w-4 h-4" /> },
+              { id: 'pending', label: 'Pending', icon: <Clock className="w-4 h-4" /> },
+              { id: 'active', label: 'Active', icon: <Briefcase className="w-4 h-4" /> },
+              { id: 'completed', label: 'Completed', icon: <Trophy className="w-4 h-4" /> }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                {tab.icon}
+                {tab.label}
+                {tab.id !== 'overview' && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === tab.id
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                    }`}>
+                    {getBookingsByStatus(tab.id).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeTab === 'overview' ? (
+          <div className="space-y-6">
+            <StatsCards />
+            <QuickActions />
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <BookingsList status="overview" />
+              </div>
+              <div>
+                <RecentActivity />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <BookingsList status={activeTab} />
+        )}
+      </main>
+    </div>
+  );
 };
 
-export default NonSmartphoneWorkers;
+export default NonSmartphoneWorkerDashboard;
