@@ -438,12 +438,6 @@ export const addOrUpdateBankDetails = async (req, res) => {
         return errorResponse(res, 500, "Internal server error");
     }
 };
-
-/**
- * @route   GET /api/workers/:workerId/bank-details
- * @desc    Get worker bank details
- * @access  Private (Admin or Worker)
- */
 export const getBankDetails = async (req, res) => {
     try {
         const { workerId } = req.params;
@@ -464,7 +458,6 @@ export const getBankDetails = async (req, res) => {
         return errorResponse(res, 500, "Internal server error");
     }
 };
-
 // controllers/workerController.js
 export const updateWorkerSkillsAndAvailability = async (req, res) => {
     try {
@@ -495,22 +488,46 @@ export const updateWorkerSkillsAndAvailability = async (req, res) => {
     }
 };
 export const getAgentWorkers = async (req, res) => {
-    const workers = await User.find({
-        role: "WORKER",
-        "workerProfile.createdByAgent": true,
-    })
-        .select("name phone address workerProfile.availabilityStatus")
-        .populate("workerProfile.skills.skillId", "name")
-        .populate({
-            path: "workerProfile.services",
-            populate: [
-                { path: "skillId", select: "name" },
-                { path: "serviceId", select: "name" },
-            ],
-        });
+  try {
+    const agentId = req.user?._id;
 
-    res.json({ success: true, data: workers });
+    if (!agentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Agent authentication required",
+      });
+    }
+
+    const workers = await User.find({
+      role: "WORKER",
+      "workerProfile.createdByAgent": true,
+      "workerProfile.createdBy": agentId,  // ✔ Fetch only this agent’s workers
+    })
+      .select("name phone address workerProfile.availabilityStatus workerProfile.skills workerProfile.services workerProfile.verification")
+      .populate("workerProfile.skills.skillId", "name")
+      .populate({
+        path: "workerProfile.services",
+        populate: [
+          { path: "skillId", select: "name" },
+          { path: "serviceId", select: "name" },
+        ],
+      });
+
+    return res.json({
+      success: true,
+      data: workers,
+    });
+
+  } catch (error) {
+    console.error("Get Agent Workers Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch workers",
+      error: error.message,
+    });
+  }
 };
+
 export const updateAvailability = async (req, res) => {
     try {
         const { availabilityStatus } = req.body;
