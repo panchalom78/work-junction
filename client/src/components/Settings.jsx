@@ -8,6 +8,8 @@ import {
     Eye,
     Edit,
     X,
+    CreditCard,
+    Building,
 } from "lucide-react";
 import { useAuthStore } from "../store/auth.store";
 
@@ -33,6 +35,14 @@ const Settings = () => {
                 longitude: "",
             },
         },
+    });
+
+    // Bank details state
+    const [bankDetails, setBankDetails] = useState({
+        accountNumber: "",
+        accountHolderName: "",
+        IFSCCode: "",
+        bankName: "",
     });
 
     // Loading states
@@ -81,6 +91,17 @@ const Settings = () => {
                     },
                 },
             });
+
+            // Load bank details if user is a worker
+            if (user.role === "WORKER" && user.workerProfile?.bankDetails) {
+                const bankData = user.workerProfile.bankDetails;
+                setBankDetails({
+                    accountNumber: bankData.accountNumber || "",
+                    accountHolderName: bankData.accountHolderName || "",
+                    IFSCCode: bankData.IFSCCode || "",
+                    bankName: bankData.bankName || "",
+                });
+            }
 
             // Load verification documents if user is a worker
             if (user.role === "WORKER" && user.workerProfile?.verification) {
@@ -146,6 +167,34 @@ const Settings = () => {
         } else {
             setFormData((prev) => ({ ...prev, [field]: value }));
         }
+    };
+
+    // Handle bank details change
+    const handleBankDetailsChange = (field, value) => {
+        setBankDetails((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    // Format account number (add spaces for readability)
+    const formatAccountNumber = (value) => {
+        // Remove all non-digit characters
+        const numbers = value.replace(/\D/g, "");
+        // Add space every 4 digits for readability
+        return numbers.replace(/(\d{4})(?=\d)/g, "$1 ");
+    };
+
+    // Handle account number input with formatting
+    const handleAccountNumberChange = (value) => {
+        const formattedValue = formatAccountNumber(value);
+        handleBankDetailsChange("accountNumber", formattedValue);
+    };
+
+    // Handle IFSC code input (uppercase and format)
+    const handleIFSCCodeChange = (value) => {
+        const formattedValue = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        handleBankDetailsChange("IFSCCode", formattedValue);
     };
 
     // Handle selfie file selection
@@ -478,9 +527,51 @@ const Settings = () => {
                 });
             }
 
+            // Include bank details if user is a worker and at least one field has value
+            if (user?.role === "WORKER") {
+                const hasBankData = Object.values(bankDetails).some((value) =>
+                    value.toString().trim()
+                );
+
+                if (hasBankData) {
+                    // IMPORTANT: Preserve existing worker profile data by merging
+                    updateData.workerProfile = {
+                        ...user.workerProfile, // Keep existing worker profile data
+                        bankDetails: {},
+                    };
+
+                    // Add bank detail fields that have values
+                    Object.entries(bankDetails).forEach(([key, value]) => {
+                        if (value.toString().trim()) {
+                            // Remove spaces from account number before saving
+                            if (key === "accountNumber") {
+                                updateData.workerProfile.bankDetails[key] =
+                                    value.toString().replace(/\s/g, "").trim();
+                            } else {
+                                updateData.workerProfile.bankDetails[key] =
+                                    value.toString().trim();
+                            }
+                        }
+                    });
+
+                    // If no bank details were actually provided, remove the bankDetails object
+                    if (
+                        Object.keys(updateData.workerProfile.bankDetails)
+                            .length === 0
+                    ) {
+                        delete updateData.workerProfile.bankDetails;
+                    }
+                }
+            }
+
+            console.log("Update data being sent:", updateData); // For debugging
+
             await updateProfile(updateData);
             setSuccessMessage("Profile updated successfully!");
             setTimeout(() => setSuccessMessage(""), 3000);
+
+            // Refresh user data to get updated profile
+            getUser();
         } catch (error) {
             console.error("Error updating profile:", error);
         } finally {
@@ -590,6 +681,126 @@ const Settings = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Bank Details Section - Only for Workers */}
+                        {user?.role === "WORKER" && (
+                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <div className="p-2 bg-green-100 rounded-lg">
+                                        <CreditCard className="w-5 h-5 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900 m-0">
+                                            Bank Details
+                                        </h3>
+                                        <p className="text-sm text-gray-600 mt-1">
+                                            Add your bank account information
+                                            for payments
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Account Holder Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={
+                                                bankDetails.accountHolderName
+                                            }
+                                            onChange={(e) =>
+                                                handleBankDetailsChange(
+                                                    "accountHolderName",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Enter account holder name as in bank records"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Account Number *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={bankDetails.accountNumber}
+                                            onChange={(e) =>
+                                                handleAccountNumberChange(
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                                            placeholder="Enter 9-18 digit account number"
+                                            maxLength="22" // Space for spaces in formatted number
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter numbers only (9-18 digits)
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            IFSC Code *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={bankDetails.IFSCCode}
+                                            onChange={(e) =>
+                                                handleIFSCCodeChange(
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase font-mono"
+                                            placeholder="e.g., SBIN0001234"
+                                            maxLength="11"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            11-character IFSC code (e.g.,
+                                            SBIN0001234)
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Bank Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={bankDetails.bankName}
+                                            onChange={(e) =>
+                                                handleBankDetailsChange(
+                                                    "bankName",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Enter your bank name"
+                                        />
+                                    </div>
+
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="flex items-start space-x-2">
+                                            <Building className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-sm text-blue-800 font-medium">
+                                                    Secure Banking
+                                                </p>
+                                                <p className="text-xs text-blue-700">
+                                                    Your bank details are
+                                                    encrypted and stored
+                                                    securely. They are only used
+                                                    for processing your
+                                                    payments.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Worker Verification Documents Section */}
                         {user?.role === "WORKER" && (

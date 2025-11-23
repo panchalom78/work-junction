@@ -4,7 +4,6 @@ import User from "../models/user.model.js";
 import { Skill } from "../models/skill.model.js";
 import mongoose from "mongoose";
 
-
 export const getWorkerById = async (req, res) => {
     try {
         const { workerId } = req.params;
@@ -34,7 +33,7 @@ export const getWorkerById = async (req, res) => {
         const workerServices = await WorkerService.find({
             workerId: workerId,
             isActive: true,
-        }).populate('skillId', 'name services');
+        }).populate("skillId", "name services");
 
         if (workerServices.length === 0) {
             return res.status(404).json({
@@ -47,7 +46,8 @@ export const getWorkerById = async (req, res) => {
         const primaryService = workerServices[0];
         const skill = primaryService.skillId;
         const service = skill.services.find(
-            s => s.serviceId.toString() === primaryService.serviceId.toString()
+            (s) =>
+                s.serviceId.toString() === primaryService.serviceId.toString()
         );
 
         // Get worker's availability status
@@ -74,13 +74,13 @@ export const getWorkerById = async (req, res) => {
             },
         ]);
 
-        const rating = ratingStats.length > 0 
-            ? parseFloat(ratingStats[0].avgRating.toFixed(1))
-            : 0;
-        
-        const reviews = ratingStats.length > 0 
-            ? ratingStats[0].totalReviews 
-            : 0;
+        const rating =
+            ratingStats.length > 0
+                ? parseFloat(ratingStats[0].avgRating.toFixed(1))
+                : 0;
+
+        const reviews =
+            ratingStats.length > 0 ? ratingStats[0].totalReviews : 0;
 
         // Get total completed bookings
         const completedBookings = await Booking.countDocuments({
@@ -99,7 +99,7 @@ export const getWorkerById = async (req, res) => {
             phone: worker.phone,
             address: worker.address,
             image: worker.profileImage || null,
-            
+
             // Service info
             category: skill.name,
             title: service?.name || "Service",
@@ -107,7 +107,7 @@ export const getWorkerById = async (req, res) => {
             price: primaryService.price,
             priceAmount: primaryService.price,
             pricingType: primaryService.pricingType,
-            
+
             // Availability
             available: worker.workerProfile?.availabilityStatus === "available",
             availability,
@@ -119,12 +119,13 @@ export const getWorkerById = async (req, res) => {
             experience: `${completedBookings}+ jobs completed`,
 
             // Location
-            location: worker.address?.city 
-                ? `${worker.address.city}, ${worker.address.state}` 
+            location: worker.address?.city
+                ? `${worker.address.city}, ${worker.address.state}`
                 : "Location not specified",
 
             // Verification status
-            isVerified: worker.workerProfile?.verification?.status === "APPROVED",
+            isVerified:
+                worker.workerProfile?.verification?.status === "APPROVED",
         };
 
         res.status(200).json({
@@ -147,30 +148,41 @@ export const getWorkerDetailsForBooking = async (req, res) => {
 
         // Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(workerId)) {
-            return res.status(400).json({ success: false, message: "Invalid worker ID" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid worker ID" });
         }
 
         // Fetch worker
-        const worker = await User.findOne({ _id: workerId, role: "WORKER" })
-            .select("name email phone address workerProfile profileImage");
+        const worker = await User.findOne({
+            _id: workerId,
+            role: "WORKER",
+        }).select("name email phone address workerProfile profileImage");
 
         if (!worker) {
-            return res.status(404).json({ success: false, message: "Worker not found" });
+            return res
+                .status(404)
+                .json({ success: false, message: "Worker not found" });
         }
 
         // Fetch all active services for worker
-        const workerServices = await WorkerService.find({ workerId, isActive: true })
-            .populate("skillId", "name services");
+        const workerServices = await WorkerService.find({
+            workerId,
+            isActive: true,
+        }).populate("skillId", "name services");
 
         if (!workerServices.length) {
-            return res.status(404).json({ success: false, message: "No active services found" });
+            return res
+                .status(404)
+                .json({ success: false, message: "No active services found" });
         }
 
         // Use the first service for simplicity
         const primaryService = workerServices[0];
         const skill = primaryService.skillId;
         const service = skill.services.find(
-            s => s.serviceId.toString() === primaryService.serviceId.toString()
+            (s) =>
+                s.serviceId.toString() === primaryService.serviceId.toString()
         );
 
         // Availability info
@@ -182,15 +194,33 @@ export const getWorkerDetailsForBooking = async (req, res) => {
 
         // Rating stats
         const ratingStats = await Booking.aggregate([
-            { $match: { workerId: new mongoose.Types.ObjectId(workerId), "review.rating": { $exists: true } } },
-            { $group: { _id: null, avgRating: { $avg: "$review.rating" }, totalReviews: { $sum: 1 } } },
+            {
+                $match: {
+                    workerId: new mongoose.Types.ObjectId(workerId),
+                    "review.rating": { $exists: true },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgRating: { $avg: "$review.rating" },
+                    totalReviews: { $sum: 1 },
+                },
+            },
         ]);
 
-        const rating = ratingStats.length > 0
-            ? { average: parseFloat(ratingStats[0].avgRating.toFixed(1)), total: ratingStats[0].totalReviews }
-            : { average: 0, total: 0 };
+        const rating =
+            ratingStats.length > 0
+                ? {
+                      average: parseFloat(ratingStats[0].avgRating.toFixed(1)),
+                      total: ratingStats[0].totalReviews,
+                  }
+                : { average: 0, total: 0 };
 
-        const completedBookings = await Booking.countDocuments({ workerId, status: "COMPLETED" });
+        const completedBookings = await Booking.countDocuments({
+            workerId,
+            status: "COMPLETED",
+        });
 
         // Construct response
         const workerDetails = {
@@ -221,16 +251,20 @@ export const getWorkerDetailsForBooking = async (req, res) => {
             completedBookings,
 
             // Verification
-            isVerified: worker.workerProfile?.verification?.status === "APPROVED",
+            isVerified:
+                worker.workerProfile?.verification?.status === "APPROVED",
         };
 
         res.status(200).json({ success: true, data: workerDetails });
     } catch (error) {
         console.error("Error fetching worker details:", error);
-        res.status(500).json({ success: false, message: "Failed to fetch worker details", error: error.message });
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch worker details",
+            error: error.message,
+        });
     }
 };
-
 
 // Check worker availability for specific date and time
 export const checkWorkerAvailability = async (req, res) => {
@@ -277,14 +311,18 @@ export const checkWorkerAvailability = async (req, res) => {
         // Check non-availability periods
         const requestedDateTime = new Date(`${bookingDate} ${bookingTime}`);
         const nonAvailable = worker.workerProfile?.nonAvailability || [];
-        
+
         for (const period of nonAvailable) {
-            if (requestedDateTime >= period.startDateTime && 
-                requestedDateTime <= period.endDateTime) {
+            if (
+                requestedDateTime >= period.startDateTime &&
+                requestedDateTime <= period.endDateTime
+            ) {
                 return res.status(200).json({
                     success: true,
                     available: false,
-                    reason: period.reason || "Worker is not available during this time",
+                    reason:
+                        period.reason ||
+                        "Worker is not available during this time",
                 });
             }
         }
@@ -336,24 +374,41 @@ export const createBooking = async (req, res) => {
         } = req.body;
 
         if (!workerId || !bookingDate || !bookingTime) {
-            return res.status(400).json({ success: false, message: "Missing required booking information" });
+            return res.status(400).json({
+                success: false,
+                message: "Missing required booking information",
+            });
         }
 
         if (!customerName || !customerPhone || !address || !pincode) {
-            return res.status(400).json({ success: false, message: "Missing customer contact information" });
+            return res.status(400).json({
+                success: false,
+                message: "Missing customer contact information",
+            });
         }
 
         // Validate worker
         if (!mongoose.Types.ObjectId.isValid(workerId)) {
-            return res.status(400).json({ success: false, message: "Invalid worker ID" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid worker ID" });
         }
 
         const worker = await User.findOne({ _id: workerId, role: "WORKER" });
-        if (!worker) return res.status(404).json({ success: false, message: "Worker not found" });
+        if (!worker)
+            return res
+                .status(404)
+                .json({ success: false, message: "Worker not found" });
 
         // Fetch first active service
-        const workerService = await WorkerService.findOne({ workerId, isActive: true });
-        if (!workerService) return res.status(404).json({ success: false, message: "No active services found" });
+        const workerService = await WorkerService.findOne({
+            workerId,
+            isActive: true,
+        });
+        if (!workerService)
+            return res
+                .status(404)
+                .json({ success: false, message: "No active services found" });
 
         // Check for existing booking
         const existingBooking = await Booking.findOne({
@@ -362,7 +417,11 @@ export const createBooking = async (req, res) => {
             bookingTime,
             status: { $in: ["PENDING", "ACCEPTED"] },
         });
-        if (existingBooking) return res.status(409).json({ success: false, message: "This time slot is already booked" });
+        if (existingBooking)
+            return res.status(409).json({
+                success: false,
+                message: "This time slot is already booked",
+            });
 
         // Create booking
         const booking = await Booking.create({
@@ -388,13 +447,20 @@ export const createBooking = async (req, res) => {
             .populate("workerId", "name email phone")
             .populate("workerServiceId");
 
-        res.status(201).json({ success: true, message: "Booking created successfully", data: populatedBooking });
+        res.status(201).json({
+            success: true,
+            message: "Booking created successfully",
+            data: populatedBooking,
+        });
     } catch (error) {
         console.error("Error creating booking:", error);
-        res.status(500).json({ success: false, message: "Failed to create booking", error: error.message });
+        res.status(500).json({
+            success: false,
+            message: "Failed to create booking",
+            error: error.message,
+        });
     }
 };
-
 
 // Get customer's bookings
 export const getCustomerBookings = async (req, res) => {
@@ -464,8 +530,10 @@ export const getBookingDetails = async (req, res) => {
         }
 
         // Check if user is authorized to view this booking
-        if (booking.customerId._id.toString() !== userId.toString() && 
-            booking.workerId._id.toString() !== userId.toString()) {
+        if (
+            booking.customerId._id.toString() !== userId.toString() &&
+            booking.workerId._id.toString() !== userId.toString()
+        ) {
             return res.status(403).json({
                 success: false,
                 message: "Unauthorized to view this booking",
@@ -529,7 +597,8 @@ export const cancelBooking = async (req, res) => {
 
         // Update booking status
         booking.status = "cancelled";
-        booking.cancellationReason = cancellationReason || "Cancelled by customer";
+        booking.cancellationReason =
+            cancellationReason || "Cancelled by customer";
         await booking.save();
 
         res.status(200).json({
@@ -574,18 +643,27 @@ export const getAvailableTimeSlots = async (req, res) => {
             status: { $in: ["PENDING", "ACCEPTED"] },
         }).select("bookingTime");
 
-        const bookedSlots = bookings.map(b => b.bookingTime);
+        const bookedSlots = bookings.map((b) => b.bookingTime);
 
         // All possible time slots
         const allTimeSlots = [
-            '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-            '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM',
-            '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM',
+            "09:00 AM",
+            "10:00 AM",
+            "11:00 AM",
+            "12:00 PM",
+            "01:00 PM",
+            "02:00 PM",
+            "03:00 PM",
+            "04:00 PM",
+            "05:00 PM",
+            "06:00 PM",
+            "07:00 PM",
+            "08:00 PM",
         ];
 
         // Filter out booked slots
         const availableSlots = allTimeSlots.filter(
-            slot => !bookedSlots.includes(slot)
+            (slot) => !bookedSlots.includes(slot)
         );
 
         res.status(200).json({
@@ -605,6 +683,8 @@ export const getAvailableTimeSlots = async (req, res) => {
         });
     }
 };
+
+// Helper function to calculate end time
 
 export default {
     getWorkerDetailsForBooking,

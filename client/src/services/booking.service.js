@@ -81,4 +81,15 @@ export const bookingService = {
         );
         return response.data;
     },
+    getAvailableSlotsForWeek: async (workerId, duration) => {
+        const response = await axiosInstance.get(
+            `/api/bookings/available-slot/${workerId}`,
+            {
+                params: { duration },
+            }
+        );
+        console.log(response.data);
+
+        return response.data;
+    },
 };

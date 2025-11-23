@@ -42,6 +42,10 @@ const workerServiceSchema = new Schema(
         },
         portfolioImages: [portfolioImageSchema],
         isActive: { type: Boolean, default: true },
+        estimatedDuration: {
+            type: Number,
+            required: true,
+        },
     },
     {
         timestamps: true,

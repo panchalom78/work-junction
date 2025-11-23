@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-    Calendar,
     Clock,
     MapPin,
-    User,
     CheckCircle,
     AlertCircle,
     ChevronLeft,
@@ -20,7 +18,8 @@ import { useAuthStore } from "../store/auth.store";
 const BookingPage = () => {
     const { workerId } = useParams();
     const navigate = useNavigate();
-    const { createBooking, loading, error } = useBookingStore();
+    const { createBooking, loading, error, getAvailableSlotsForWeek } =
+        useBookingStore();
     const { getWorkerProfile } = useWorkerSearchStore();
     const { user, getUser } = useAuthStore();
 
@@ -42,10 +41,12 @@ const BookingPage = () => {
         state: "",
         pincode: "",
     });
+    const [availableSlots, setAvailableSlots] = useState([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
     useEffect(() => {
         getUser();
-    }, []);
+    }, [getUser]);
 
     useEffect(() => {
         const fetchWorkerData = async () => {
@@ -69,6 +70,40 @@ const BookingPage = () => {
         }
     }, [workerId, getWorkerProfile]);
 
+    // Fetch available slots when service is selected
+    useEffect(() => {
+        if (selectedService && workerId) {
+            fetchAvailableSlots();
+        }
+    }, [selectedService, workerId]);
+
+    // In your fetchAvailableSlots function, add more logging:
+    const fetchAvailableSlots = async () => {
+        if (!selectedService) return;
+
+        setLoadingSlots(true);
+        try {
+            const duration = selectedService.estimatedDuration * 60 || 60;
+            console.log(
+                "Fetching slots for worker:",
+                workerId,
+                "duration:",
+                duration
+            );
+            const response = await getAvailableSlotsForWeek(workerId, duration);
+            if (response.success) {
+                console.log("Raw API response:", response.data);
+                console.log("Available slots:", response.data.availableSlots);
+                setAvailableSlots(response.data.availableSlots || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch available slots:", error);
+            setAvailableSlots([]);
+        } finally {
+            setLoadingSlots(false);
+        }
+    };
+
     // Set saved address when user data loads
     useEffect(() => {
         if (user?.address && locationType === "saved") {
@@ -88,6 +123,96 @@ const BookingPage = () => {
             ...prev,
             [field]: value,
         }));
+
+        // If date changes, reset time
+        if (field === "bookingDate" && value !== bookingData.bookingDate) {
+            setBookingData((prev) => ({
+                ...prev,
+                bookingTime: "",
+            }));
+        }
+    };
+    // Check if a date has available slots - FIXED
+    // Check if a date has available slots - FIXED
+    const hasAvailableSlots = (dateString) => {
+        if (!availableSlots.length) return false;
+
+        // Direct comparison first
+        const directMatch = availableSlots.find(
+            (slot) => slot.date === dateString
+        );
+        if (directMatch) {
+            return (
+                directMatch.availableSlots &&
+                directMatch.availableSlots.length > 0
+            );
+        }
+
+        // Normalized comparison as fallback
+        const normalizedDate = new Date(dateString + "T00:00:00Z")
+            .toISOString()
+            .split("T")[0];
+        const normalizedMatch = availableSlots.find((slot) => {
+            const normalizedSlotDate = new Date(slot.date + "T00:00:00Z")
+                .toISOString()
+                .split("T")[0];
+            return normalizedSlotDate === normalizedDate;
+        });
+
+        return (
+            normalizedMatch &&
+            normalizedMatch.availableSlots &&
+            normalizedMatch.availableSlots.length > 0
+        );
+    };
+
+    // Get available time slots for selected date - FIXED
+    // Get available time slots for selected date - FIXED
+    const getTimeSlotsForSelectedDate = () => {
+        if (!bookingData.bookingDate || !availableSlots.length) return [];
+
+        console.log("Selected booking date:", bookingData.bookingDate);
+        console.log("Available slots data:", availableSlots);
+
+        // Direct string comparison first
+        const selectedDayData = availableSlots.find((slot) => {
+            console.log(
+                "Comparing:",
+                bookingData.bookingDate,
+                "with",
+                slot.date
+            );
+            return bookingData.bookingDate === slot.date;
+        });
+
+        if (selectedDayData) {
+            console.log("Found matching date data:", selectedDayData);
+            return selectedDayData.availableSlots || [];
+        }
+
+        // If direct comparison fails, try normalized comparison
+        const normalizedSelectedDate = new Date(
+            bookingData.bookingDate + "T00:00:00Z"
+        )
+            .toISOString()
+            .split("T")[0];
+        console.log("Normalized selected date:", normalizedSelectedDate);
+
+        const normalizedDayData = availableSlots.find((slot) => {
+            const normalizedSlotDate = new Date(slot.date + "T00:00:00Z")
+                .toISOString()
+                .split("T")[0];
+            console.log(
+                "Normalized comparison:",
+                normalizedSelectedDate,
+                "with",
+                normalizedSlotDate
+            );
+            return normalizedSelectedDate === normalizedSlotDate;
+        });
+
+        console.log("Normalized found data:", normalizedDayData);
+        return normalizedDayData ? normalizedDayData.availableSlots : [];
     };
 
     const getCurrentLocation = () => {
@@ -126,19 +251,27 @@ const BookingPage = () => {
 
                         setBookingData((prev) => ({
                             ...prev,
-                            address: fullAddress || `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                            address:
+                                fullAddress ||
+                                `Near ${latitude.toFixed(
+                                    4
+                                )}, ${longitude.toFixed(4)}`,
                         }));
                     } else {
                         setBookingData((prev) => ({
                             ...prev,
-                            address: `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                            address: `Near ${latitude.toFixed(
+                                4
+                            )}, ${longitude.toFixed(4)}`,
                         }));
                     }
                 } catch (error) {
                     console.error("Error getting location:", error);
                     setBookingData((prev) => ({
                         ...prev,
-                        address: `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+                        address: `Near ${latitude.toFixed(
+                            4
+                        )}, ${longitude.toFixed(4)}`,
                     }));
                 } finally {
                     setIsGettingLocation(false);
@@ -158,6 +291,7 @@ const BookingPage = () => {
                     case error.TIMEOUT:
                         alert("Location request timed out.");
                         break;
+                        A;
                     default:
                         alert(
                             "An unknown error occurred while getting location."
@@ -222,7 +356,7 @@ const BookingPage = () => {
             updatedAddress.state,
             updatedAddress.pincode,
         ].filter(Boolean);
-        
+
         setBookingData((prev) => ({
             ...prev,
             address: addressParts.join(", "),
@@ -287,13 +421,6 @@ const BookingPage = () => {
         }
     };
 
-    const timeSlots = [
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
-        "18:00", "18:30", "19:00", "19:30",
-    ];
-
     const getUserAddress = () => {
         if (!user?.address) return "No address saved in your profile";
 
@@ -302,6 +429,34 @@ const BookingPage = () => {
             Boolean
         );
         return addressParts.join(", ");
+    };
+
+    // Get dates for the next 7 days - FIXED
+    const getNextSevenDays = () => {
+        const dates = [];
+        const today = new Date();
+
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+
+            // Use UTC to avoid timezone issues
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+            const day = String(date.getUTCDate()).padStart(2, "0");
+            const formattedDate = `${year}-${month}-${day}`;
+
+            dates.push({
+                date: formattedDate,
+                day: date.toLocaleDateString("en-US", { weekday: "short" }),
+                dateNum: date.getDate(),
+                month: date.toLocaleDateString("en-US", { month: "short" }),
+                fullDate: date,
+            });
+        }
+
+        console.log("Generated dates:", dates);
+        return dates;
     };
 
     if (!worker) {
@@ -425,6 +580,15 @@ const BookingPage = () => {
                                                                     : "Fixed price"}
                                                             </p>
                                                         )}
+                                                        {service.estimatedDuration && (
+                                                            <p className="text-blue-600 text-xs sm:text-sm font-medium mt-1">
+                                                                Duration:{" "}
+                                                                {
+                                                                    service.estimatedDuration
+                                                                }{" "}
+                                                                hours
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div className="text-right flex-shrink-0">
                                                         <div className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -456,23 +620,53 @@ const BookingPage = () => {
                                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                             Select Date *
                                         </label>
-                                        <input
-                                            type="date"
-                                            min={
-                                                new Date()
-                                                    .toISOString()
-                                                    .split("T")[0]
-                                            }
-                                            value={bookingData.bookingDate}
-                                            onChange={(e) =>
-                                                handleInputChange(
-                                                    "bookingDate",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
-                                            required
-                                        />
+                                        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-4">
+                                            {getNextSevenDays().map((day) => {
+                                                const hasSlots =
+                                                    hasAvailableSlots(day.date);
+
+                                                return (
+                                                    // Replace the existing button with this:
+                                                    <button
+                                                        key={day.date}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handleInputChange(
+                                                                "bookingDate",
+                                                                day.date
+                                                            )
+                                                        }
+                                                        className={`flex flex-col items-center p-2 sm:p-3 border rounded-xl sm:rounded-2xl text-xs sm:text-sm transition-all ${
+                                                            bookingData.bookingDate ===
+                                                            day.date
+                                                                ? "bg-blue-600 text-white border-blue-600"
+                                                                : hasSlots
+                                                                ? "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                                                                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                        }`}
+                                                        disabled={!hasSlots}
+                                                    >
+                                                        <span className="font-medium">
+                                                            {day.day}
+                                                        </span>
+                                                        <span className="text-xs">
+                                                            {day.dateNum}
+                                                        </span>
+                                                        <span className="text-xs opacity-75">
+                                                            {day.month}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {loadingSlots && (
+                                            <div className="flex items-center justify-center py-2">
+                                                <Loader2 className="w-4 h-4 text-blue-600 animate-spin mr-2" />
+                                                <span className="text-xs text-gray-600">
+                                                    Loading available dates...
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Time Selection */}
@@ -481,27 +675,61 @@ const BookingPage = () => {
                                             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                                 Select Time *
                                             </label>
-                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 sm:gap-3">
-                                                {timeSlots.map((time) => (
-                                                    <button
-                                                        key={time}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleInputChange(
-                                                                "bookingTime",
-                                                                time
-                                                            )
-                                                        }
-                                                        className={`py-2 sm:py-3 px-2 sm:px-4 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium transition-all ${
-                                                            bookingData.bookingTime ===
-                                                            time
-                                                                ? "bg-blue-600 text-white border-blue-600"
-                                                                : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
-                                                        }`}
-                                                    >
-                                                        {time}
-                                                    </button>
-                                                ))}
+                                            {loadingSlots ? (
+                                                <div className="flex justify-center py-8">
+                                                    <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+                                                    {getTimeSlotsForSelectedDate().map(
+                                                        (slot) => (
+                                                            <button
+                                                                key={slot.time}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleInputChange(
+                                                                        "bookingTime",
+                                                                        slot.displayTime
+                                                                    )
+                                                                }
+                                                                className={`py-2 sm:py-3 px-2 sm:px-4 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium transition-all ${
+                                                                    bookingData.bookingTime ===
+                                                                    slot.displayTime
+                                                                        ? "bg-blue-600 text-white border-blue-600"
+                                                                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-500"
+                                                                }`}
+                                                            >
+                                                                {
+                                                                    slot.displayTime
+                                                                }
+                                                            </button>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )}
+                                            {getTimeSlotsForSelectedDate()
+                                                .length === 0 &&
+                                                !loadingSlots && (
+                                                    <div className="text-center py-4 text-gray-500 text-sm">
+                                                        No available time slots
+                                                        for this date. Please
+                                                        select another date.
+                                                    </div>
+                                                )}
+                                        </div>
+                                    )}
+
+                                    {/* Service Duration Info */}
+                                    {selectedService && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
+                                            <div className="flex items-center space-x-2 text-blue-800 text-xs sm:text-sm">
+                                                <Clock className="w-4 h-4 flex-shrink-0" />
+                                                <span>
+                                                    Service duration:{" "}
+                                                    {selectedService.estimatedDuration ||
+                                                        1}{" "}
+                                                    hours
+                                                </span>
                                             </div>
                                         </div>
                                     )}
@@ -580,38 +808,45 @@ const BookingPage = () => {
                                     </div>
 
                                     {/* Address Display/Input */}
-                                    {locationType === "saved" && user?.address && (
-                                        <div className="border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gray-50">
-                                            <div className="flex items-start space-x-2 sm:space-x-3">
-                                                <Home className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
-                                                        Service Address
-                                                    </h4>
-                                                    <p className="text-gray-700 mb-2 sm:mb-3 text-xs sm:text-sm break-words">
-                                                        {getUserAddress()}
-                                                    </p>
-                                                    <p className="text-xs sm:text-sm text-gray-500">
-                                                        This is your saved address from your profile.
-                                                    </p>
+                                    {locationType === "saved" &&
+                                        user?.address && (
+                                            <div className="border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gray-50">
+                                                <div className="flex items-start space-x-2 sm:space-x-3">
+                                                    <Home className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 mt-0.5 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">
+                                                            Service Address
+                                                        </h4>
+                                                        <p className="text-gray-700 mb-2 sm:mb-3 text-xs sm:text-sm break-words">
+                                                            {getUserAddress()}
+                                                        </p>
+                                                        <p className="text-xs sm:text-sm text-gray-500">
+                                                            This is your saved
+                                                            address from your
+                                                            profile.
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
                                     {locationType === "current" && (
-                                        <div className={`relative w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 ${
-                                            bookingData.address
-                                                ? "border-green-200 bg-green-50"
-                                                : "border-gray-300 bg-gray-50"
-                                        }`}>
+                                        <div
+                                            className={`relative w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 ${
+                                                bookingData.address
+                                                    ? "border-green-200 bg-green-50"
+                                                    : "border-gray-300 bg-gray-50"
+                                            }`}
+                                        >
                                             <MapPin className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 flex-shrink-0" />
                                             <div className="flex items-center justify-between gap-2">
-                                                <span className={`font-medium text-xs sm:text-sm break-words flex-1 ${
-                                                    bookingData.address
-                                                        ? "text-green-800"
-                                                        : "text-gray-600"
-                                                }`}>
+                                                <span
+                                                    className={`font-medium text-xs sm:text-sm break-words flex-1 ${
+                                                        bookingData.address
+                                                            ? "text-green-800"
+                                                            : "text-gray-600"
+                                                    }`}
+                                                >
                                                     {bookingData.address ||
                                                         'Click "Current" to detect your location'}
                                                 </span>
@@ -656,7 +891,9 @@ const BookingPage = () => {
                                                     <input
                                                         type="text"
                                                         placeholder="Enter pincode"
-                                                        value={manualAddress.pincode}
+                                                        value={
+                                                            manualAddress.pincode
+                                                        }
                                                         onChange={(e) =>
                                                             handleManualAddressChange(
                                                                 "pincode",
@@ -792,6 +1029,7 @@ const BookingPage = () => {
                                         }
                                         disabled={
                                             loading ||
+                                            (step === 1 && !selectedService) ||
                                             (step === 2 &&
                                                 (!bookingData.bookingDate ||
                                                     !bookingData.bookingTime)) ||
@@ -872,6 +1110,19 @@ const BookingPage = () => {
                                                 "HOURLY" && "/hour"}
                                         </span>
                                     </div>
+                                    {selectedService.estimatedDuration && (
+                                        <div className="flex justify-between text-xs sm:text-sm">
+                                            <span className="text-gray-600 flex-shrink-0">
+                                                Duration:
+                                            </span>
+                                            <span className="font-medium text-gray-900 whitespace-nowrap">
+                                                {
+                                                    selectedService.estimatedDuration
+                                                }{" "}
+                                                hours
+                                            </span>
+                                        </div>
+                                    )}
                                     {bookingData.bookingDate && (
                                         <div className="flex justify-between text-xs sm:text-sm">
                                             <span className="text-gray-600 flex-shrink-0">

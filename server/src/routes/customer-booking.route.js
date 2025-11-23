@@ -11,6 +11,7 @@ import {
     verifyServiceOtp,
     completeService,
     updateBookingPrice,
+    getAvailableSlotsForWeek,
 } from "../controllers/customer-booking.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 const router = express.Router();
@@ -37,5 +38,7 @@ router.post("/:bookingId/initiate-service", initiateService);
 router.post("/:bookingId/verify-service-otp", verifyServiceOtp);
 router.post("/:bookingId/complete-service", completeService);
 router.patch("/:bookingId/price", updateBookingPrice);
+
+router.get("/available-slot/:workerId", getAvailableSlotsForWeek);
 
 export default router;

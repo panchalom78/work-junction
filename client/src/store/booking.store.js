@@ -265,6 +265,26 @@ export const useBookingStore = create((set, get) => ({
         }
     },
 
+    getAvailableSlotsForWeek: async (workerId, duration) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await bookingService.getAvailableSlotsForWeek(
+                workerId,
+                duration
+            );
+            set({ loading: false });
+            return response;
+        } catch (error) {
+            set({
+                error:
+                    error.response?.data?.message ||
+                    "Failed to fetch available slots",
+                loading: false,
+            });
+            throw error;
+        }
+    },
+
     clearError: () => set({ error: null }),
     clearCurrentBooking: () => set({ currentBooking: null }),
 }));
