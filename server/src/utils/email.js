@@ -577,10 +577,667 @@ const sendCashPaymentConfirmationEmail = async (
     }
 };
 
+/**
+ * Send Booking Request Notification email to worker
+ * @param {String} email - Worker email
+ * @param {String} workerName - Worker name
+ * @param {String} customerName - Customer name
+ * @param {String} serviceName - Service name
+ * @param {String} bookingDate - Booking date
+ * @param {String} bookingTime - Booking time
+ * @param {Number} price - Service price
+ * @param {String} bookingId - Booking ID
+ * @param {String} customerPhone - Customer phone number
+ * @param {Object} address - Customer address
+ */
+const sendBookingRequestEmail = async (
+    email,
+    workerName,
+    customerName,
+    serviceName,
+    bookingDate,
+    bookingTime,
+    price,
+    bookingId,
+    customerPhone,
+    address = {}
+) => {
+    try {
+        const transporter = createTransporter();
+
+        // Format the booking date
+        const formattedDate = new Date(bookingDate).toLocaleDateString(
+            "en-IN",
+            {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+            }
+        );
+
+        // Format address
+        const formattedAddress = address
+            ? `${address.street || ""}${
+                  address.area ? `, ${address.area}` : ""
+              }${address.city ? `, ${address.city}` : ""}${
+                  address.pincode ? ` - ${address.pincode}` : ""
+              }`.replace(/^,\s*/, "")
+            : "Address not provided";
+
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || "Workjunction"}" <${
+                process.env.EMAIL_USER
+            }>`,
+            to: email,
+            subject: `📅 New Booking Request - ${serviceName}`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            line-height: 1.6; 
+                            color: #333; 
+                            margin: 0; 
+                            padding: 0; 
+                        }
+                        .container { 
+                            max-width: 600px; 
+                            margin: 0 auto; 
+                            padding: 20px; 
+                        }
+                        .header { 
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                            color: white; 
+                            padding: 30px; 
+                            text-align: center; 
+                            border-radius: 10px 10px 0 0; 
+                        }
+                        .content { 
+                            background: #f9f9f9; 
+                            padding: 30px; 
+                            border-radius: 0 0 10px 10px; 
+                        }
+                        .booking-card { 
+                            background: white; 
+                            border: 2px solid #e5e7eb; 
+                            padding: 25px; 
+                            border-radius: 8px; 
+                            margin: 20px 0; 
+                        }
+                        .detail-row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            padding: 12px 0; 
+                            border-bottom: 1px solid #f3f4f6; 
+                        }
+                        .detail-row:last-child { 
+                            border-bottom: none; 
+                        }
+                        .detail-label { 
+                            color: #6b7280; 
+                            font-weight: 500; 
+                            min-width: 150px; 
+                        }
+                        .detail-value { 
+                            color: #1f2937; 
+                            font-weight: 600; 
+                            text-align: right; 
+                        }
+                        .price-highlight { 
+                            font-size: 24px; 
+                            color: #059669; 
+                            font-weight: bold; 
+                        }
+                        .action-buttons { 
+                            text-align: center; 
+                            margin: 30px 0; 
+                        }
+                        .btn { 
+                            display: inline-block; 
+                            padding: 12px 30px; 
+                            margin: 0 10px; 
+                            border-radius: 6px; 
+                            text-decoration: none; 
+                            font-weight: 600; 
+                            transition: all 0.3s ease; 
+                        }
+                        .btn-primary { 
+                            background: #10b981; 
+                            color: white; 
+                        }
+                        .btn-secondary { 
+                            background: #6b7280; 
+                            color: white; 
+                        }
+                        .btn:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        }
+                        .urgent-badge { 
+                            background: #fef3c7; 
+                            color: #d97706; 
+                            padding: 8px 16px; 
+                            border-radius: 20px; 
+                            font-size: 14px; 
+                            font-weight: 600; 
+                            display: inline-block; 
+                            margin-bottom: 15px; 
+                        }
+                        .customer-info { 
+                            background: #eff6ff; 
+                            padding: 20px; 
+                            border-radius: 8px; 
+                            margin: 20px 0; 
+                        }
+                        .footer { 
+                            text-align: center; 
+                            margin-top: 20px; 
+                            color: #666; 
+                            font-size: 12px; 
+                        }
+                        .status-pending { 
+                            background: #fef3c7; 
+                            color: #d97706; 
+                            padding: 4px 12px; 
+                            border-radius: 12px; 
+                            font-size: 12px; 
+                            font-weight: 600; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>📅 New Booking Request!</h1>
+                            <p>You have a new service request waiting for your response</p>
+                        </div>
+                        <div class="content">
+                            <p>Hello <strong>${workerName}</strong>,</p>
+                            <p>Great news! You have received a new booking request for your service.</p>
+
+                            <div class="urgent-badge">
+                                ⏰ Please respond within 2 hours
+                            </div>
+
+                            <div class="booking-card">
+                                <h3 style="margin-top: 0; color: #667eea; text-align: center;">
+                                    ${serviceName}
+                                </h3>
+                                
+                                <div class="detail-row">
+                                    <span class="detail-label">Booking ID:</span>
+                                    <span class="detail-value">${bookingId}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Service Date:</span>
+                                    <span class="detail-value">${formattedDate}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Service Time:</span>
+                                    <span class="detail-value">${bookingTime}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Service Price:</span>
+                                    <span class="detail-value price-highlight">₹${price}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="detail-value">
+                                        <span class="status-pending">Pending Your Response</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="customer-info">
+                                <h4 style="margin-top: 0; color: #374151;">👤 Customer Information</h4>
+                                <div class="detail-row">
+                                    <span class="detail-label">Customer Name:</span>
+                                    <span class="detail-value">${customerName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Phone Number:</span>
+                                    <span class="detail-value">
+                                        <a href="tel:${customerPhone}" style="color: #059669; text-decoration: none;">
+                                            ${customerPhone}
+                                        </a>
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Service Address:</span>
+                                    <span class="detail-value" style="text-align: left;">
+                                        ${formattedAddress}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="action-buttons">
+                                <p style="color: #6b7280; margin-bottom: 20px;">
+                                    Please log in to your account to accept or decline this booking request.
+                                </p>
+                                
+                                <a href="${
+                                    process.env.WORKER_APP_URL ||
+                                    "https://yourapp.com/worker"
+                                }/bookings" class="btn btn-primary">
+                                    ✅ View & Respond to Booking
+                                </a>
+                            </div>
+
+                            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                <h4 style="margin-top: 0; color: #d97706;">💡 Important Notes:</h4>
+                                <ul style="margin-bottom: 0; color: #92400e;">
+                                    <li>Respond within 2 hours to maintain your response rate</li>
+                                    <li>Contact the customer if you need more information</li>
+                                    <li>Check your schedule before accepting the booking</li>
+                                    <li>Decline only if you're genuinely unavailable</li>
+                                </ul>
+                            </div>
+
+                            <p style="text-align: center; color: #6b7280; font-style: italic;">
+                                "Your prompt response helps build trust with customers and improves your booking rate."
+                            </p>
+                            
+                            <p>Best regards,<br><strong>The Workjunction Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply to this message.</p>
+                            <p>© ${new Date().getFullYear()} Workjunction. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(
+            "Booking request email sent successfully to worker:",
+            info.messageId
+        );
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error("Error sending booking request email to worker:", error);
+        throw new Error("Failed to send booking request email");
+    }
+};
+
+/**
+ * Send Booking Accepted Notification email to customer
+ * @param {String} email - Customer email
+ * @param {String} customerName - Customer name
+ * @param {String} workerName - Worker name
+ * @param {String} serviceName - Service name
+ * @param {String} bookingDate - Booking date
+ * @param {String} bookingTime - Booking time
+ * @param {Number} price - Service price
+ * @param {String} bookingId - Booking ID
+ * @param {String} workerPhone - Worker phone number
+ * @param {Object} workerDetails - Worker details
+ */
+const sendBookingAcceptedEmail = async (
+    email,
+    customerName,
+    workerName,
+    serviceName,
+    bookingDate,
+    bookingTime,
+    price,
+    bookingId,
+    workerPhone,
+    workerDetails = {}
+) => {
+    try {
+        const transporter = createTransporter();
+
+        // Format the booking date
+        const formattedDate = new Date(bookingDate).toLocaleDateString(
+            "en-IN",
+            {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+            }
+        );
+
+        // Format worker experience and rating
+        const experience = workerDetails.experience || "Not specified";
+        const rating = workerDetails.rating || "New worker";
+        const completedJobs = workerDetails.completedJobs || 0;
+
+        const mailOptions = {
+            from: `"${process.env.EMAIL_FROM_NAME || "Workjunction"}" <${
+                process.env.EMAIL_USER
+            }>`,
+            to: email,
+            subject: `✅ Booking Confirmed! ${workerName} will serve you`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            line-height: 1.6; 
+                            color: #333; 
+                            margin: 0; 
+                            padding: 0; 
+                        }
+                        .container { 
+                            max-width: 600px; 
+                            margin: 0 auto; 
+                            padding: 20px; 
+                        }
+                        .header { 
+                            background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                            color: white; 
+                            padding: 30px; 
+                            text-align: center; 
+                            border-radius: 10px 10px 0 0; 
+                        }
+                        .content { 
+                            background: #f9f9f9; 
+                            padding: 30px; 
+                            border-radius: 0 0 10px 10px; 
+                        }
+                        .confirmation-card { 
+                            background: white; 
+                            border: 2px solid #10b981; 
+                            padding: 25px; 
+                            border-radius: 8px; 
+                            margin: 20px 0; 
+                            text-align: center; 
+                        }
+                        .detail-row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            padding: 12px 0; 
+                            border-bottom: 1px solid #f3f4f6; 
+                        }
+                        .detail-row:last-child { 
+                            border-bottom: none; 
+                        }
+                        .detail-label { 
+                            color: #6b7280; 
+                            font-weight: 500; 
+                            min-width: 150px; 
+                        }
+                        .detail-value { 
+                            color: #1f2937; 
+                            font-weight: 600; 
+                            text-align: right; 
+                        }
+                        .price-highlight { 
+                            font-size: 24px; 
+                            color: #059669; 
+                            font-weight: bold; 
+                        }
+                        .worker-card { 
+                            background: #eff6ff; 
+                            padding: 20px; 
+                            border-radius: 8px; 
+                            margin: 20px 0; 
+                        }
+                        .worker-stats { 
+                            display: flex; 
+                            justify-content: space-around; 
+                            margin-top: 15px; 
+                            text-align: center; 
+                        }
+                        .stat-item { 
+                            padding: 10px; 
+                        }
+                        .stat-value { 
+                            font-size: 18px; 
+                            font-weight: bold; 
+                            color: #1e40af; 
+                        }
+                        .stat-label { 
+                            font-size: 12px; 
+                            color: #6b7280; 
+                        }
+                        .action-buttons { 
+                            text-align: center; 
+                            margin: 30px 0; 
+                        }
+                        .btn { 
+                            display: inline-block; 
+                            padding: 12px 30px; 
+                            margin: 0 10px; 
+                            border-radius: 6px; 
+                            text-decoration: none; 
+                            font-weight: 600; 
+                            transition: all 0.3s ease; 
+                        }
+                        .btn-primary { 
+                            background: #10b981; 
+                            color: white; 
+                        }
+                        .btn-secondary { 
+                            background: #3b82f6; 
+                            color: white; 
+                        }
+                        .btn:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        }
+                        .next-steps { 
+                            background: #f0fdf4; 
+                            padding: 20px; 
+                            border-radius: 8px; 
+                            margin: 20px 0; 
+                        }
+                        .step { 
+                            display: flex; 
+                            align-items: flex-start; 
+                            margin-bottom: 15px; 
+                        }
+                        .step-number { 
+                            background: #10b981; 
+                            color: white; 
+                            width: 24px; 
+                            height: 24px; 
+                            border-radius: 50%; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center; 
+                            font-size: 14px; 
+                            font-weight: bold; 
+                            margin-right: 12px; 
+                            flex-shrink: 0; 
+                        }
+                        .footer { 
+                            text-align: center; 
+                            margin-top: 20px; 
+                            color: #666; 
+                            font-size: 12px; 
+                        }
+                        .success-icon { 
+                            font-size: 60px; 
+                            margin-bottom: 15px; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>✅ Booking Confirmed!</h1>
+                            <p>Your service professional is ready to serve you</p>
+                        </div>
+                        <div class="content">
+                            <div class="confirmation-card">
+                                <div class="success-icon">🎉</div>
+                                <h2 style="margin: 0; color: #059669;">Booking Accepted!</h2>
+                                <p style="font-size: 18px; color: #6b7280; margin: 10px 0;">
+                                    <strong>${workerName}</strong> has accepted your booking request
+                                </p>
+                            </div>
+
+                            <p>Hello <strong>${customerName}</strong>,</p>
+                            <p>Great news! Your booking request has been accepted. Your service professional is looking forward to serving you.</p>
+
+                            <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                <h3 style="margin-top: 0; color: #374151; text-align: center;">
+                                    📋 Booking Details
+                                </h3>
+                                
+                                <div class="detail-row">
+                                    <span class="detail-label">Service:</span>
+                                    <span class="detail-value">${serviceName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Date:</span>
+                                    <span class="detail-value">${formattedDate}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Time:</span>
+                                    <span class="detail-value">${bookingTime}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Booking ID:</span>
+                                    <span class="detail-value">${bookingId}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Amount:</span>
+                                    <span class="detail-value price-highlight">₹${price}</span>
+                                </div>
+                            </div>
+
+                            <div class="worker-card">
+                                <h4 style="margin-top: 0; color: #1e40af; text-align: center;">
+                                    👨‍🔧 Your Service Professional
+                                </h4>
+                                <div class="detail-row">
+                                    <span class="detail-label">Name:</span>
+                                    <span class="detail-value">${workerName}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Contact:</span>
+                                    <span class="detail-value">
+                                        <a href="tel:${workerPhone}" style="color: #059669; text-decoration: none;">
+                                            ${workerPhone}
+                                        </a>
+                                    </span>
+                                </div>
+                                
+                                <div class="worker-stats">
+                                    <div class="stat-item">
+                                        <div class="stat-value">${experience}</div>
+                                        <div class="stat-label">Experience</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">⭐ ${rating}</div>
+                                        <div class="stat-label">Rating</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">${completedJobs}</div>
+                                        <div class="stat-label">Jobs Done</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="next-steps">
+                                <h4 style="margin-top: 0; color: #065f46;">📝 What to Expect Next</h4>
+                                
+                                <div class="step">
+                                    <div class="step-number">1</div>
+                                    <div>
+                                        <strong>Service Day Preparation</strong><br>
+                                        Ensure the service area is accessible and ready
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">2</div>
+                                    <div>
+                                        <strong>Professional Arrival</strong><br>
+                                        ${workerName} will arrive at the scheduled time
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">3</div>
+                                    <div>
+                                        <strong>Service Execution</strong><br>
+                                        The professional will perform the service efficiently
+                                    </div>
+                                </div>
+                                
+                                <div class="step">
+                                    <div class="step-number">4</div>
+                                    <div>
+                                        <strong>Quality Check & Payment</strong><br>
+                                        Verify service quality and complete payment
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-buttons">
+                                <p style="color: #6b7280; margin-bottom: 20px;">
+                                    Need to make changes or have questions?
+                                </p>
+                                
+                                <a href="${
+                                    process.env.CUSTOMER_APP_URL ||
+                                    "https://yourapp.com/customer"
+                                }/bookings/${bookingId}" class="btn btn-primary">
+                                    📱 View Booking Details
+                                </a>
+                                <a href="tel:${workerPhone}" class="btn btn-secondary">
+                                    📞 Contact Professional
+                                </a>
+                            </div>
+
+                            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                <h4 style="margin-top: 0; color: #d97706;">💡 Important Reminders:</h4>
+                                <ul style="margin-bottom: 0; color: #92400e;">
+                                    <li>Keep your phone accessible for any communication</li>
+                                    <li>Have the service area ready before arrival</li>
+                                    <li>Discuss any specific requirements with the professional</li>
+                                    <li>Payment will be collected after service completion</li>
+                                </ul>
+                            </div>
+
+                            <p style="text-align: center; color: #059669; font-style: italic; font-weight: 600;">
+                                "We're committed to ensuring you have a great service experience!"
+                            </p>
+                            
+                            <p>Best regards,<br><strong>The Workjunction Team</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>This is an automated email. Please do not reply to this message.</p>
+                            <p>© ${new Date().getFullYear()} Workjunction. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log(
+            "Booking accepted email sent successfully to customer:",
+            info.messageId
+        );
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error(
+            "Error sending booking accepted email to customer:",
+            error
+        );
+        throw new Error("Failed to send booking accepted email");
+    }
+};
+
 export {
     sendOTPEmail,
     sendWelcomeEmail,
     sendServiceOTPEmail,
     sendCashPaymentOTPEmail,
     sendCashPaymentConfirmationEmail,
+    sendBookingRequestEmail,
+    sendBookingAcceptedEmail,
 };

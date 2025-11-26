@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useVerificationStore } from "../store/verification.store.js";
 import { useAuthStore } from "../store/auth.store.js";
 import { useNavigate } from "react-router-dom";
@@ -51,6 +51,12 @@ const WorkerVerificationPage = () => {
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [addressLoading, setAddressLoading] = useState(false);
 
+    // Camera states for document upload
+    const [cameraStream, setCameraStream] = useState(null);
+    const [capturedSelfie, setCapturedSelfie] = useState(null);
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+
     // Fetch verification status on component mount
     useEffect(() => {
         fetchStatus();
@@ -85,7 +91,7 @@ const WorkerVerificationPage = () => {
     useEffect(() => {
         if (status?.verificationStatus === "APPROVED") {
             const timer = setTimeout(() => {
-                navigate("/worker/dashboard");
+                navigate("/worker");
             }, 2000);
             return () => clearTimeout(timer);
         }
@@ -235,252 +241,6 @@ const WorkerVerificationPage = () => {
         }
     };
 
-    // Address Collection Modal
-    const AddressCollectionModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900">
-                            Add Your Service Address
-                        </h3>
-                        <p className="text-gray-600 text-sm mt-1">
-                            This address will be used for service verification
-                            and customer bookings
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => {
-                            if (!user?.address?.street) {
-                                alert(
-                                    "Address is required to continue with verification"
-                                );
-                                return;
-                            }
-                            setShowAddressModal(false);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 text-2xl"
-                    >
-                        ×
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-6">
-                    {/* Current Location Button */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                                <Navigation className="w-6 h-6 text-blue-600" />
-                                <div>
-                                    <h4 className="font-semibold text-blue-900">
-                                        Use Current Location
-                                    </h4>
-                                    <p className="text-blue-700 text-sm">
-                                        Automatically fill address using your
-                                        current location
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={getCurrentLocation}
-                                disabled={isGettingLocation}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center space-x-2"
-                            >
-                                {isGettingLocation ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <MapPin className="w-4 h-4" />
-                                )}
-                                <span>
-                                    {isGettingLocation
-                                        ? "Detecting..."
-                                        : "Get Location"}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Address Form */}
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Street Address *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.street}
-                                    onChange={(e) =>
-                                        handleAddressChange(
-                                            "street",
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="House no., Building, Street"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Area/Locality *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.area}
-                                    onChange={(e) =>
-                                        handleAddressChange(
-                                            "area",
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Area or Locality name"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    City *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.city}
-                                    onChange={(e) =>
-                                        handleAddressChange(
-                                            "city",
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="City"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    State *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.state}
-                                    onChange={(e) =>
-                                        handleAddressChange(
-                                            "state",
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="State"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Pincode *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.pincode}
-                                    onChange={(e) => {
-                                        const value = e.target.value
-                                            .replace(/\D/g, "")
-                                            .slice(0, 6);
-                                        handleAddressChange("pincode", value);
-                                    }}
-                                    placeholder="6-digit pincode"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    maxLength={6}
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Landmark (Optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={addressData.landmark}
-                                    onChange={(e) =>
-                                        handleAddressChange(
-                                            "landmark",
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Nearby landmark"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Location Status */}
-                    {addressData.coordinates.latitude && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                            <div className="flex items-center space-x-2 text-green-800">
-                                <CheckCircle className="w-4 h-4" />
-                                <span className="text-sm font-medium">
-                                    Location captured:{" "}
-                                    {addressData.coordinates.latitude.toFixed(
-                                        4
-                                    )}
-                                    ,{" "}
-                                    {addressData.coordinates.longitude.toFixed(
-                                        4
-                                    )}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                    <div className="flex space-x-4">
-                        <button
-                            onClick={() => {
-                                if (!user?.address?.street) {
-                                    alert(
-                                        "Address is required to continue with verification"
-                                    );
-                                    return;
-                                }
-                                setShowAddressModal(false);
-                            }}
-                            className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-                        >
-                            {user?.address?.street ? "Skip" : "Cancel"}
-                        </button>
-                        <button
-                            onClick={handleSaveAddress}
-                            disabled={addressLoading}
-                            className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                        >
-                            {addressLoading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Home className="w-4 h-4" />
-                            )}
-                            <span>
-                                {addressLoading
-                                    ? "Saving..."
-                                    : "Save Address & Continue"}
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
     // Document Upload Functions
     const handleDocumentUpload = (documentType, file) => {
         setUploadedDocuments((prev) => ({
@@ -520,215 +280,59 @@ const WorkerVerificationPage = () => {
         }
     };
 
-    // Document Upload Modal
-    const DocumentUploadModal = () => {
-        const [cameraStream, setCameraStream] = useState(null);
-        const [capturedSelfie, setCapturedSelfie] = useState(null);
-        const videoRef = React.useRef(null);
-        const canvasRef = React.useRef(null);
-
-        // Start live camera
-        const startCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                });
-                setCameraStream(stream);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (err) {
-                console.error("Camera access denied:", err);
-                alert(
-                    "Unable to access camera. Please grant permission and try again."
-                );
+    // Camera functions
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+            });
+            setCameraStream(stream);
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
             }
-        };
-
-        // Capture a frame from video
-        const captureSelfie = () => {
-            if (!videoRef.current || !canvasRef.current) return;
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext("2d");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            canvas.toBlob((blob) => {
-                const file = new File([blob], "selfie.jpg", {
-                    type: "image/jpeg",
-                });
-                setCapturedSelfie(URL.createObjectURL(blob));
-                handleDocumentUpload("selfie", file);
-            }, "image/jpeg");
-        };
-
-        // Stop camera when modal closes
-        const stopCamera = () => {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach((track) => track.stop());
-            }
-            setCameraStream(null);
-        };
-
-        useEffect(() => {
-            startCamera();
-            return () => stopCamera();
-        }, []);
-
-        const DocumentUploadField = ({
-            title,
-            description,
-            required,
-            documentType,
-            accept = "image/*,.pdf",
-        }) => (
-            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                    <div>
-                        <h4 className="font-semibold text-gray-900">
-                            {title}{" "}
-                            {required && (
-                                <span className="text-red-500">*</span>
-                            )}
-                        </h4>
-                        <p className="text-sm text-gray-600">{description}</p>
-                    </div>
-                    {uploadedDocuments[documentType] && (
-                        <span className="text-green-600 text-sm font-medium">
-                            ✓ Uploaded
-                        </span>
-                    )}
-                </div>
-                <input
-                    type="file"
-                    accept={accept}
-                    onChange={(e) =>
-                        handleDocumentUpload(documentType, e.target.files[0])
-                    }
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                />
-                {uploadedDocuments[documentType] && (
-                    <p className="text-sm text-gray-600 mt-2">
-                        Selected: {uploadedDocuments[documentType].name}
-                    </p>
-                )}
-            </div>
-        );
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h3 className="text-xl font-bold text-gray-900">
-                            Upload Verification Documents
-                        </h3>
-                        <button
-                            onClick={() => {
-                                stopCamera();
-                                setShowUploadModal(false);
-                            }}
-                            className="text-gray-400 hover:text-gray-600 text-2xl"
-                        >
-                            ×
-                        </button>
-                    </div>
-
-                    <div className="p-6 space-y-6">
-                        <DocumentUploadField
-                            title="Aadhaar Card"
-                            description="Front and back copy of your Aadhaar card"
-                            required={true}
-                            documentType="aadhar"
-                        />
-
-                        {/* Live Selfie Section */}
-                        <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors">
-                            <h4 className="font-semibold text-gray-900 mb-2">
-                                Live Selfie Capture{" "}
-                                <span className="text-red-500">*</span>
-                            </h4>
-                            <div className="relative flex flex-col items-center space-y-3">
-                                <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    className="rounded-lg w-full max-w-sm border border-gray-200"
-                                />
-                                <canvas ref={canvasRef} hidden />
-                                <div className="flex space-x-4">
-                                    <button
-                                        onClick={captureSelfie}
-                                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2"
-                                    >
-                                        <Camera className="w-4 h-4" />
-                                        <span>Capture</span>
-                                    </button>
-                                    <button
-                                        onClick={stopCamera}
-                                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition flex items-center space-x-2"
-                                    >
-                                        <X className="w-4 h-4" />
-                                        <span>Stop Camera</span>
-                                    </button>
-                                </div>
-                                {capturedSelfie && (
-                                    <div className="mt-3 text-center">
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            Preview:
-                                        </p>
-                                        <img
-                                            src={capturedSelfie}
-                                            alt="Captured Selfie"
-                                            className="rounded-lg border border-gray-300 w-40 h-40 object-cover"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <DocumentUploadField
-                            title="Police Verification Certificate (Optional)"
-                            description="Police verification certificate if available"
-                            required={false}
-                            documentType="policeVerification"
-                        />
-                    </div>
-
-                    <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                        <div className="flex space-x-4">
-                            <button
-                                onClick={() => {
-                                    stopCamera();
-                                    setShowUploadModal(false);
-                                }}
-                                disabled={loading}
-                                className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSubmitDocuments}
-                                disabled={loading}
-                                className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                            >
-                                {loading ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <Upload className="w-4 h-4" />
-                                )}
-                                <span>
-                                    {loading
-                                        ? "Uploading..."
-                                        : "Submit for Verification"}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+        } catch (err) {
+            console.error("Camera access denied:", err);
+            alert(
+                "Unable to access camera. Please grant permission and try again."
+            );
+        }
     };
+
+    const captureSelfie = () => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        canvas.toBlob((blob) => {
+            const file = new File([blob], "selfie.jpg", {
+                type: "image/jpeg",
+            });
+            setCapturedSelfie(URL.createObjectURL(blob));
+            handleDocumentUpload("selfie", file);
+        }, "image/jpeg");
+    };
+
+    const stopCamera = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+        }
+        setCameraStream(null);
+    };
+
+    // Start camera when upload modal opens
+    useEffect(() => {
+        if (showUploadModal) {
+            startCamera();
+        }
+        return () => {
+            if (showUploadModal) {
+                stopCamera();
+            }
+        };
+    }, [showUploadModal]);
 
     // Map backend status to UI status
     const getCurrentStatus = () => {
@@ -1345,10 +949,429 @@ const WorkerVerificationPage = () => {
             </div>
 
             {/* Address Collection Modal */}
-            {showAddressModal && <AddressCollectionModal />}
+            {showAddressModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900">
+                                    Add Your Service Address
+                                </h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    This address will be used for service
+                                    verification and customer bookings
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    if (!user?.address?.street) {
+                                        alert(
+                                            "Address is required to continue with verification"
+                                        );
+                                        return;
+                                    }
+                                    setShowAddressModal(false);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Current Location Button */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <Navigation className="w-6 h-6 text-blue-600" />
+                                        <div>
+                                            <h4 className="font-semibold text-blue-900">
+                                                Use Current Location
+                                            </h4>
+                                            <p className="text-blue-700 text-sm">
+                                                Automatically fill address using
+                                                your current location
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={getCurrentLocation}
+                                        disabled={isGettingLocation}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center space-x-2"
+                                    >
+                                        {isGettingLocation ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <MapPin className="w-4 h-4" />
+                                        )}
+                                        <span>
+                                            {isGettingLocation
+                                                ? "Detecting..."
+                                                : "Get Location"}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Address Form */}
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Street Address *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.street}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    "street",
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="House no., Building, Street"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Area/Locality *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.area}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    "area",
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="Area or Locality name"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            City *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.city}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    "city",
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="City"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            State *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.state}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    "state",
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="State"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Pincode *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.pincode}
+                                            onChange={(e) => {
+                                                const value = e.target.value
+                                                    .replace(/\D/g, "")
+                                                    .slice(0, 6);
+                                                handleAddressChange(
+                                                    "pincode",
+                                                    value
+                                                );
+                                            }}
+                                            placeholder="6-digit pincode"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                            maxLength={6}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Landmark (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={addressData.landmark}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    "landmark",
+                                                    e.target.value
+                                                )
+                                            }
+                                            placeholder="Nearby landmark"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Location Status */}
+                            {addressData.coordinates.latitude && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                    <div className="flex items-center space-x-2 text-green-800">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="text-sm font-medium">
+                                            Location captured:{" "}
+                                            {addressData.coordinates?.latitude},{" "}
+                                            {addressData.coordinates?.longitude}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => {
+                                        if (!user?.address?.street) {
+                                            alert(
+                                                "Address is required to continue with verification"
+                                            );
+                                            return;
+                                        }
+                                        setShowAddressModal(false);
+                                    }}
+                                    className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                                >
+                                    {user?.address?.street ? "Skip" : "Cancel"}
+                                </button>
+                                <button
+                                    onClick={handleSaveAddress}
+                                    disabled={addressLoading}
+                                    className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                >
+                                    {addressLoading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Home className="w-4 h-4" />
+                                    )}
+                                    <span>
+                                        {addressLoading
+                                            ? "Saving..."
+                                            : "Save Address & Continue"}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Document Upload Modal */}
-            {showUploadModal && <DocumentUploadModal />}
+            {showUploadModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-gray-900">
+                                Upload Verification Documents
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    stopCamera();
+                                    setShowUploadModal(false);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Aadhaar Card Upload */}
+                            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">
+                                            Aadhaar Card{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </h4>
+                                        <p className="text-sm text-gray-600">
+                                            Front and back copy of your Aadhaar
+                                            card
+                                        </p>
+                                    </div>
+                                    {uploadedDocuments.aadhar && (
+                                        <span className="text-green-600 text-sm font-medium">
+                                            ✓ Uploaded
+                                        </span>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={(e) =>
+                                        handleDocumentUpload(
+                                            "aadhar",
+                                            e.target.files[0]
+                                        )
+                                    }
+                                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                                />
+                                {uploadedDocuments.aadhar && (
+                                    <p className="text-sm text-gray-600 mt-2">
+                                        Selected:{" "}
+                                        {uploadedDocuments.aadhar.name}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Live Selfie Section */}
+                            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors">
+                                <h4 className="font-semibold text-gray-900 mb-2">
+                                    Live Selfie Capture{" "}
+                                    <span className="text-red-500">*</span>
+                                </h4>
+                                <div className="relative flex flex-col items-center space-y-3">
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        className="rounded-lg w-full max-w-sm border border-gray-200"
+                                    />
+                                    <canvas ref={canvasRef} hidden />
+                                    <div className="flex space-x-4">
+                                        <button
+                                            onClick={captureSelfie}
+                                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center space-x-2"
+                                        >
+                                            <Camera className="w-4 h-4" />
+                                            <span>Capture</span>
+                                        </button>
+                                        <button
+                                            onClick={stopCamera}
+                                            className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition flex items-center space-x-2"
+                                        >
+                                            <X className="w-4 h-4" />
+                                            <span>Stop Camera</span>
+                                        </button>
+                                    </div>
+                                    {capturedSelfie && (
+                                        <div className="mt-3 text-center">
+                                            <p className="text-sm text-gray-600 mb-2">
+                                                Preview:
+                                            </p>
+                                            <img
+                                                src={capturedSelfie}
+                                                alt="Captured Selfie"
+                                                className="rounded-lg border border-gray-300 w-40 h-40 object-cover"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Police Verification Upload */}
+                            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300 hover:border-purple-400 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">
+                                            Police Verification Certificate
+                                            (Optional)
+                                        </h4>
+                                        <p className="text-sm text-gray-600">
+                                            Police verification certificate if
+                                            available
+                                        </p>
+                                    </div>
+                                    {uploadedDocuments.policeVerification && (
+                                        <span className="text-green-600 text-sm font-medium">
+                                            ✓ Uploaded
+                                        </span>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    onChange={(e) =>
+                                        handleDocumentUpload(
+                                            "policeVerification",
+                                            e.target.files[0]
+                                        )
+                                    }
+                                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                                />
+                                {uploadedDocuments.policeVerification && (
+                                    <p className="text-sm text-gray-600 mt-2">
+                                        Selected:{" "}
+                                        {
+                                            uploadedDocuments.policeVerification
+                                                .name
+                                        }
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => {
+                                        stopCamera();
+                                        setShowUploadModal(false);
+                                    }}
+                                    disabled={loading}
+                                    className="flex-1 bg-white text-gray-700 border-2 border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSubmitDocuments}
+                                    disabled={loading}
+                                    className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                >
+                                    {loading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Upload className="w-4 h-4" />
+                                    )}
+                                    <span>
+                                        {loading
+                                            ? "Uploading..."
+                                            : "Submit for Verification"}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

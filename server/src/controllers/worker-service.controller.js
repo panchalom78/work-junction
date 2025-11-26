@@ -88,7 +88,7 @@ export const addWorkerService = async (req, res) => {
                 } service`,
             pricingType,
             price: parseFloat(price),
-            estimatedDuration: estimatedDuration || "1 hour",
+            estimatedDuration: parseInt(estimatedDuration) || 1,
             portfolioImages: [],
         });
 

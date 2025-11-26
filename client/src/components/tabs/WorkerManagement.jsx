@@ -19,6 +19,39 @@ const WorkerManagement = () => {
         totalWorkers: 0,
         limit: 10,
     });
+    // Add these state variables near the other state declarations
+    const [selectedSkill, setSelectedSkill] = useState("");
+    const [selectedService, setSelectedService] = useState("");
+    const [availableServices, setAvailableServices] = useState([]);
+    const [workerCounts, setWorkerCounts] = useState({
+        total: 0,
+        bySkill: {},
+        byService: {},
+    });
+
+    // Add this useEffect to fetch skills and worker counts
+    useEffect(() => {
+        const fetchSkillsAndCounts = async () => {
+            try {
+                const [skillsRes, countsRes] = await Promise.all([
+                    axiosInstance.get("/api/skills"),
+                    axiosInstance.get("/api/service-agent/worker-counts"),
+                ]);
+
+                if (skillsRes.data.success) {
+                    setMasterSkills(skillsRes.data.data);
+                }
+
+                if (countsRes.data.success) {
+                    setWorkerCounts(countsRes.data.data);
+                }
+            } catch (error) {
+                console.error("Error fetching skills and counts:", error);
+            }
+        };
+
+        fetchSkillsAndCounts();
+    }, []);
 
     // EDIT FORM DATA
     const [editFormData, setEditFormData] = useState({
@@ -41,14 +74,12 @@ const WorkerManagement = () => {
         },
         workType: "",
         services: [],
-    });
-
-    // SAVE LOADING STATES
-    const [saveLoading, setSaveLoading] = useState({
-        personal: false,
-        address: false,
-        bank: false,
-        skills: false,
+        // Add availability data
+        availability: {
+            timetable: {},
+            nonAvailability: [],
+            availabilityStatus: "available",
+        },
     });
 
     // MASTER SKILLS & SELECTED SKILL IDS
@@ -58,7 +89,7 @@ const WorkerManagement = () => {
     const [suspendWorkerData, setSuspendWorkerData] = useState({
         id: null,
         name: "",
-        reason: ""
+        reason: "",
     });
 
     // DEBOUNCE
@@ -71,79 +102,176 @@ const WorkerManagement = () => {
     };
 
     // FETCH WORKERS WITH PROPER STATUS MAPPING
+    // In the fetchWorkers function, update the API call to include availability data
+    // FETCH WORKERS WITH PROPER STATUS MAPPING
+    // FETCH WORKERS WITH PROPER STATUS MAPPING - NO PAGINATION
     const fetchWorkers = useCallback(
-        async (page = 1, search = searchTerm, status = filterStatus) => {
+        async (
+            search = searchTerm,
+            status = filterStatus,
+            skill = selectedSkill,
+            service = selectedService
+        ) => {
             setLoading(true);
             setError("");
             try {
                 const params = new URLSearchParams({
-                    page: page.toString(),
-                    limit: "10",
                     ...(search && { search }),
                     ...(status !== "all" && { status }),
+                    ...(skill && { skill }),
+                    ...(service && { service }),
                 });
 
                 const { data } = await axiosInstance.get(
                     `/api/service-agent/all-workers?${params}`
                 );
 
+                console.log("API Response:", data);
+
                 if (data.success) {
                     const list = Array.isArray(data.data)
                         ? data.data
                         : data.data?.workers || [];
 
-                    const mappedWorkers = list.map((worker) => {
-                        // First check if worker is suspended (highest priority)
-                        if (worker.workerProfile?.isSuspended) {
-                            return {
-                                ...worker,
-                                status: "suspended",
-                                availabilityStatus:
-                                    worker.workerProfile?.availabilityStatus ||
-                                    "available",
-                            };
-                        }
+                    // Fetch availability for each worker
+                    const workersWithAvailability = await Promise.all(
+                        list.map(async (worker) => {
+                            try {
+                                // Fetch availability data for each worker
+                                const availabilityRes = await axiosInstance.get(
+                                    `/api/service-agent/workers/${worker._id}/availability`
+                                );
 
-                        // Then check verification status
-                        const verificationStatus =
-                            worker.workerProfile?.verification?.status;
-                        if (verificationStatus === "PENDING") {
-                            return {
-                                ...worker,
-                                status: "pending",
-                                availabilityStatus:
-                                    worker.workerProfile?.availabilityStatus ||
-                                    "available",
-                            };
-                        }
+                                const availabilityData = availabilityRes.data
+                                    .success
+                                    ? availabilityRes.data.data
+                                    : {};
 
-                        if (verificationStatus === "REJECTED") {
-                            return {
-                                ...worker,
-                                status: "rejected",
-                                availabilityStatus:
-                                    worker.workerProfile?.availabilityStatus ||
-                                    "available",
-                            };
-                        }
+                                // First check if worker is suspended (highest priority)
+                                if (worker.workerProfile?.isSuspended) {
+                                    return {
+                                        ...worker,
+                                        status: "suspended",
+                                        availabilityStatus:
+                                            availabilityData.availabilityStatus ||
+                                            "available",
+                                        workerProfile: {
+                                            ...worker.workerProfile,
+                                            timetable:
+                                                availabilityData.timetable ||
+                                                {},
+                                            nonAvailability:
+                                                availabilityData.nonAvailability ||
+                                                [],
+                                        },
+                                    };
+                                }
 
-                        // If not suspended and verification is approved or null, consider active
-                        return {
-                            ...worker,
-                            status: "active",
-                            availabilityStatus:
-                                worker.workerProfile?.availabilityStatus ||
-                                "available",
-                        };
-                    });
+                                // Then check verification status
+                                const verificationStatus =
+                                    worker.workerProfile?.verification?.status;
+                                if (verificationStatus === "PENDING") {
+                                    return {
+                                        ...worker,
+                                        status: "pending",
+                                        availabilityStatus:
+                                            availabilityData.availabilityStatus ||
+                                            "available",
+                                        workerProfile: {
+                                            ...worker.workerProfile,
+                                            timetable:
+                                                availabilityData.timetable ||
+                                                {},
+                                            nonAvailability:
+                                                availabilityData.nonAvailability ||
+                                                [],
+                                        },
+                                    };
+                                }
 
-                    setWorkers(mappedWorkers);
+                                if (verificationStatus === "REJECTED") {
+                                    return {
+                                        ...worker,
+                                        status: "rejected",
+                                        availabilityStatus:
+                                            availabilityData.availabilityStatus ||
+                                            "available",
+                                        workerProfile: {
+                                            ...worker.workerProfile,
+                                            timetable:
+                                                availabilityData.timetable ||
+                                                {},
+                                            nonAvailability:
+                                                availabilityData.nonAvailability ||
+                                                [],
+                                        },
+                                    };
+                                }
+
+                                // If not suspended and verification is approved or null, consider active
+                                return {
+                                    ...worker,
+                                    status: "active",
+                                    availabilityStatus:
+                                        availabilityData.availabilityStatus ||
+                                        "available",
+                                    workerProfile: {
+                                        ...worker.workerProfile,
+                                        timetable:
+                                            availabilityData.timetable || {},
+                                        nonAvailability:
+                                            availabilityData.nonAvailability ||
+                                            [],
+                                    },
+                                };
+                            } catch (error) {
+                                console.error(
+                                    `Error fetching availability for worker ${worker._id}:`,
+                                    error
+                                );
+                                // Return worker without availability data if fetch fails
+                                if (worker.workerProfile?.isSuspended) {
+                                    return {
+                                        ...worker,
+                                        status: "suspended",
+                                        availabilityStatus: "available",
+                                    };
+                                }
+
+                                const verificationStatus =
+                                    worker.workerProfile?.verification?.status;
+                                if (verificationStatus === "PENDING") {
+                                    return {
+                                        ...worker,
+                                        status: "pending",
+                                        availabilityStatus: "available",
+                                    };
+                                }
+
+                                if (verificationStatus === "REJECTED") {
+                                    return {
+                                        ...worker,
+                                        status: "rejected",
+                                        availabilityStatus: "available",
+                                    };
+                                }
+
+                                return {
+                                    ...worker,
+                                    status: "active",
+                                    availabilityStatus: "available",
+                                };
+                            }
+                        })
+                    );
+
+                    setWorkers(workersWithAvailability);
+                    // Update pagination with total count only
                     setPagination({
-                        currentPage: page,
-                        totalPages: data.pagination?.totalPages || 1,
-                        totalWorkers:
-                            data.pagination?.totalWorkers || list.length,
-                        limit: data.pagination?.limit || 10,
+                        currentPage: 1,
+                        totalPages: 1,
+                        totalWorkers: workersWithAvailability.length,
+                        limit: workersWithAvailability.length,
                     });
                 } else throw new Error(data.message);
             } catch (err) {
@@ -152,82 +280,163 @@ const WorkerManagement = () => {
                     err.response?.data?.message || "Failed to load workers"
                 );
                 setWorkers([]);
+                setPagination({
+                    currentPage: 1,
+                    totalPages: 1,
+                    totalWorkers: 0,
+                    limit: 0,
+                });
             } finally {
                 setLoading(false);
             }
         },
-        [searchTerm, filterStatus]
+        [searchTerm, filterStatus, selectedSkill, selectedService]
     );
+    const handleSkillChange = async (skillId) => {
+        setSelectedSkill(skillId);
+        setSelectedService("");
+
+        if (skillId) {
+            try {
+                const servicesRes = await axiosInstance.get(
+                    `/api/skills/${skillId}/services`
+                );
+                if (servicesRes.data.success) {
+                    setAvailableServices(servicesRes.data.data.services || []);
+                }
+            } catch (error) {
+                console.error("Error fetching services:", error);
+                setAvailableServices([]);
+            }
+        } else {
+            setAvailableServices([]);
+        }
+    };
 
     // AVAILABILITY UPDATE
     const handleUpdateAvailability = async (workerId, availabilityStatus) => {
         try {
             setActionLoading(workerId);
-            await axiosInstance.patch(
-                `/api/service-agent/worker/${workerId}/availability`,
-                {
-                    availabilityStatus,
-                }
+            await axiosInstance.put(
+                `/api/service-agent/workers/${workerId}/availability-status`,
+                { availabilityStatus }
             );
             toast.success(`Availability updated to ${availabilityStatus}`);
-            fetchWorkers(pagination.currentPage);
+            fetchWorkers();
         } catch (error) {
-            toast.error(
-                error.response?.data?.message || "Failed to update availability"
-            );
+            handleApiError(error, "Failed to update availability");
         } finally {
             setActionLoading(null);
         }
     };
 
     const debouncedSearch = useCallback(
-        debounce((s) => fetchWorkers(1, s, filterStatus), 500),
-        [fetchWorkers, filterStatus]
+        debounce((s) => fetchWorkers(), 500),
+        [fetchWorkers, filterStatus, selectedSkill, selectedService]
     );
+    useEffect(() => {
+        if (searchTerm || selectedSkill || selectedService) {
+            debouncedSearch(searchTerm);
+        } else {
+            fetchWorkers();
+        }
+    }, [
+        searchTerm,
+        filterStatus,
+        selectedSkill,
+        selectedService,
+        debouncedSearch,
+        fetchWorkers,
+    ]);
+    // Add this useEffect to fetch skills and worker counts
+    useEffect(() => {
+        const fetchSkillsAndCounts = async () => {
+            try {
+                const [skillsRes, countsRes] = await Promise.all([
+                    axiosInstance.get("/api/skills"),
+                    axiosInstance.get("/api/service-agent/worker-counts"),
+                ]);
+
+                if (skillsRes.data.success) {
+                    setMasterSkills(skillsRes.data.data);
+                }
+
+                if (countsRes.data.success) {
+                    setWorkerCounts(countsRes.data.data);
+                }
+            } catch (error) {
+                console.error("Error fetching skills and counts:", error);
+            }
+        };
+
+        fetchSkillsAndCounts();
+    }, []);
+
+    const clearFilters = () => {
+        setSelectedSkill("");
+        setSelectedService("");
+        setSearchTerm("");
+        setFilterStatus("all");
+        setAvailableServices([]);
+        fetchWorkers();
+    };
 
     useEffect(() => {
-        fetchWorkers(1);
-    }, [fetchWorkers]);
-
-    useEffect(() => {
-        if (searchTerm) debouncedSearch(searchTerm);
-        else fetchWorkers(1, "", filterStatus);
-    }, [searchTerm, filterStatus, debouncedSearch, fetchWorkers]);
+        if (
+            searchTerm ||
+            selectedSkill ||
+            selectedService ||
+            filterStatus !== "all"
+        ) {
+            debouncedSearch(searchTerm);
+        } else {
+            fetchWorkers();
+        }
+    }, [
+        searchTerm,
+        filterStatus,
+        selectedSkill,
+        selectedService,
+        debouncedSearch,
+        fetchWorkers,
+    ]);
 
     // ACTIONS
     const handleSuspendWorker = async (id, name) => {
-    setSuspendWorkerData({
-        id,
-        name,
-        reason: ""
-    });
-    setShowSuspendModal(true);
-};
+        setSuspendWorkerData({
+            id,
+            name,
+            reason: "",
+        });
+        setShowSuspendModal(true);
+    };
 
-const confirmSuspendWorker = async () => {
-    const { id, name, reason } = suspendWorkerData;
-    
-    if (!reason?.trim()) {
-        toast.error("Please provide a reason for suspension");
-        return;
-    }
+    const confirmSuspendWorker = async () => {
+        const { id, name, reason } = suspendWorkerData;
 
-    try {
-        setActionLoading(id);
-        await axiosInstance.patch(
-            `/api/service-agent/suspend-worker/${id}`,
-            { reason: reason.trim() }
-        );
-        toast.success("Worker suspended successfully");
-        setShowSuspendModal(false);
-        setSuspendWorkerData({ id: null, name: "", reason: "" });
-        fetchWorkers(pagination.currentPage);
-    } catch (e) {
-        toast.error(e.response?.data?.message || "Failed to suspend worker");
-    } finally {
-        setActionLoading(null);
-    }
-};
+        if (!reason?.trim()) {
+            toast.error("Please provide a reason for suspension");
+            return;
+        }
+
+        try {
+            setActionLoading(id);
+            await axiosInstance.patch(
+                `/api/service-agent/suspend-worker/${id}`,
+                { reason: reason.trim() }
+            );
+            toast.success("Worker suspended successfully");
+            setShowSuspendModal(false);
+            setSuspendWorkerData({ id: null, name: "", reason: "" });
+            fetchWorkers();
+        } catch (e) {
+            toast.error(
+                e.response?.data?.message || "Failed to suspend worker"
+            );
+        } finally {
+            setActionLoading(null);
+        }
+    };
 
     const handleActivateWorker = async (id, name) => {
         if (!window.confirm(`Activate ${name}?`)) return;
@@ -237,8 +446,7 @@ const confirmSuspendWorker = async () => {
                 `/api/service-agent/activate-worker/${id}`
             );
             toast.success("Worker activated successfully");
-            fetchWorkers(pagination.currentPage);
-        } catch (e) {
+            fetchWorkers();
             toast.error(
                 e.response?.data?.message || "Failed to activate worker"
             );
@@ -251,14 +459,38 @@ const confirmSuspendWorker = async () => {
     const handleViewDetails = async (worker) => {
         try {
             setLoading(true);
-            const { data } = await axiosInstance.get(
-                `/api/service-agent/worker-details/${worker._id}`
-            );
-            console.log(data);
-            if (data.success) {
-                setSelectedWorker(data.data);
+            const [detailsRes, availabilityRes] = await Promise.all([
+                axiosInstance.get(
+                    `/api/service-agent/worker-details/${worker._id}`
+                ),
+                axiosInstance.get(
+                    `/api/service-agent/workers/${worker._id}/availability`
+                ),
+            ]);
+
+            if (detailsRes.data.success) {
+                const workerData = detailsRes.data.data;
+                const availabilityData = availabilityRes.data.success
+                    ? availabilityRes.data.data
+                    : {};
+
+                // Merge availability data with worker data
+                const workerWithAvailability = {
+                    ...workerData,
+                    availabilityStatus:
+                        availabilityData.availabilityStatus || "available",
+                    workerProfile: {
+                        ...workerData.workerProfile,
+                        timetable: availabilityData.timetable || {},
+                        nonAvailability: availabilityData.nonAvailability || [],
+                    },
+                };
+
+                console.log(workerWithAvailability);
+
+                setSelectedWorker(workerWithAvailability);
                 setShowDetailsModal(true);
-            } else throw new Error(data.message);
+            } else throw new Error(detailsRes.data.message);
         } catch (e) {
             toast.error(e.response?.data?.message || "Failed to load details");
         } finally {
@@ -267,13 +499,17 @@ const confirmSuspendWorker = async () => {
     };
 
     // OPEN EDIT MODAL
+    // In the openEditModal function, update the availability API call:
     const openEditModal = async (worker) => {
         try {
-            const [workerRes, skillsRes] = await Promise.all([
+            const [workerRes, skillsRes, availabilityRes] = await Promise.all([
                 axiosInstance.get(
                     `/api/service-agent/worker-details/${worker._id}`
                 ),
                 axiosInstance.get(`/api/service-agent/skills/`),
+                axiosInstance.get(
+                    `/api/service-agent/workers/${worker._id}/availability`
+                ),
             ]);
 
             if (!workerRes.data.success || !skillsRes.data.success) {
@@ -283,12 +519,30 @@ const confirmSuspendWorker = async () => {
             const w = workerRes.data.data;
             const allSkills = skillsRes.data.data;
 
+            // Handle availability response
+            let availabilityData;
+            if (availabilityRes.data.success) {
+                availabilityData =
+                    availabilityRes.data.data || availabilityRes.data;
+            } else {
+                availabilityData = {
+                    timetable: {},
+                    nonAvailability: [],
+                    availabilityStatus: "available",
+                };
+            }
+
             setMasterSkills(allSkills);
 
+            // Get skills from workerProfile or services
             const currentSkillIds = (w.workerProfile?.skills || []).map(
                 (s) => s._id
             );
             setSelectedSkillIds(currentSkillIds);
+
+            // Get services from workerProfile or services array
+            const workerServices =
+                w.workerProfile?.services || w.services || [];
 
             setEditFormData({
                 name: w.name || "",
@@ -309,14 +563,15 @@ const confirmSuspendWorker = async () => {
                     bankName: "",
                 },
                 workType: w.workerProfile?.workType || "",
-                services: (w.workerProfile?.services || []).map((s) => ({
-                    serviceId: s.serviceId._id,
-                    skillId: s.skillId._id,
-                    name: s.serviceId.name,
+                services: workerServices.map((s) => ({
+                    serviceId: s.serviceId?._id || s.serviceId,
+                    skillId: s.skillId?._id || s.skillId,
+                    name: s.serviceId?.name || "Unknown Service",
                     details: s.details || "",
                     pricingType: s.pricingType || "FIXED",
                     price: s.price?.toString() || "",
                 })),
+                availability: availabilityData,
             });
 
             setSelectedWorker(w);
@@ -327,6 +582,153 @@ const confirmSuspendWorker = async () => {
             toast.error("Failed to load edit data");
         }
     };
+    // Add these state variables near the other state declarations
+    const [newNonAvailableDate, setNewNonAvailableDate] = useState("");
+    const [newNonAvailableReason, setNewNonAvailableReason] = useState("");
+
+    // Add these helper functions
+    const addNonAvailableDate = () => {
+        if (!newNonAvailableDate) return;
+
+        const newDate = {
+            date: newNonAvailableDate, // Use 'date' field instead of startDateTime/endDateTime
+            reason: newNonAvailableReason || "Not available",
+        };
+
+        setEditFormData((prev) => ({
+            ...prev,
+            availability: {
+                ...prev.availability,
+                nonAvailability: [
+                    ...prev.availability.nonAvailability,
+                    newDate,
+                ],
+            },
+        }));
+
+        setNewNonAvailableDate("");
+        setNewNonAvailableReason("");
+    };
+    // Add these functions for individual updates if needed
+    const updateTimetableOnly = async (workerId, timetable) => {
+        try {
+            await axiosInstance.put(
+                `/api/service-agent/workers/${workerId}/timetable`,
+                { timetable }
+            );
+            toast.success("Timetable updated successfully");
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message || "Failed to update timetable"
+            );
+            throw error;
+        }
+    };
+
+    const updateNonAvailabilityOnly = async (workerId, nonAvailability) => {
+        try {
+            await axiosInstance.put(
+                `/api/service-agent/workers/${workerId}/non-availability`,
+                { nonAvailability }
+            );
+            toast.success("Non-availability dates updated successfully");
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    "Failed to update non-availability"
+            );
+            throw error;
+        }
+    };
+
+    const removeNonAvailableDate = (index) => {
+        setEditFormData((prev) => ({
+            ...prev,
+            availability: {
+                ...prev.availability,
+                nonAvailability: prev.availability.nonAvailability.filter(
+                    (_, i) => i !== index
+                ),
+            },
+        }));
+    };
+    const convertTimetableToWeeklySlots = (timetable) => {
+        const days = [
+            { day: "monday", key: "Monday" },
+            { day: "tuesday", key: "Tuesday" },
+            { day: "wednesday", key: "Wednesday" },
+            { day: "thursday", key: "Thursday" },
+            { day: "friday", key: "Friday" },
+            { day: "saturday", key: "Saturday" },
+            { day: "sunday", key: "Sunday" },
+        ];
+
+        return days.map(({ day, key }) => {
+            const daySlots = timetable?.[key] || [];
+            return {
+                day,
+                enabled: daySlots.length > 0,
+                timeSlots: daySlots.map((slot) => ({
+                    startTime: slot.start,
+                    endTime: slot.end,
+                })),
+            };
+        });
+    };
+
+    // Add this save function with the other save functions
+    const saveAvailability = async () => {
+        setSaveLoading((prev) => ({ ...prev, availability: true }));
+        try {
+            // Prepare data in the format expected by setupWorkerAvailability
+            const availabilityData = {
+                weeklySlots: convertTimetableToWeeklySlots(
+                    editFormData.availability.timetable
+                ),
+                nonAvailability: editFormData.availability.nonAvailability.map(
+                    (item) => ({
+                        date: new Date(item.startDateTime || item.date)
+                            .toISOString()
+                            .split("T")[0],
+                        reason: item.reason,
+                    })
+                ),
+                status: editFormData.availability.availabilityStatus,
+            };
+
+            await axiosInstance.post(
+                `/api/service-agent/workers/${selectedWorker._id}/availability`,
+                availabilityData
+            );
+            toast.success("Availability updated successfully");
+            fetchWorkers();
+        } catch (e) {
+            console.error("Availability save error:", e);
+            toast.error(
+                e.response?.data?.message || "Failed to update availability"
+            );
+        } finally {
+            setSaveLoading((prev) => ({ ...prev, availability: false }));
+        }
+    };
+    const handleApiError = (error, defaultMessage) => {
+        console.error("API Error:", error);
+        if (error.response?.status === 404) {
+            toast.error("Worker not found");
+        } else if (error.response?.status === 400) {
+            toast.error(error.response.data.message || "Invalid data format");
+        } else {
+            toast.error(error.response?.data?.message || defaultMessage);
+        }
+    };
+    // Add to the saveLoading state initialization
+    const [saveLoading, setSaveLoading] = useState({
+        personal: false,
+        address: false,
+        bank: false,
+        skills: false,
+        availability: false, // Add this
+    });
 
     // INPUT HANDLER
     const handleEditChange = (e) => {
@@ -362,7 +764,7 @@ const confirmSuspendWorker = async () => {
                 }
             );
             toast.success("Personal details updated");
-            fetchWorkers(pagination.currentPage);
+            fetchWorkers();
         } catch (e) {
             toast.error(
                 e.response?.data?.message || "Failed to update personal details"
@@ -380,7 +782,7 @@ const confirmSuspendWorker = async () => {
                 editFormData.address
             );
             toast.success("Address updated");
-            fetchWorkers(pagination.currentPage);
+            fetchWorkers();
         } catch (e) {
             toast.error(
                 e.response?.data?.message || "Failed to update address"
@@ -398,7 +800,7 @@ const confirmSuspendWorker = async () => {
                 editFormData.bankDetails
             );
             toast.success("Bank details updated");
-            fetchWorkers(pagination.currentPage);
+            fetchWorkers();
         } catch (e) {
             toast.error(
                 e.response?.data?.message || "Failed to update bank details"
@@ -427,11 +829,11 @@ const confirmSuspendWorker = async () => {
                 payload
             );
             toast.success("Skills & Services updated");
-            fetchWorkers(pagination.currentPage);
+            fetchWorkers();
         } catch (e) {
             toast.error(
                 e.response?.data?.message ||
-                "Failed to update skills & services"
+                    "Failed to update skills & services"
             );
         } finally {
             setSaveLoading((prev) => ({ ...prev, skills: false }));
@@ -440,7 +842,7 @@ const confirmSuspendWorker = async () => {
 
     // PAGE CHANGE
     const handlePageChange = (p) => {
-        if (p >= 1 && p <= pagination.totalPages) fetchWorkers(p);
+        if (p >= 1 && p <= pagination.totalPages) fetchWorkers();
     };
 
     // UI HELPERS
@@ -464,19 +866,21 @@ const confirmSuspendWorker = async () => {
         return (
             <div className="flex flex-col gap-1.5 min-w-[100px]">
                 <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold text-center ${accountStatusMap[accountStatus] ||
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold text-center ${
+                        accountStatusMap[accountStatus] ||
                         "bg-gray-100 text-gray-800"
-                        }`}
+                    }`}
                 >
                     {accountStatus
                         ? accountStatus.charAt(0).toUpperCase() +
-                        accountStatus.slice(1)
+                          accountStatus.slice(1)
                         : "Unknown"}
                 </span>
                 <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium text-center ${availabilityStatusMap[availabilityStatus] ||
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium text-center ${
+                        availabilityStatusMap[availabilityStatus] ||
                         "bg-gray-100 text-gray-600"
-                        }`}
+                    }`}
                 >
                     {availabilityStatus
                         ? availabilityStatus.replace("-", " ").toUpperCase()
@@ -506,12 +910,13 @@ const confirmSuspendWorker = async () => {
                     {[...Array(5)].map((_, i) => (
                         <span
                             key={i}
-                            className={`text-sm ${i < fullStars
-                                ? "text-yellow-400"
-                                : i === fullStars && hasHalfStar
+                            className={`text-sm ${
+                                i < fullStars
+                                    ? "text-yellow-400"
+                                    : i === fullStars && hasHalfStar
                                     ? "text-yellow-300"
                                     : "text-gray-300"
-                                }`}
+                            }`}
                         >
                             ★
                         </span>
@@ -624,6 +1029,39 @@ const confirmSuspendWorker = async () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    {/* Skills Dropdown */}
+                    <div className="relative">
+                        <select
+                            className="lg:w-48 px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm"
+                            value={selectedSkill}
+                            onChange={(e) => handleSkillChange(e.target.value)}
+                        >
+                            <option value="">All Skills</option>
+                            {masterSkills.map((skill) => (
+                                <option key={skill._id} value={skill._id}>
+                                    {skill.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {/* Services Dropdown */}
+                    <select
+                        className="lg:w-48 px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm disabled:opacity-50"
+                        value={selectedService}
+                        onChange={(e) => setSelectedService(e.target.value)}
+                        disabled={!selectedSkill}
+                    >
+                        <option value="">All Services</option>
+                        {availableServices.map((service) => (
+                            <option
+                                key={service.serviceId || service._id}
+                                value={service.serviceId || service._id}
+                            >
+                                {service.name}{" "}
+                            </option>
+                        ))}
+                    </select>
+                    {/* Status Filter */}
                     <select
                         className="lg:w-48 px-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm"
                         value={filterStatus}
@@ -635,7 +1073,98 @@ const confirmSuspendWorker = async () => {
                         <option value="pending">Pending</option>
                         <option value="rejected">Rejected</option>
                     </select>
+                    {/* Clear Filters Button */}
+                    {(selectedSkill ||
+                        selectedService ||
+                        searchTerm ||
+                        filterStatus !== "all") && (
+                        <button
+                            onClick={clearFilters}
+                            className="px-4 py-3.5 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors text-sm font-medium flex items-center"
+                        >
+                            <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                            Clear
+                        </button>
+                    )}
                 </div>
+
+                {/* Active Filters Display */}
+                {(selectedSkill || selectedService) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {selectedSkill && (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Skill:{" "}
+                                {
+                                    masterSkills.find(
+                                        (s) => s._id === selectedSkill
+                                    )?.name
+                                }
+                                <button
+                                    onClick={() => {
+                                        setSelectedSkill("");
+                                        setSelectedService("");
+                                        setAvailableServices([]);
+                                    }}
+                                    className="ml-2 hover:bg-blue-200 rounded-full p-0.5"
+                                >
+                                    <svg
+                                        className="w-3 h-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </span>
+                        )}
+                        {selectedService && (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Service:{" "}
+                                {
+                                    availableServices.find(
+                                        (s) => s.serviceId === selectedService
+                                    )?.name
+                                }
+                                <button
+                                    onClick={() => setSelectedService("")}
+                                    className="ml-2 hover:bg-green-200 rounded-full p-0.5"
+                                >
+                                    <svg
+                                        className="w-3 h-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* WORKERS TABLE/CARDS */}
@@ -688,6 +1217,9 @@ const confirmSuspendWorker = async () => {
                                                         {worker.workerProfile
                                                             ?.services?.[0]
                                                             ?.serviceId?.name ||
+                                                            worker.services?.[0]
+                                                                ?.serviceId
+                                                                ?.name ||
                                                             "No services"}
                                                     </div>
                                                 </div>
@@ -714,36 +1246,6 @@ const confirmSuspendWorker = async () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center space-x-3">
-                                                <select
-                                                    value={
-                                                        worker.availabilityStatus ||
-                                                        "available"
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleUpdateAvailability(
-                                                            worker._id,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    className="text-xs border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                    disabled={
-                                                        actionLoading ===
-                                                        worker._id ||
-                                                        worker.status ===
-                                                        "suspended"
-                                                    }
-                                                >
-                                                    <option value="available">
-                                                        Available
-                                                    </option>
-                                                    <option value="busy">
-                                                        Busy
-                                                    </option>
-                                                    <option value="off-duty">
-                                                        Off Duty
-                                                    </option>
-                                                </select>
-
                                                 <div className="flex items-center space-x-2">
                                                     <button
                                                         onClick={() =>
@@ -799,10 +1301,19 @@ const confirmSuspendWorker = async () => {
                                                         </svg>
                                                     </button>
 
-                                                    {worker.status === "active" && (
+                                                    {worker.status ===
+                                                        "active" && (
                                                         <button
-                                                            onClick={() => handleSuspendWorker(worker._id, worker.name)}
-                                                            disabled={actionLoading === worker._id}
+                                                            onClick={() =>
+                                                                handleSuspendWorker(
+                                                                    worker._id,
+                                                                    worker.name
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                actionLoading ===
+                                                                worker._id
+                                                            }
                                                             className="text-amber-600 hover:text-amber-800 p-1.5 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50"
                                                             title="Suspend Worker"
                                                         >
@@ -815,7 +1326,9 @@ const confirmSuspendWorker = async () => {
                                                                 <path
                                                                     strokeLinecap="round"
                                                                     strokeLinejoin="round"
-                                                                    strokeWidth={2}
+                                                                    strokeWidth={
+                                                                        2
+                                                                    }
                                                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                                                 />
                                                             </svg>
@@ -823,37 +1336,37 @@ const confirmSuspendWorker = async () => {
                                                     )}
                                                     {worker.status ===
                                                         "suspended" && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    handleActivateWorker(
-                                                                        worker._id,
-                                                                        worker.name
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    actionLoading ===
-                                                                    worker._id
-                                                                }
-                                                                className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors disabled:opacity-50"
-                                                                title="Activate Worker"
+                                                        <button
+                                                            onClick={() =>
+                                                                handleActivateWorker(
+                                                                    worker._id,
+                                                                    worker.name
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                actionLoading ===
+                                                                worker._id
+                                                            }
+                                                            className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                                                            title="Activate Worker"
+                                                        >
+                                                            <svg
+                                                                className="w-4 h-4"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
                                                             >
-                                                                <svg
-                                                                    className="w-4 h-4"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth={
-                                                                            2
-                                                                        }
-                                                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                                                    />
-                                                                </svg>
-                                                            </button>
-                                                        )}
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={
+                                                                        2
+                                                                    }
+                                                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -949,6 +1462,8 @@ const confirmSuspendWorker = async () => {
                                         <p className="font-medium text-xs">
                                             {worker.workerProfile?.services?.[0]
                                                 ?.serviceId?.name ||
+                                                worker.services?.[0]?.serviceId
+                                                    ?.name ||
                                                 "No services"}
                                         </p>
                                     </div>
@@ -1034,8 +1549,15 @@ const confirmSuspendWorker = async () => {
 
                                         {worker.status === "active" && (
                                             <button
-                                                onClick={() => handleSuspendWorker(worker._id, worker.name)}
-                                                disabled={actionLoading === worker._id}
+                                                onClick={() =>
+                                                    handleSuspendWorker(
+                                                        worker._id,
+                                                        worker.name
+                                                    )
+                                                }
+                                                disabled={
+                                                    actionLoading === worker._id
+                                                }
                                                 className="flex-1 bg-amber-50 text-amber-700 py-2 px-3 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
                                             >
                                                 <svg
@@ -1113,92 +1635,10 @@ const confirmSuspendWorker = async () => {
                 </div>
 
                 {/* PAGINATION */}
-                {pagination.totalPages > 1 && (
-                    <div className="px-4 lg:px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-sm text-gray-700">
-                            Showing{" "}
-                            <span className="font-semibold">
-                                {(pagination.currentPage - 1) *
-                                    pagination.limit +
-                                    1}
-                            </span>{" "}
-                            to{" "}
-                            <span className="font-semibold">
-                                {Math.min(
-                                    pagination.currentPage * pagination.limit,
-                                    pagination.totalWorkers
-                                )}
-                            </span>{" "}
-                            of{" "}
-                            <span className="font-semibold">
-                                {pagination.totalWorkers}
-                            </span>{" "}
-                            workers
-                        </div>
-                        <div className="flex items-center space-x-1">
-                            <button
-                                onClick={() =>
-                                    handlePageChange(pagination.currentPage - 1)
-                                }
-                                disabled={pagination.currentPage === 1}
-                                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Previous
-                            </button>
-
-                            {Array.from(
-                                { length: pagination.totalPages },
-                                (_, i) => i + 1
-                            )
-                                .filter(
-                                    (page) =>
-                                        page === 1 ||
-                                        page === pagination.totalPages ||
-                                        Math.abs(
-                                            page - pagination.currentPage
-                                        ) <= 1
-                                )
-                                .map((page, index, array) => (
-                                    <React.Fragment key={page}>
-                                        {index > 0 &&
-                                            page - array[index - 1] > 1 && (
-                                                <span className="px-2 text-gray-500">
-                                                    ...
-                                                </span>
-                                            )}
-                                        <button
-                                            onClick={() =>
-                                                handlePageChange(page)
-                                            }
-                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${page === pagination.currentPage
-                                                ? "bg-blue-600 text-white border border-blue-600"
-                                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                                                }`}
-                                        >
-                                            {page}
-                                        </button>
-                                    </React.Fragment>
-                                ))}
-
-                            <button
-                                onClick={() =>
-                                    handlePageChange(pagination.currentPage + 1)
-                                }
-                                disabled={
-                                    pagination.currentPage ===
-                                    pagination.totalPages
-                                }
-                                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
             {/* ==================== DETAILS MODAL ==================== */}
             {showDetailsModal && selectedWorker && (
-                <div className=" absolute inset-0 bg-white/20 backdrop-blur-lg shadow-xl rounded-xl flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="fixed inset-0 bg-black/80 bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             {/* Header */}
@@ -1247,26 +1687,28 @@ const confirmSuspendWorker = async () => {
                                     </p>
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedWorker.status ===
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                selectedWorker.status ===
                                                 "active"
-                                                ? "bg-green-100 text-green-800 border border-green-200"
-                                                : selectedWorker.status ===
-                                                    "suspended"
+                                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                                    : selectedWorker.status ===
+                                                      "suspended"
                                                     ? "bg-red-100 text-red-800 border border-red-200"
                                                     : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                                }`}
+                                            }`}
                                         >
                                             {selectedWorker.status?.toUpperCase()}
                                         </span>
                                         <span
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedWorker.availabilityStatus ===
+                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                selectedWorker.availabilityStatus ===
                                                 "available"
-                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                                : selectedWorker.availabilityStatus ===
-                                                    "busy"
+                                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                    : selectedWorker.availabilityStatus ===
+                                                      "busy"
                                                     ? "bg-orange-100 text-orange-800 border border-orange-200"
                                                     : "bg-gray-100 text-gray-800 border border-gray-200"
-                                                }`}
+                                            }`}
                                         >
                                             {selectedWorker.availabilityStatus
                                                 ?.replace("-", " ")
@@ -1399,24 +1841,26 @@ const confirmSuspendWorker = async () => {
                                         Address Details
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                        {Object.entries(
-                                            selectedWorker.address
-                                        ).map(([key, value]) => (
-                                            <div
-                                                key={key}
-                                                className="flex flex-col"
-                                            >
-                                                <span className="font-semibold text-gray-700 mb-1 capitalize">
-                                                    {key.replace(
-                                                        /([A-Z])/g,
-                                                        " $1"
-                                                    )}
-                                                </span>
-                                                <span className="text-gray-900">
-                                                    {value || "—"}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        {Object.entries(selectedWorker.address)
+                                            .filter(
+                                                ([key]) => key !== "coordinates"
+                                            )
+                                            .map(([key, value]) => (
+                                                <div
+                                                    key={key}
+                                                    className="flex flex-col"
+                                                >
+                                                    <span className="font-semibold text-gray-700 mb-1 capitalize">
+                                                        {key.replace(
+                                                            /([A-Z])/g,
+                                                            " $1"
+                                                        )}
+                                                    </span>
+                                                    <span className="text-gray-900">
+                                                        {value || "—"}
+                                                    </span>
+                                                </div>
+                                            ))}
                                     </div>
                                 </section>
                             )}
@@ -1524,17 +1968,16 @@ const confirmSuspendWorker = async () => {
                                                             <div className="flex justify-between items-start mb-2">
                                                                 <h6 className="font-semibold text-blue-900 text-sm">
                                                                     {
-                                                                        service
-                                                                            .serviceId
-                                                                            ?.name
+                                                                        service.serviceName
                                                                     }
                                                                 </h6>
                                                                 <span
-                                                                    className={`px-2 py-1 rounded-full text-xs font-bold ${service.pricingType ===
+                                                                    className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                                                        service.pricingType ===
                                                                         "FIXED"
-                                                                        ? "bg-green-100 text-green-800"
-                                                                        : "bg-orange-100 text-orange-800"
-                                                                        }`}
+                                                                            ? "bg-green-100 text-green-800"
+                                                                            : "bg-orange-100 text-orange-800"
+                                                                    }`}
                                                                 >
                                                                     {
                                                                         service.pricingType
@@ -1657,12 +2100,13 @@ const confirmSuspendWorker = async () => {
                                     {/* Selfie Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
-                                                ?.verification
-                                                ?.isSelfieVerified
-                                                ? "bg-green-500"
-                                                : "bg-gray-300"
-                                                }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${
+                                                selectedWorker.workerProfile
+                                                    ?.verification
+                                                    ?.isSelfieVerified
+                                                    ? "bg-green-500"
+                                                    : "bg-gray-300"
+                                            }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Selfie Verified
@@ -1678,12 +2122,13 @@ const confirmSuspendWorker = async () => {
                                     {/* Aadhaar Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
-                                                ?.verification
-                                                ?.isAddharDocVerified
-                                                ? "bg-green-500"
-                                                : "bg-gray-300"
-                                                }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${
+                                                selectedWorker.workerProfile
+                                                    ?.verification
+                                                    ?.isAddharDocVerified
+                                                    ? "bg-green-500"
+                                                    : "bg-gray-300"
+                                            }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Aadhaar Verified
@@ -1700,12 +2145,13 @@ const confirmSuspendWorker = async () => {
                                     {/* Police Verification */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`w-3 h-3 rounded-full mb-2 ${selectedWorker.workerProfile
-                                                ?.verification
-                                                ?.isPoliceVerificationDocVerified
-                                                ? "bg-green-500"
-                                                : "bg-gray-300"
-                                                }`}
+                                            className={`w-3 h-3 rounded-full mb-2 ${
+                                                selectedWorker.workerProfile
+                                                    ?.verification
+                                                    ?.isPoliceVerificationDocVerified
+                                                    ? "bg-green-500"
+                                                    : "bg-gray-300"
+                                            }`}
                                         />
                                         <span className="font-semibold text-gray-700">
                                             Police Verified
@@ -1722,18 +2168,19 @@ const confirmSuspendWorker = async () => {
                                     {/* Overall Status */}
                                     <div className="flex flex-col items-center text-center p-4 bg-white rounded-xl border">
                                         <div
-                                            className={`px-3 py-1 rounded-full mb-2 text-xs font-bold ${selectedWorker.workerProfile
-                                                ?.verification?.status ===
+                                            className={`px-3 py-1 rounded-full mb-2 text-xs font-bold ${
+                                                selectedWorker.workerProfile
+                                                    ?.verification?.status ===
                                                 "APPROVED"
-                                                ? "bg-green-100 text-green-800 border border-green-200"
-                                                : selectedWorker
-                                                    .workerProfile
-                                                    ?.verification
-                                                    ?.status ===
-                                                    "REJECTED"
+                                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                                    : selectedWorker
+                                                          .workerProfile
+                                                          ?.verification
+                                                          ?.status ===
+                                                      "REJECTED"
                                                     ? "bg-red-100 text-red-800 border border-red-200"
                                                     : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                                }`}
+                                            }`}
                                         >
                                             {selectedWorker.workerProfile
                                                 ?.verification?.status ||
@@ -1746,6 +2193,371 @@ const confirmSuspendWorker = async () => {
                                             {selectedWorker.workerProfile?.verification?.status?.toLowerCase() ||
                                                 "pending"}
                                         </span>
+                                    </div>
+                                </div>
+                            </section>
+                            {/* Availability Information */}
+                            <section className="bg-gray-50 rounded-2xl p-6 mb-6 border border-gray-200">
+                                <h4 className="font-bold text-lg text-gray-900 mb-4 flex items-center">
+                                    <svg
+                                        className="w-5 h-5 mr-2 text-purple-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    Availability Information
+                                </h4>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Current Status */}
+                                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                        <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                            <svg
+                                                className="w-4 h-4 mr-2 text-blue-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                            </svg>
+                                            Current Status
+                                        </h5>
+                                        <div className="flex items-center space-x-3">
+                                            <div
+                                                className={`w-3 h-3 rounded-full ${
+                                                    selectedWorker.availabilityStatus ===
+                                                    "available"
+                                                        ? "bg-green-500"
+                                                        : selectedWorker.availabilityStatus ===
+                                                          "busy"
+                                                        ? "bg-orange-500"
+                                                        : "bg-gray-500"
+                                                }`}
+                                            ></div>
+                                            <span
+                                                className={`font-semibold text-sm ${
+                                                    selectedWorker.availabilityStatus ===
+                                                    "available"
+                                                        ? "text-green-700"
+                                                        : selectedWorker.availabilityStatus ===
+                                                          "busy"
+                                                        ? "text-orange-700"
+                                                        : "text-gray-700"
+                                                }`}
+                                            >
+                                                {selectedWorker.availabilityStatus
+                                                    ? selectedWorker.availabilityStatus
+                                                          .replace("-", " ")
+                                                          .toUpperCase()
+                                                    : "NOT SET"}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Weekly Schedule */}
+                                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                        <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                            <svg
+                                                className="w-4 h-4 mr-2 text-green-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                />
+                                            </svg>
+                                            Weekly Schedule
+                                        </h5>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                            {selectedWorker.workerProfile
+                                                ?.timetable ? (
+                                                Object.entries(
+                                                    selectedWorker.workerProfile
+                                                        .timetable
+                                                ).map(
+                                                    ([day, slots]) =>
+                                                        slots.length > 0 && (
+                                                            <div
+                                                                key={day}
+                                                                className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0"
+                                                            >
+                                                                <span className="text-sm font-medium text-gray-700 capitalize">
+                                                                    {day}
+                                                                </span>
+                                                                <div className="text-xs text-gray-600">
+                                                                    {slots.map(
+                                                                        (
+                                                                            slot,
+                                                                            index
+                                                                        ) => (
+                                                                            <span
+                                                                                key={
+                                                                                    index
+                                                                                }
+                                                                                className="bg-blue-100 text-blue-700 px-2 py-1 rounded mr-1"
+                                                                            >
+                                                                                {
+                                                                                    slot.start
+                                                                                }{" "}
+                                                                                -{" "}
+                                                                                {
+                                                                                    slot.end
+                                                                                }
+                                                                            </span>
+                                                                        )
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                )
+                                            ) : (
+                                                <div className="text-center py-2 text-gray-500">
+                                                    <svg
+                                                        className="w-8 h-8 mx-auto mb-2 text-gray-300"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        />
+                                                    </svg>
+                                                    <p className="text-sm">
+                                                        No schedule configured
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Non-Available Dates */}
+                                    <div className="bg-white p-4 rounded-xl border border-gray-200 lg:col-span-2">
+                                        <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
+                                            <svg
+                                                className="w-4 h-4 mr-2 text-red-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                />
+                                            </svg>
+                                            Non-Available Dates
+                                        </h5>
+                                        {selectedWorker.workerProfile
+                                            ?.nonAvailability?.length > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                                                {selectedWorker.workerProfile.nonAvailability.map(
+                                                    (date, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
+                                                        >
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                                                <div>
+                                                                    <div className="font-medium text-red-900 text-sm">
+                                                                        {new Date(
+                                                                            date.startDateTime
+                                                                        ).toLocaleDateString(
+                                                                            "en-IN",
+                                                                            {
+                                                                                weekday:
+                                                                                    "short",
+                                                                                year: "numeric",
+                                                                                month: "short",
+                                                                                day: "numeric",
+                                                                            }
+                                                                        )}
+                                                                    </div>
+                                                                    {date.reason && (
+                                                                        <div className="text-xs text-red-700 mt-1">
+                                                                            {
+                                                                                date.reason
+                                                                            }
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">
+                                                                Full Day
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-gray-500">
+                                                <svg
+                                                    className="w-8 h-8 mx-auto mb-2 text-gray-300"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                                <p className="text-sm">
+                                                    No non-available dates
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Quick Actions */}
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <h6 className="font-semibold text-gray-700 mb-3 text-sm">
+                                        Quick Actions
+                                    </h6>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setShowDetailsModal(false);
+                                                openEditModal(selectedWorker);
+                                                setEditTab("availability");
+                                            }}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center"
+                                        >
+                                            <svg
+                                                className="w-4 h-4 mr-2"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                />
+                                            </svg>
+                                            Edit Availability
+                                        </button>
+
+                                        {/* Quick Status Update Buttons */}
+                                        {selectedWorker.availabilityStatus !==
+                                            "available" && (
+                                            <button
+                                                onClick={() =>
+                                                    handleUpdateAvailability(
+                                                        selectedWorker._id,
+                                                        "available"
+                                                    )
+                                                }
+                                                disabled={
+                                                    actionLoading ===
+                                                    selectedWorker._id
+                                                }
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center disabled:opacity-50"
+                                            >
+                                                <svg
+                                                    className="w-4 h-4 mr-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                                Set Available
+                                            </button>
+                                        )}
+
+                                        {selectedWorker.availabilityStatus !==
+                                            "busy" && (
+                                            <button
+                                                onClick={() =>
+                                                    handleUpdateAvailability(
+                                                        selectedWorker._id,
+                                                        "busy"
+                                                    )
+                                                }
+                                                disabled={
+                                                    actionLoading ===
+                                                    selectedWorker._id
+                                                }
+                                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium flex items-center disabled:opacity-50"
+                                            >
+                                                <svg
+                                                    className="w-4 h-4 mr-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                    />
+                                                </svg>
+                                                Set Busy
+                                            </button>
+                                        )}
+
+                                        {selectedWorker.availabilityStatus !==
+                                            "off-duty" && (
+                                            <button
+                                                onClick={() =>
+                                                    handleUpdateAvailability(
+                                                        selectedWorker._id,
+                                                        "off-duty"
+                                                    )
+                                                }
+                                                disabled={
+                                                    actionLoading ===
+                                                    selectedWorker._id
+                                                }
+                                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center disabled:opacity-50"
+                                            >
+                                                <svg
+                                                    className="w-4 h-4 mr-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                                    />
+                                                </svg>
+                                                Set Off Duty
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </section>
@@ -1796,7 +2608,10 @@ const confirmSuspendWorker = async () => {
                                 {selectedWorker.status === "active" ? (
                                     <button
                                         onClick={() =>
-                                            handleSuspendWorker(selectedWorker._id, selectedWorker.name)
+                                            handleSuspendWorker(
+                                                selectedWorker._id,
+                                                selectedWorker.name
+                                            )
                                         }
                                         disabled={actionLoading}
                                         className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center disabled:opacity-50"
@@ -1814,12 +2629,17 @@ const confirmSuspendWorker = async () => {
                                                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                             />
                                         </svg>
-                                        {actionLoading ? "Suspending..." : "Suspend Worker"}
+                                        {actionLoading
+                                            ? "Suspending..."
+                                            : "Suspend Worker"}
                                     </button>
                                 ) : selectedWorker.status === "suspended" ? (
                                     <button
                                         onClick={() =>
-                                            handleActivateWorker(selectedWorker._id, selectedWorker.name)
+                                            handleActivateWorker(
+                                                selectedWorker._id,
+                                                selectedWorker.name
+                                            )
                                         }
                                         disabled={actionLoading}
                                         className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center disabled:opacity-50"
@@ -1837,7 +2657,9 @@ const confirmSuspendWorker = async () => {
                                                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                                             />
                                         </svg>
-                                        {actionLoading ? "Activating..." : "Activate Worker"}
+                                        {actionLoading
+                                            ? "Activating..."
+                                            : "Activate Worker"}
                                     </button>
                                 ) : null}
                             </div>
@@ -1849,7 +2671,7 @@ const confirmSuspendWorker = async () => {
             {/* EDIT MODAL */}
             {/* ==================== EDIT MODAL ==================== */}
             {showEditModal && selectedWorker && (
-                <div className="fixed absolute inset-0 bg-white/20 backdrop-blur-lg shadow-xl rounded-xl flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="fixed inset-0 bg-black/80 bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             {/* Header */}
@@ -1906,14 +2728,20 @@ const confirmSuspendWorker = async () => {
                                         label: "Skills & Services",
                                         icon: "🛠️",
                                     },
+                                    {
+                                        key: "availability",
+                                        label: "Availability",
+                                        icon: "📅",
+                                    },
                                 ].map((tab) => (
                                     <button
                                         key={tab.key}
                                         onClick={() => setEditTab(tab.key)}
-                                        className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${editTab === tab.key
-                                            ? "border-blue-600 text-blue-600 bg-blue-50"
-                                            : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                                            }`}
+                                        className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                                            editTab === tab.key
+                                                ? "border-blue-600 text-blue-600 bg-blue-50"
+                                                : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                        }`}
                                     >
                                         <span className="mr-2 text-base">
                                             {tab.icon}
@@ -2042,7 +2870,7 @@ const confirmSuspendWorker = async () => {
                                                     name={`address.${field.key}`}
                                                     value={
                                                         editFormData.address[
-                                                        field.key
+                                                            field.key
                                                         ]
                                                     }
                                                     onChange={handleEditChange}
@@ -2092,7 +2920,7 @@ const confirmSuspendWorker = async () => {
                                                     value={
                                                         editFormData
                                                             .bankDetails[
-                                                        field.key
+                                                            field.key
                                                         ]
                                                     }
                                                     onChange={handleEditChange}
@@ -2263,33 +3091,33 @@ const confirmSuspendWorker = async () => {
                                                                                                             services:
                                                                                                                 existing
                                                                                                                     ? p.services.map(
-                                                                                                                        (
-                                                                                                                            s
-                                                                                                                        ) =>
-                                                                                                                            s.serviceId ===
-                                                                                                                                service.serviceId
-                                                                                                                                ? {
-                                                                                                                                    ...s,
-                                                                                                                                    details:
-                                                                                                                                        val,
-                                                                                                                                }
-                                                                                                                                : s
-                                                                                                                    )
+                                                                                                                          (
+                                                                                                                              s
+                                                                                                                          ) =>
+                                                                                                                              s.serviceId ===
+                                                                                                                              service.serviceId
+                                                                                                                                  ? {
+                                                                                                                                        ...s,
+                                                                                                                                        details:
+                                                                                                                                            val,
+                                                                                                                                    }
+                                                                                                                                  : s
+                                                                                                                      )
                                                                                                                     : [
-                                                                                                                        ...p.services,
-                                                                                                                        {
-                                                                                                                            serviceId:
-                                                                                                                                service.serviceId,
-                                                                                                                            skillId:
-                                                                                                                                skillId,
-                                                                                                                            name: service.name,
-                                                                                                                            details:
-                                                                                                                                val,
-                                                                                                                            pricingType:
-                                                                                                                                "FIXED",
-                                                                                                                            price: "",
-                                                                                                                        },
-                                                                                                                    ],
+                                                                                                                          ...p.services,
+                                                                                                                          {
+                                                                                                                              serviceId:
+                                                                                                                                  service.serviceId,
+                                                                                                                              skillId:
+                                                                                                                                  skillId,
+                                                                                                                              name: service.name,
+                                                                                                                              details:
+                                                                                                                                  val,
+                                                                                                                              pricingType:
+                                                                                                                                  "FIXED",
+                                                                                                                              price: "",
+                                                                                                                          },
+                                                                                                                      ],
                                                                                                         })
                                                                                                     );
                                                                                                 }}
@@ -2325,33 +3153,33 @@ const confirmSuspendWorker = async () => {
                                                                                                                 services:
                                                                                                                     existing
                                                                                                                         ? p.services.map(
-                                                                                                                            (
-                                                                                                                                s
-                                                                                                                            ) =>
-                                                                                                                                s.serviceId ===
-                                                                                                                                    service.serviceId
-                                                                                                                                    ? {
-                                                                                                                                        ...s,
-                                                                                                                                        pricingType:
-                                                                                                                                            val,
-                                                                                                                                    }
-                                                                                                                                    : s
-                                                                                                                        )
+                                                                                                                              (
+                                                                                                                                  s
+                                                                                                                              ) =>
+                                                                                                                                  s.serviceId ===
+                                                                                                                                  service.serviceId
+                                                                                                                                      ? {
+                                                                                                                                            ...s,
+                                                                                                                                            pricingType:
+                                                                                                                                                val,
+                                                                                                                                        }
+                                                                                                                                      : s
+                                                                                                                          )
                                                                                                                         : [
-                                                                                                                            ...p.services,
-                                                                                                                            {
-                                                                                                                                serviceId:
-                                                                                                                                    service.serviceId,
-                                                                                                                                skillId:
-                                                                                                                                    skillId,
-                                                                                                                                name: service.name,
-                                                                                                                                details:
-                                                                                                                                    "",
-                                                                                                                                pricingType:
-                                                                                                                                    val,
-                                                                                                                                price: "",
-                                                                                                                            },
-                                                                                                                        ],
+                                                                                                                              ...p.services,
+                                                                                                                              {
+                                                                                                                                  serviceId:
+                                                                                                                                      service.serviceId,
+                                                                                                                                  skillId:
+                                                                                                                                      skillId,
+                                                                                                                                  name: service.name,
+                                                                                                                                  details:
+                                                                                                                                      "",
+                                                                                                                                  pricingType:
+                                                                                                                                      val,
+                                                                                                                                  price: "",
+                                                                                                                              },
+                                                                                                                          ],
                                                                                                             })
                                                                                                         );
                                                                                                     }}
@@ -2401,32 +3229,32 @@ const confirmSuspendWorker = async () => {
                                                                                                                 services:
                                                                                                                     existing
                                                                                                                         ? p.services.map(
-                                                                                                                            (
-                                                                                                                                s
-                                                                                                                            ) =>
-                                                                                                                                s.serviceId ===
-                                                                                                                                    service.serviceId
-                                                                                                                                    ? {
-                                                                                                                                        ...s,
-                                                                                                                                        price: val,
-                                                                                                                                    }
-                                                                                                                                    : s
-                                                                                                                        )
+                                                                                                                              (
+                                                                                                                                  s
+                                                                                                                              ) =>
+                                                                                                                                  s.serviceId ===
+                                                                                                                                  service.serviceId
+                                                                                                                                      ? {
+                                                                                                                                            ...s,
+                                                                                                                                            price: val,
+                                                                                                                                        }
+                                                                                                                                      : s
+                                                                                                                          )
                                                                                                                         : [
-                                                                                                                            ...p.services,
-                                                                                                                            {
-                                                                                                                                serviceId:
-                                                                                                                                    service.serviceId,
-                                                                                                                                skillId:
-                                                                                                                                    skillId,
-                                                                                                                                name: service.name,
-                                                                                                                                details:
-                                                                                                                                    "",
-                                                                                                                                pricingType:
-                                                                                                                                    "FIXED",
-                                                                                                                                price: val,
-                                                                                                                            },
-                                                                                                                        ],
+                                                                                                                              ...p.services,
+                                                                                                                              {
+                                                                                                                                  serviceId:
+                                                                                                                                      service.serviceId,
+                                                                                                                                  skillId:
+                                                                                                                                      skillId,
+                                                                                                                                  name: service.name,
+                                                                                                                                  details:
+                                                                                                                                      "",
+                                                                                                                                  pricingType:
+                                                                                                                                      "FIXED",
+                                                                                                                                  price: val,
+                                                                                                                              },
+                                                                                                                          ],
                                                                                                             })
                                                                                                         );
                                                                                                     }}
@@ -2448,6 +3276,560 @@ const confirmSuspendWorker = async () => {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            )}
+                            {/* Availability Tab */}
+
+                            {editTab === "availability" && (
+                                <div className="space-y-6">
+                                    {/* Availability Status */}
+                                    <div className="bg-white p-6 rounded-xl border border-gray-200">
+                                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                            Availability Status
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {[
+                                                {
+                                                    value: "available",
+                                                    label: "Available",
+                                                    color: "bg-green-500",
+                                                },
+                                                {
+                                                    value: "busy",
+                                                    label: "Busy",
+                                                    color: "bg-orange-500",
+                                                },
+                                                {
+                                                    value: "off-duty",
+                                                    label: "Off Duty",
+                                                    color: "bg-gray-500",
+                                                },
+                                            ].map((status) => (
+                                                <label
+                                                    key={status.value}
+                                                    className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                                                        editFormData
+                                                            .availability
+                                                            .availabilityStatus ===
+                                                        status.value
+                                                            ? "border-blue-500 bg-blue-50"
+                                                            : "border-gray-200 hover:border-gray-300"
+                                                    }`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="availabilityStatus"
+                                                        value={status.value}
+                                                        checked={
+                                                            editFormData
+                                                                .availability
+                                                                .availabilityStatus ===
+                                                            status.value
+                                                        }
+                                                        onChange={(e) =>
+                                                            setEditFormData(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    availability:
+                                                                        {
+                                                                            ...prev.availability,
+                                                                            availabilityStatus:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                })
+                                                            )
+                                                        }
+                                                        className="hidden"
+                                                    />
+                                                    <div
+                                                        className={`w-4 h-4 rounded-full border-2 mr-3 ${
+                                                            editFormData
+                                                                .availability
+                                                                .availabilityStatus ===
+                                                            status.value
+                                                                ? "border-blue-500 bg-blue-500"
+                                                                : "border-gray-300"
+                                                        }`}
+                                                    ></div>
+                                                    <div className="flex items-center">
+                                                        <div
+                                                            className={`w-3 h-3 rounded-full mr-2 ${status.color}`}
+                                                        ></div>
+                                                        <span className="font-medium text-gray-700">
+                                                            {status.label}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Weekly Timetable */}
+                                    <div className="bg-white p-6 rounded-xl border border-gray-200">
+                                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                            Weekly Schedule
+                                        </h4>
+                                        <div className="space-y-4">
+                                            {[
+                                                {
+                                                    day: "Monday",
+                                                    key: "Monday",
+                                                },
+                                                {
+                                                    day: "Tuesday",
+                                                    key: "Tuesday",
+                                                },
+                                                {
+                                                    day: "Wednesday",
+                                                    key: "Wednesday",
+                                                },
+                                                {
+                                                    day: "Thursday",
+                                                    key: "Thursday",
+                                                },
+                                                {
+                                                    day: "Friday",
+                                                    key: "Friday",
+                                                },
+                                                {
+                                                    day: "Saturday",
+                                                    key: "Saturday",
+                                                },
+                                                {
+                                                    day: "Sunday",
+                                                    key: "Sunday",
+                                                },
+                                            ].map(({ day, key }) => {
+                                                const daySlots =
+                                                    editFormData.availability
+                                                        .timetable?.[key] || [];
+
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className="border border-gray-200 rounded-lg p-4"
+                                                    >
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <label className="flex items-center cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={
+                                                                        daySlots.length >
+                                                                        0
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) => {
+                                                                        const newTimetable =
+                                                                            {
+                                                                                ...editFormData
+                                                                                    .availability
+                                                                                    .timetable,
+                                                                            };
+                                                                        if (
+                                                                            e
+                                                                                .target
+                                                                                .checked
+                                                                        ) {
+                                                                            newTimetable[
+                                                                                key
+                                                                            ] =
+                                                                                [
+                                                                                    {
+                                                                                        start: "09:00",
+                                                                                        end: "18:00",
+                                                                                    },
+                                                                                ];
+                                                                        } else {
+                                                                            delete newTimetable[
+                                                                                key
+                                                                            ];
+                                                                        }
+                                                                        setEditFormData(
+                                                                            (
+                                                                                prev
+                                                                            ) => ({
+                                                                                ...prev,
+                                                                                availability:
+                                                                                    {
+                                                                                        ...prev.availability,
+                                                                                        timetable:
+                                                                                            newTimetable,
+                                                                                    },
+                                                                            })
+                                                                        );
+                                                                    }}
+                                                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                                                />
+                                                                <span className="ml-3 font-medium text-gray-900">
+                                                                    {day}
+                                                                </span>
+                                                            </label>
+                                                            {daySlots.length >
+                                                                0 && (
+                                                                <span className="text-sm text-green-600 font-medium">
+                                                                    {
+                                                                        daySlots.length
+                                                                    }{" "}
+                                                                    time slot
+                                                                    {daySlots.length !==
+                                                                    1
+                                                                        ? "s"
+                                                                        : ""}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {daySlots.length >
+                                                            0 && (
+                                                            <div className="space-y-3">
+                                                                {daySlots.map(
+                                                                    (
+                                                                        slot,
+                                                                        index
+                                                                    ) => (
+                                                                        <div
+                                                                            key={
+                                                                                index
+                                                                            }
+                                                                            className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg"
+                                                                        >
+                                                                            <div className="flex-1 grid grid-cols-2 gap-3">
+                                                                                <div>
+                                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                                                        Start
+                                                                                        Time
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="time"
+                                                                                        value={
+                                                                                            slot.start
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e
+                                                                                        ) => {
+                                                                                            const newTimetable =
+                                                                                                {
+                                                                                                    ...editFormData
+                                                                                                        .availability
+                                                                                                        .timetable,
+                                                                                                };
+                                                                                            newTimetable[
+                                                                                                key
+                                                                                            ][
+                                                                                                index
+                                                                                            ].start =
+                                                                                                e.target.value;
+                                                                                            setEditFormData(
+                                                                                                (
+                                                                                                    prev
+                                                                                                ) => ({
+                                                                                                    ...prev,
+                                                                                                    availability:
+                                                                                                        {
+                                                                                                            ...prev.availability,
+                                                                                                            timetable:
+                                                                                                                newTimetable,
+                                                                                                        },
+                                                                                                })
+                                                                                            );
+                                                                                        }}
+                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                                                        End
+                                                                                        Time
+                                                                                    </label>
+                                                                                    <input
+                                                                                        type="time"
+                                                                                        value={
+                                                                                            slot.end
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e
+                                                                                        ) => {
+                                                                                            const newTimetable =
+                                                                                                {
+                                                                                                    ...editFormData
+                                                                                                        .availability
+                                                                                                        .timetable,
+                                                                                                };
+                                                                                            newTimetable[
+                                                                                                key
+                                                                                            ][
+                                                                                                index
+                                                                                            ].end =
+                                                                                                e.target.value;
+                                                                                            setEditFormData(
+                                                                                                (
+                                                                                                    prev
+                                                                                                ) => ({
+                                                                                                    ...prev,
+                                                                                                    availability:
+                                                                                                        {
+                                                                                                            ...prev.availability,
+                                                                                                            timetable:
+                                                                                                                newTimetable,
+                                                                                                        },
+                                                                                                })
+                                                                                            );
+                                                                                        }}
+                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    const newTimetable =
+                                                                                        {
+                                                                                            ...editFormData
+                                                                                                .availability
+                                                                                                .timetable,
+                                                                                        };
+                                                                                    newTimetable[
+                                                                                        key
+                                                                                    ].splice(
+                                                                                        index,
+                                                                                        1
+                                                                                    );
+                                                                                    if (
+                                                                                        newTimetable[
+                                                                                            key
+                                                                                        ]
+                                                                                            .length ===
+                                                                                        0
+                                                                                    ) {
+                                                                                        delete newTimetable[
+                                                                                            key
+                                                                                        ];
+                                                                                    }
+                                                                                    setEditFormData(
+                                                                                        (
+                                                                                            prev
+                                                                                        ) => ({
+                                                                                            ...prev,
+                                                                                            availability:
+                                                                                                {
+                                                                                                    ...prev.availability,
+                                                                                                    timetable:
+                                                                                                        newTimetable,
+                                                                                                },
+                                                                                        })
+                                                                                    );
+                                                                                }}
+                                                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                            >
+                                                                                <svg
+                                                                                    className="w-4 h-4"
+                                                                                    fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    viewBox="0 0 24 24"
+                                                                                >
+                                                                                    <path
+                                                                                        strokeLinecap="round"
+                                                                                        strokeLinejoin="round"
+                                                                                        strokeWidth={
+                                                                                            2
+                                                                                        }
+                                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                                    />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    )
+                                                                )}
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newTimetable =
+                                                                            {
+                                                                                ...editFormData
+                                                                                    .availability
+                                                                                    .timetable,
+                                                                            };
+                                                                        if (
+                                                                            !newTimetable[
+                                                                                key
+                                                                            ]
+                                                                        ) {
+                                                                            newTimetable[
+                                                                                key
+                                                                            ] =
+                                                                                [];
+                                                                        }
+                                                                        newTimetable[
+                                                                            key
+                                                                        ].push({
+                                                                            start: "09:00",
+                                                                            end: "18:00",
+                                                                        });
+                                                                        setEditFormData(
+                                                                            (
+                                                                                prev
+                                                                            ) => ({
+                                                                                ...prev,
+                                                                                availability:
+                                                                                    {
+                                                                                        ...prev.availability,
+                                                                                        timetable:
+                                                                                            newTimetable,
+                                                                                    },
+                                                                            })
+                                                                        );
+                                                                    }}
+                                                                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-blue-600 font-medium text-sm"
+                                                                >
+                                                                    + Add
+                                                                    Another Time
+                                                                    Slot
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Non-Availability Dates */}
+                                    <div className="bg-white p-6 rounded-xl border border-gray-200">
+                                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                            Non-Available Dates
+                                        </h4>
+
+                                        {/* Add New Non-Available Date */}
+                                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-orange-800 mb-1">
+                                                        Date
+                                                    </label>
+                                                    <input
+                                                        type="date"
+                                                        value={
+                                                            newNonAvailableDate
+                                                        }
+                                                        onChange={(e) =>
+                                                            setNewNonAvailableDate(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        min={
+                                                            new Date()
+                                                                .toISOString()
+                                                                .split("T")[0]
+                                                        }
+                                                        className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-orange-800 mb-1">
+                                                        Reason (Optional)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g., Holiday, Personal work..."
+                                                        value={
+                                                            newNonAvailableReason
+                                                        }
+                                                        onChange={(e) =>
+                                                            setNewNonAvailableReason(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white text-sm"
+                                                    />
+                                                </div>
+                                                <div className="flex items-end">
+                                                    <button
+                                                        type="button"
+                                                        onClick={
+                                                            addNonAvailableDate
+                                                        }
+                                                        disabled={
+                                                            !newNonAvailableDate
+                                                        }
+                                                        className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        Add Date
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Non-Available Dates List */}
+                                        {editFormData.availability
+                                            .nonAvailability.length > 0 && (
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {editFormData.availability.nonAvailability.map(
+                                                    (date, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                                                        >
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                                                <div>
+                                                                    <div className="font-medium text-gray-900 text-sm">
+                                                                        {new Date(
+                                                                            date.startDateTime
+                                                                        ).toLocaleDateString(
+                                                                            "en-IN",
+                                                                            {
+                                                                                weekday:
+                                                                                    "short",
+                                                                                year: "numeric",
+                                                                                month: "short",
+                                                                                day: "numeric",
+                                                                            }
+                                                                        )}
+                                                                    </div>
+                                                                    {date.reason && (
+                                                                        <div className="text-xs text-gray-600 mt-1">
+                                                                            {
+                                                                                date.reason
+                                                                            }
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeNonAvailableDate(
+                                                                        index
+                                                                    )
+                                                                }
+                                                                className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                            >
+                                                                <svg
+                                                                    className="w-4 h-4"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                    />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
@@ -2473,7 +3855,6 @@ const confirmSuspendWorker = async () => {
                                     </svg>
                                     Cancel
                                 </button>
-
                                 {editTab === "personal" && (
                                     <button
                                         type="button"
@@ -2524,7 +3905,6 @@ const confirmSuspendWorker = async () => {
                                         )}
                                     </button>
                                 )}
-
                                 {editTab === "address" && (
                                     <button
                                         type="button"
@@ -2575,7 +3955,6 @@ const confirmSuspendWorker = async () => {
                                         )}
                                     </button>
                                 )}
-
                                 {editTab === "bank" && (
                                     <button
                                         type="button"
@@ -2626,7 +4005,6 @@ const confirmSuspendWorker = async () => {
                                         )}
                                     </button>
                                 )}
-
                                 {editTab === "skills" && (
                                     <button
                                         type="button"
@@ -2677,6 +4055,59 @@ const confirmSuspendWorker = async () => {
                                         )}
                                     </button>
                                 )}
+                                {/* Availability Tab */}
+                                // Add this button in the action buttons section
+                                for the availability tab
+                                {editTab === "availability" && (
+                                    <button
+                                        type="button"
+                                        onClick={saveAvailability}
+                                        disabled={saveLoading.availability}
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center justify-center disabled:opacity-50"
+                                    >
+                                        {saveLoading.availability ? (
+                                            <>
+                                                <svg
+                                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <circle
+                                                        className="opacity-25"
+                                                        cx="12"
+                                                        cy="12"
+                                                        r="10"
+                                                        stroke="currentColor"
+                                                        strokeWidth="4"
+                                                    ></circle>
+                                                    <path
+                                                        className="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                    ></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg
+                                                    className="w-4 h-4 mr-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                                Save Availability
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -2707,7 +4138,11 @@ const confirmSuspendWorker = async () => {
                             <button
                                 onClick={() => {
                                     setShowSuspendModal(false);
-                                    setSuspendWorkerData({ id: null, name: "", reason: "" });
+                                    setSuspendWorkerData({
+                                        id: null,
+                                        name: "",
+                                        reason: "",
+                                    });
                                 }}
                                 className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                             >
@@ -2730,10 +4165,15 @@ const confirmSuspendWorker = async () => {
                         <div className="p-6">
                             <div className="mb-4">
                                 <p className="text-gray-700 mb-2">
-                                    You are about to suspend <span className="font-semibold text-gray-900">{suspendWorkerData.name}</span>.
+                                    You are about to suspend{" "}
+                                    <span className="font-semibold text-gray-900">
+                                        {suspendWorkerData.name}
+                                    </span>
+                                    .
                                 </p>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Please provide a reason for suspension. This will be recorded and visible to the worker.
+                                    Please provide a reason for suspension. This
+                                    will be recorded and visible to the worker.
                                 </p>
                             </div>
 
@@ -2743,10 +4183,12 @@ const confirmSuspendWorker = async () => {
                                 </label>
                                 <textarea
                                     value={suspendWorkerData.reason}
-                                    onChange={(e) => setSuspendWorkerData(prev => ({
-                                        ...prev,
-                                        reason: e.target.value
-                                    }))}
+                                    onChange={(e) =>
+                                        setSuspendWorkerData((prev) => ({
+                                            ...prev,
+                                            reason: e.target.value,
+                                        }))
+                                    }
                                     placeholder="Enter the reason for suspending this worker..."
                                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white transition-colors resize-none"
                                     rows="4"
@@ -2761,7 +4203,11 @@ const confirmSuspendWorker = async () => {
                                 <button
                                     onClick={() => {
                                         setShowSuspendModal(false);
-                                        setSuspendWorkerData({ id: null, name: "", reason: "" });
+                                        setSuspendWorkerData({
+                                            id: null,
+                                            name: "",
+                                            reason: "",
+                                        });
                                     }}
                                     className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
                                 >
@@ -2769,7 +4215,12 @@ const confirmSuspendWorker = async () => {
                                 </button>
                                 <button
                                     onClick={confirmSuspendWorker}
-                                    disabled={!suspendWorkerData.reason.trim() || suspendWorkerData.reason.trim().length < 10 || actionLoading === suspendWorkerData.id}
+                                    disabled={
+                                        !suspendWorkerData.reason.trim() ||
+                                        suspendWorkerData.reason.trim().length <
+                                            10 ||
+                                        actionLoading === suspendWorkerData.id
+                                    }
                                     className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                                 >
                                     {actionLoading === suspendWorkerData.id ? (
@@ -2793,7 +4244,7 @@ const confirmSuspendWorker = async () => {
                                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                 ></path>
                                             </svg>
-                                            Suspending...
+                                            Suspending...s
                                         </>
                                     ) : (
                                         "Confirm Suspend"

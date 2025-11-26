@@ -24,6 +24,9 @@ import {
     Square,
     CreditCard,
     Edit,
+    PieChart,
+    Target,
+    BarChart3,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";
 
@@ -53,6 +56,33 @@ const WorkerBookings = () => {
     const [serviceLoading, setServiceLoading] = useState(false);
     const [updatedPrice, setUpdatedPrice] = useState("");
     const [priceUpdateReason, setPriceUpdateReason] = useState("");
+
+    // Deep navy blue color theme
+    const theme = {
+        primary: {
+            dark: "#17182A",
+            blue: "#2563EB",
+            purple: "#7C3AED",
+            gradient: "linear-gradient(135deg, #17182A 0%, #2D1B69 100%)",
+            lightGradient:
+                "linear-gradient(135deg, rgba(23, 24, 42, 0.1) 0%, rgba(45, 27, 105, 0.1) 100%)",
+        },
+        accents: {
+            gold: "#F59E0B",
+            teal: "#0D9488",
+            amber: "#D97706",
+            electric: "#6366F1",
+        },
+        background: {
+            light: "#F8FAFC",
+            card: "#FFFFFF",
+        },
+        text: {
+            primary: "#17182A",
+            secondary: "#4B5563",
+            light: "#9CA3AF",
+        },
+    };
 
     const statusFilters = [
         { value: "ALL", label: "All Bookings", count: bookings.length },
@@ -351,7 +381,8 @@ const WorkerBookings = () => {
                     <div className="flex space-x-2">
                         <button
                             onClick={() => handleAction(booking, "accept")}
-                            className="flex-1 bg-green-600 text-white py-3 px-3 rounded-lg hover:bg-green-700 transition-colors text-base font-medium"
+                            className="flex-1 text-white py-3 px-3 rounded-lg hover:shadow-lg transition-all duration-200 text-base font-medium"
+                            style={{ background: theme.primary.gradient }}
                         >
                             Accept
                         </button>
@@ -387,7 +418,8 @@ const WorkerBookings = () => {
                             <button
                                 onClick={() => handleInitiateService(booking)}
                                 disabled={serviceLoading}
-                                className="w-full bg-blue-600 text-white py-3 px-3 rounded-lg hover:bg-blue-700 transition-colors text-base font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full text-white py-3 px-3 rounded-lg hover:shadow-lg transition-all duration-200 text-base font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                style={{ background: theme.primary.gradient }}
                             >
                                 {serviceLoading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -486,7 +518,10 @@ const WorkerBookings = () => {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                    <Loader2
+                        className="w-8 h-8 animate-spin mx-auto mb-4"
+                        style={{ color: theme.primary.dark }}
+                    />
                     <div className="text-gray-600 text-base">
                         Loading your bookings...
                     </div>
@@ -496,35 +531,60 @@ const WorkerBookings = () => {
     }
 
     return (
-        // Top-level text sizing + relaxed line-height to increase font sizes everywhere
         <div className="min-h-screen bg-gray-50 text-base md:text-lg leading-relaxed">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-6 py-6">
+            <div
+                className="shadow-sm border-b border-gray-200 relative overflow-hidden"
+                style={{ background: theme.background.card }}
+            >
+                {/* Mathematical background pattern */}
+                <div className="absolute top-4 right-4 opacity-5">
+                    <div className="text-4xl font-mono">∑</div>
+                </div>
+                <div className="absolute bottom-4 left-4 opacity-5">
+                    <div className="text-3xl font-mono">π</div>
+                </div>
+
+                <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 break-words">
+                            <h1
+                                className="text-3xl md:text-4xl font-bold break-words"
+                                style={{ color: theme.text.primary }}
+                            >
                                 My Bookings
                             </h1>
-                            <p className="text-gray-600 mt-1 text-base md:text-lg break-words">
+                            <p
+                                className="mt-1 text-base md:text-lg break-words"
+                                style={{ color: theme.text.secondary }}
+                            >
                                 Manage and track your service bookings
                             </p>
                         </div>
                         <div className="flex gap-6">
                             <div className="text-right">
-                                <div className="text-2xl md:text-3xl font-bold text-gray-900">
+                                <div
+                                    className="text-2xl md:text-3xl font-bold"
+                                    style={{ color: theme.text.primary }}
+                                >
                                     {
                                         bookings.filter(
                                             (b) => b.status === "PENDING"
                                         ).length
                                     }
                                 </div>
-                                <div className="text-sm md:text-base text-gray-600">
+                                <div
+                                    className="text-sm md:text-base"
+                                    style={{ color: theme.text.secondary }}
+                                >
                                     Pending Requests
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-2xl md:text-3xl font-bold text-orange-600">
+                                <div
+                                    className="text-2xl md:text-3xl font-bold"
+                                    style={{ color: theme.accents.amber }}
+                                >
                                     {
                                         bookings.filter(
                                             (b) =>
@@ -532,7 +592,10 @@ const WorkerBookings = () => {
                                         ).length
                                     }
                                 </div>
-                                <div className="text-sm md:text-base text-gray-600">
+                                <div
+                                    className="text-sm md:text-base"
+                                    style={{ color: theme.text.secondary }}
+                                >
                                     Payment Pending
                                 </div>
                             </div>
@@ -543,8 +606,15 @@ const WorkerBookings = () => {
 
             <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Filters and Search */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <div
+                    className="rounded-2xl shadow-lg p-6 mb-8 relative overflow-hidden backdrop-blur-sm"
+                    style={{ background: theme.background.card }}
+                >
+                    <div className="absolute top-3 right-3 opacity-5">
+                        <div className="text-2xl font-mono">∂</div>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 relative z-10">
                         {/* Status Filters */}
                         <div className="flex flex-wrap gap-2">
                             {statusFilters.map((filter) => (
@@ -555,9 +625,20 @@ const WorkerBookings = () => {
                                     }
                                     className={`px-4 py-2 rounded-xl font-medium transition-all border text-base md:text-lg ${
                                         selectedStatus === filter.value
-                                            ? "bg-blue-600 text-white border-blue-600"
-                                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                                            ? "text-white border-blue-600 hover:shadow-lg"
+                                            : "text-gray-700 border-gray-300 hover:bg-gray-50"
                                     }`}
+                                    style={
+                                        selectedStatus === filter.value
+                                            ? {
+                                                  background:
+                                                      theme.primary.gradient,
+                                              }
+                                            : {
+                                                  background:
+                                                      theme.background.card,
+                                              }
+                                    }
                                 >
                                     {filter.label}
                                     <span className="ml-2 text-sm md:text-base opacity-80">
@@ -569,13 +650,22 @@ const WorkerBookings = () => {
 
                         {/* Search */}
                         <div className="relative w-full lg:w-auto">
-                            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <Search
+                                className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2"
+                                style={{ color: theme.text.light }}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search by customer or service..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 w-full lg:w-64 text-base md:text-lg"
+                                className="pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none w-full lg:w-64 text-base md:text-lg"
+                                style={{
+                                    background: theme.background.card,
+                                    color: theme.text.primary,
+                                    borderColor: `rgba(23, 24, 42, 0.2)`,
+                                    focusBorderColor: theme.primary.dark,
+                                }}
                             />
                         </div>
                     </div>
@@ -597,23 +687,45 @@ const WorkerBookings = () => {
                         {filteredBookings.map((booking) => (
                             <div
                                 key={booking._id}
-                                className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300"
+                                className="rounded-2xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 relative overflow-hidden backdrop-blur-sm group"
+                                style={{ background: theme.background.card }}
                             >
+                                {/* Mathematical decoration */}
+                                <div className="absolute top-2 right-2 opacity-5">
+                                    <div className="text-lg font-mono">∇</div>
+                                </div>
+
                                 {/* Header */}
-                                <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-start justify-between mb-4 relative z-10">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg">
+                                        <div
+                                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-sm"
+                                            style={{
+                                                background:
+                                                    theme.primary.gradient,
+                                            }}
+                                        >
                                             {booking.customerId?.name
                                                 ?.split(" ")
                                                 .map((n) => n[0])
                                                 .join("") || "C"}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="font-semibold text-gray-900 text-base md:text-lg break-words">
+                                            <div
+                                                className="font-semibold text-base md:text-lg break-words"
+                                                style={{
+                                                    color: theme.text.primary,
+                                                }}
+                                            >
                                                 {booking.customerId?.name ||
                                                     "Customer"}
                                             </div>
-                                            <div className="flex items-center space-x-1 text-sm md:text-base text-gray-600 mt-1 break-words">
+                                            <div
+                                                className="flex items-center space-x-1 text-sm md:text-base mt-1 break-words"
+                                                style={{
+                                                    color: theme.text.secondary,
+                                                }}
+                                            >
                                                 <Phone className="w-4 h-4" />
                                                 <span className="break-words">
                                                     {booking.customerId
@@ -646,37 +758,75 @@ const WorkerBookings = () => {
                                 </div>
 
                                 {/* Service Details */}
-                                <div className="space-y-3 mb-4 text-base md:text-lg">
+                                <div className="space-y-3 mb-4 text-base md:text-lg relative z-10">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600 ">
+                                        <span
+                                            style={{
+                                                color: theme.text.secondary,
+                                            }}
+                                        >
                                             Service:
                                         </span>
-                                        <span className="font-medium text-gray-900 text-right break-words max-w-[60%]">
+                                        <span
+                                            className="font-medium text-right break-words max-w-[60%]"
+                                            style={{
+                                                color: theme.text.primary,
+                                            }}
+                                        >
                                             {booking.workerServiceId?.details ||
                                                 "Service"}
                                         </span>
                                     </div>
                                     <div className="flex justify-between font-bold">
-                                        <span className="text-gray-600">
+                                        <span
+                                            style={{
+                                                color: theme.text.secondary,
+                                            }}
+                                        >
                                             Date:
                                         </span>
-                                        <span className="font-medium text-gray-900 break-words">
+                                        <span
+                                            className="font-medium break-words"
+                                            style={{
+                                                color: theme.text.primary,
+                                            }}
+                                        >
                                             {formatDate(booking.bookingDate)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600 font-bold">
+                                        <span
+                                            className="font-bold"
+                                            style={{
+                                                color: theme.text.secondary,
+                                            }}
+                                        >
                                             Time:
                                         </span>
-                                        <span className="font-medium text-gray-900 break-words">
+                                        <span
+                                            className="font-medium break-words"
+                                            style={{
+                                                color: theme.text.primary,
+                                            }}
+                                        >
                                             {formatTime(booking.bookingTime)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 font-bold">
+                                        <span
+                                            className="font-bold"
+                                            style={{
+                                                color: theme.text.secondary,
+                                            }}
+                                        >
                                             Amount:
                                         </span>
-                                        <span className="font-bold text-gray-900 flex items-center break-words">
+                                        <span
+                                            className="font-bold flex items-center break-words"
+                                            style={{
+                                                color: theme.text.primary,
+                                            }}
+                                        >
                                             <IndianRupee className="w-4 h-4" />
                                             <span className="ml-1">
                                                 {booking.price}
@@ -684,7 +834,13 @@ const WorkerBookings = () => {
                                             {booking.originalPrice &&
                                                 booking.originalPrice !==
                                                     booking.price && (
-                                                    <span className="ml-2 text-xs md:text-sm text-gray-500 line-through break-words">
+                                                    <span
+                                                        className="ml-2 text-xs md:text-sm line-through break-words"
+                                                        style={{
+                                                            color: theme.text
+                                                                .light,
+                                                        }}
+                                                    >
                                                         ₹{booking.originalPrice}
                                                     </span>
                                                 )}
@@ -694,9 +850,19 @@ const WorkerBookings = () => {
 
                                 {/* Payment Info */}
                                 {booking.payment && (
-                                    <div className="mb-4 p-3 bg-gray-50 rounded-lg text-base md:text-lg">
+                                    <div
+                                        className="mb-4 p-3 rounded-lg text-base md:text-lg relative z-10"
+                                        style={{
+                                            background:
+                                                theme.primary.lightGradient,
+                                        }}
+                                    >
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">
+                                            <span
+                                                style={{
+                                                    color: theme.text.secondary,
+                                                }}
+                                            >
                                                 Payment:
                                             </span>
                                             <span
@@ -716,10 +882,21 @@ const WorkerBookings = () => {
                                         </div>
                                         {booking.payment.paymentType && (
                                             <div className="flex justify-between mt-1">
-                                                <span className="text-gray-600">
+                                                <span
+                                                    style={{
+                                                        color: theme.text
+                                                            .secondary,
+                                                    }}
+                                                >
                                                     Method:
                                                 </span>
-                                                <span className="font-medium text-gray-900 break-words">
+                                                <span
+                                                    className="font-medium break-words"
+                                                    style={{
+                                                        color: theme.text
+                                                            .primary,
+                                                    }}
+                                                >
                                                     {booking.payment.paymentType.replace(
                                                         "_",
                                                         " "
@@ -728,7 +905,12 @@ const WorkerBookings = () => {
                                             </div>
                                         )}
                                         {booking.priceUpdateReason && (
-                                            <div className="mt-2 text-sm md:text-base text-gray-600 break-words">
+                                            <div
+                                                className="mt-2 text-sm md:text-base break-words"
+                                                style={{
+                                                    color: theme.text.secondary,
+                                                }}
+                                            >
                                                 <strong>Note:</strong>{" "}
                                                 {booking.priceUpdateReason}
                                             </div>
@@ -738,7 +920,10 @@ const WorkerBookings = () => {
 
                                 {/* Customer Address */}
                                 {booking.customerId?.address && (
-                                    <div className="flex items-start space-x-2 text-sm md:text-base text-gray-600 mb-4">
+                                    <div
+                                        className="flex items-start space-x-2 text-sm md:text-base mb-4 relative z-10"
+                                        style={{ color: theme.text.secondary }}
+                                    >
                                         <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                                         <div className="flex-1 break-words">
                                             {booking.customerId.address
@@ -773,7 +958,7 @@ const WorkerBookings = () => {
                                 )}
 
                                 {/* Action Buttons */}
-                                <div className="mt-4">
+                                <div className="mt-4 relative z-10">
                                     {getActionButtons(booking)}
                                 </div>
 
@@ -830,14 +1015,29 @@ const WorkerBookings = () => {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-12 bg-white rounded-2xl shadow-lg">
-                        <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2 break-words">
+                    <div
+                        className="text-center py-12 rounded-2xl shadow-lg relative overflow-hidden"
+                        style={{ background: theme.background.card }}
+                    >
+                        <div className="absolute top-4 right-4 opacity-5">
+                            <div className="text-4xl font-mono">∫</div>
+                        </div>
+                        <Calendar
+                            className="w-16 h-16 mx-auto mb-4"
+                            style={{ color: theme.text.light }}
+                        />
+                        <h3
+                            className="text-xl md:text-2xl font-semibold mb-2 break-words"
+                            style={{ color: theme.text.primary }}
+                        >
                             {searchTerm || selectedStatus !== "ALL"
                                 ? "No matching bookings found"
                                 : "No bookings yet"}
                         </h3>
-                        <p className="text-gray-600 mb-6 text-base md:text-lg break-words">
+                        <p
+                            className="mb-6 text-base md:text-lg break-words"
+                            style={{ color: theme.text.secondary }}
+                        >
                             {searchTerm || selectedStatus !== "ALL"
                                 ? "Try adjusting your search or filters"
                                 : "Your booking requests will appear here"}
@@ -848,7 +1048,8 @@ const WorkerBookings = () => {
                                     setSearchTerm("");
                                     setSelectedStatus("ALL");
                                 }}
-                                className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-semibold text-base md:text-lg"
+                                className="text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-200 font-semibold text-base md:text-lg"
+                                style={{ background: theme.primary.gradient }}
                             >
                                 Clear Filters
                             </button>
@@ -859,7 +1060,10 @@ const WorkerBookings = () => {
                 {/* Loading More Indicator */}
                 {loading && bookings.length > 0 && (
                     <div className="flex justify-center mt-8">
-                        <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                        <Loader2
+                            className="w-6 h-6 animate-spin"
+                            style={{ color: theme.primary.dark }}
+                        />
                     </div>
                 )}
             </div>
@@ -867,9 +1071,15 @@ const WorkerBookings = () => {
             {/* Action Confirmation Modal */}
             {showActionModal && selectedBooking && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full">
+                    <div
+                        className="rounded-2xl max-w-md w-full relative overflow-hidden backdrop-blur-sm"
+                        style={{ background: theme.background.card }}
+                    >
                         <div className="p-6">
-                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+                            <h3
+                                className="text-xl md:text-2xl font-bold mb-4"
+                                style={{ color: theme.text.primary }}
+                            >
                                 {actionType === "accept" && "Accept Booking"}
                                 {actionType === "decline" && "Decline Booking"}
                                 {actionType === "complete" &&
@@ -877,7 +1087,10 @@ const WorkerBookings = () => {
                             </h3>
 
                             <div className="space-y-4 text-base md:text-lg">
-                                <p className="text-gray-600 break-words">
+                                <p
+                                    style={{ color: theme.text.secondary }}
+                                    className="break-words"
+                                >
                                     {actionType === "accept" &&
                                         `Are you sure you want to accept this booking from ${selectedBooking.customerId?.name}?`}
                                     {actionType === "decline" &&
@@ -888,7 +1101,12 @@ const WorkerBookings = () => {
 
                                 {actionType === "decline" && (
                                     <div>
-                                        <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
+                                        <label
+                                            className="block text-sm md:text-base font-medium mb-2"
+                                            style={{
+                                                color: theme.text.primary,
+                                            }}
+                                        >
                                             Reason for declining (optional)
                                         </label>
                                         <textarea
@@ -898,7 +1116,13 @@ const WorkerBookings = () => {
                                             }
                                             placeholder="Provide a reason for declining this booking..."
                                             rows="3"
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none focus:border-blue-500 resize-none"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none resize-none"
+                                            style={{
+                                                background:
+                                                    theme.background.card,
+                                                color: theme.text.primary,
+                                                borderColor: `rgba(23, 24, 42, 0.2)`,
+                                            }}
                                         />
                                     </div>
                                 )}
@@ -922,7 +1146,12 @@ const WorkerBookings = () => {
                                         setActionType("");
                                         setReason("");
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    className="flex-1 border-2 border-gray-300 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    style={{
+                                        background: theme.background.card,
+                                        color: theme.text.primary,
+                                        borderColor: `rgba(23, 24, 42, 0.3)`,
+                                    }}
                                 >
                                     Cancel
                                 </button>
@@ -931,11 +1160,19 @@ const WorkerBookings = () => {
                                     disabled={loading}
                                     className={`flex-1 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 text-base md:text-lg ${
                                         actionType === "accept"
-                                            ? "bg-green-600 hover:bg-green-700"
+                                            ? "hover:shadow-lg"
                                             : actionType === "decline"
                                             ? "bg-red-600 hover:bg-red-700"
                                             : "bg-blue-600 hover:bg-blue-700"
                                     } disabled:opacity-50`}
+                                    style={
+                                        actionType === "accept"
+                                            ? {
+                                                  background:
+                                                      theme.primary.gradient,
+                                              }
+                                            : {}
+                                    }
                                 >
                                     {loading && (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -956,15 +1193,24 @@ const WorkerBookings = () => {
             {/* OTP Verification Modal */}
             {showOtpModal && selectedBooking && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full">
+                    <div
+                        className="rounded-2xl max-w-md w-full relative overflow-hidden backdrop-blur-sm"
+                        style={{ background: theme.background.card }}
+                    >
                         <div className="p-6">
-                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <h3
+                                className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2"
+                                style={{ color: theme.text.primary }}
+                            >
                                 <Key className="w-6 h-6 text-green-600" />
                                 Verify OTP
                             </h3>
 
                             <div className="space-y-4 text-base md:text-lg">
-                                <p className="text-gray-600 break-words">
+                                <p
+                                    style={{ color: theme.text.secondary }}
+                                    className="break-words"
+                                >
                                     Please enter the 6-digit OTP received from{" "}
                                     <strong>
                                         {selectedBooking.customerId?.name}
@@ -973,7 +1219,10 @@ const WorkerBookings = () => {
                                 </p>
 
                                 <div>
-                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
+                                    <label
+                                        className="block text-sm md:text-base font-medium mb-2"
+                                        style={{ color: theme.text.primary }}
+                                    >
                                         OTP Code
                                     </label>
                                     <input
@@ -986,10 +1235,20 @@ const WorkerBookings = () => {
                                             setOtp(value);
                                         }}
                                         placeholder="Enter 6-digit OTP"
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-xl font-mono focus:outline-none focus:border-blue-500"
+                                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-center text-xl font-mono focus:outline-none"
+                                        style={{
+                                            background: theme.background.card,
+                                            color: theme.text.primary,
+                                            borderColor: `rgba(23, 24, 42, 0.2)`,
+                                            focusBorderColor:
+                                                theme.primary.dark,
+                                        }}
                                         maxLength={6}
                                     />
-                                    <p className="text-sm md:text-base text-gray-500 mt-2 text-center break-words">
+                                    <p
+                                        className="text-sm md:text-base mt-2 text-center break-words"
+                                        style={{ color: theme.text.secondary }}
+                                    >
                                         Ask the customer for the OTP sent to
                                         their email
                                     </p>
@@ -1011,7 +1270,12 @@ const WorkerBookings = () => {
                                         setOtp("");
                                         setSelectedBooking(null);
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    className="flex-1 border-2 border-gray-300 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    style={{
+                                        background: theme.background.card,
+                                        color: theme.text.primary,
+                                        borderColor: `rgba(23, 24, 42, 0.3)`,
+                                    }}
                                 >
                                     Cancel
                                 </button>
@@ -1036,9 +1300,15 @@ const WorkerBookings = () => {
             {/* Price Update Modal */}
             {showPriceModal && selectedBooking && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full">
+                    <div
+                        className="rounded-2xl max-w-md w-full relative overflow-hidden backdrop-blur-sm"
+                        style={{ background: theme.background.card }}
+                    >
                         <div className="p-6">
-                            <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <h3
+                                className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2"
+                                style={{ color: theme.text.primary }}
+                            >
                                 <Edit className="w-6 h-6 text-purple-600" />
                                 Update Service Charge & Complete
                             </h3>
@@ -1055,10 +1325,16 @@ const WorkerBookings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
+                                    <label
+                                        className="block text-sm md:text-base font-medium mb-2"
+                                        style={{ color: theme.text.primary }}
+                                    >
                                         Original Amount
                                     </label>
-                                    <div className="flex items-center space-x-2 text-lg font-semibold text-gray-900">
+                                    <div
+                                        className="flex items-center space-x-2 text-lg font-semibold"
+                                        style={{ color: theme.text.primary }}
+                                    >
                                         <IndianRupee className="w-5 h-5" />
                                         <span className="break-words">
                                             {selectedBooking.price}
@@ -1067,11 +1343,17 @@ const WorkerBookings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
+                                    <label
+                                        className="block text-sm md:text-base font-medium mb-2"
+                                        style={{ color: theme.text.primary }}
+                                    >
                                         Updated Service Charge
                                     </label>
                                     <div className="relative">
-                                        <IndianRupee className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                        <IndianRupee
+                                            className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2"
+                                            style={{ color: theme.text.light }}
+                                        />
                                         <input
                                             type="number"
                                             value={updatedPrice}
@@ -1079,7 +1361,13 @@ const WorkerBookings = () => {
                                                 setUpdatedPrice(e.target.value)
                                             }
                                             placeholder="Enter updated amount"
-                                            className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-base md:text-lg focus:outline-none focus:border-blue-500"
+                                            className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-base md:text-lg focus:outline-none"
+                                            style={{
+                                                background:
+                                                    theme.background.card,
+                                                color: theme.text.primary,
+                                                borderColor: `rgba(23, 24, 42, 0.2)`,
+                                            }}
                                             min="0"
                                             step="0.01"
                                         />
@@ -1105,7 +1393,10 @@ const WorkerBookings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm md:text-base font-medium text-gray-700 mb-2">
+                                    <label
+                                        className="block text-sm md:text-base font-medium mb-2"
+                                        style={{ color: theme.text.primary }}
+                                    >
                                         Reason for Price Change (Optional)
                                     </label>
                                     <textarea
@@ -1115,7 +1406,12 @@ const WorkerBookings = () => {
                                         }
                                         placeholder="Explain the reason for price change (e.g., additional work, material cost, etc.)"
                                         rows="3"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none focus:border-blue-500 resize-none"
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base md:text-lg focus:outline-none resize-none"
+                                        style={{
+                                            background: theme.background.card,
+                                            color: theme.text.primary,
+                                            borderColor: `rgba(23, 24, 42, 0.2)`,
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -1128,7 +1424,12 @@ const WorkerBookings = () => {
                                         setUpdatedPrice("");
                                         setPriceUpdateReason("");
                                     }}
-                                    className="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    className="flex-1 border-2 border-gray-300 py-3 rounded-lg font-semibold hover:border-gray-400 transition-colors text-base md:text-lg"
+                                    style={{
+                                        background: theme.background.card,
+                                        color: theme.text.primary,
+                                        borderColor: `rgba(23, 24, 42, 0.3)`,
+                                    }}
                                 >
                                     Cancel
                                 </button>

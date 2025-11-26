@@ -22,7 +22,9 @@ const register = async (req, res) => {
         // Validate required environment variables
         if (!process.env.JWT_SECRET) {
             console.error("JWT_SECRET is not set in environment variables");
-            console.error("Please create a .env file in the server directory with JWT_SECRET");
+            console.error(
+                "Please create a .env file in the server directory with JWT_SECRET"
+            );
             return errorResponse(
                 res,
                 500,
@@ -47,7 +49,11 @@ const register = async (req, res) => {
             hashedPassword = await hashPassword(password);
         } catch (hashError) {
             console.error("Password hashing error:", hashError);
-            return errorResponse(res, 500, "Error processing password. Please try again.");
+            return errorResponse(
+                res,
+                500,
+                "Error processing password. Please try again."
+            );
         }
 
         // Create user
@@ -69,7 +75,9 @@ const register = async (req, res) => {
                 return errorResponse(
                     res,
                     409,
-                    `${field.charAt(0).toUpperCase() + field.slice(1)} already registered`
+                    `${
+                        field.charAt(0).toUpperCase() + field.slice(1)
+                    } already registered`
                 );
             }
             throw createError;
@@ -101,7 +109,10 @@ const register = async (req, res) => {
             console.error("Token generation error:", tokenError);
             // User is created, but token generation failed
             // Still return success but log the error
-            console.warn("User created but token generation failed. User ID:", user._id);
+            console.warn(
+                "User created but token generation failed. User ID:",
+                user._id
+            );
         }
 
         return successResponse(
@@ -131,7 +142,9 @@ const register = async (req, res) => {
             return errorResponse(
                 res,
                 409,
-                `${field.charAt(0).toUpperCase() + field.slice(1)} already registered`
+                `${
+                    field.charAt(0).toUpperCase() + field.slice(1)
+                } already registered`
             );
         }
 
@@ -145,9 +158,10 @@ const register = async (req, res) => {
         }
 
         // Provide detailed error in development, generic in production
-        const errorMessage = process.env.NODE_ENV === "development"
-            ? error.message || "Server error during registration"
-            : "Server error during registration. Please try again later.";
+        const errorMessage =
+            process.env.NODE_ENV === "development"
+                ? error.message || "Server error during registration"
+                : "Server error during registration. Please try again later.";
 
         return errorResponse(res, 500, errorMessage);
     }
@@ -261,8 +275,9 @@ const changePassword = async (req, res) => {
 
 const updateProfile = async (req, res) => {
     try {
-        const { name, phone, address } = req.body;
+        const { name, phone, address, bankDetails } = req.body;
         const userId = req.user._id;
+        const userRole = req.user.role;
 
         // Validate user ID
         if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -365,6 +380,123 @@ const updateProfile = async (req, res) => {
             }
 
             updateFields.address = addressFields;
+        }
+
+        // Handle bank details update for WORKER role
+        if (bankDetails !== undefined) {
+            if (userRole !== "WORKER") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Bank details can only be updated by workers",
+                });
+            }
+
+            if (typeof bankDetails !== "object" || bankDetails === null) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Bank details must be a valid object",
+                });
+            }
+
+            // Validate bank details structure
+            const bankDetailsFields = {};
+
+            // Account Number validation
+            if (bankDetails.accountNumber !== undefined) {
+                if (typeof bankDetails.accountNumber !== "string") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Account number must be a string",
+                    });
+                }
+                const accountNumber = bankDetails.accountNumber.trim();
+                if (accountNumber.length < 9 || accountNumber.length > 18) {
+                    return res.status(400).json({
+                        success: false,
+                        message:
+                            "Account number must be between 9 and 18 digits",
+                    });
+                }
+                if (!/^\d+$/.test(accountNumber)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Account number must contain only digits",
+                    });
+                }
+                bankDetailsFields.accountNumber = accountNumber;
+            }
+
+            // Account Holder Name validation
+            if (bankDetails.accountHolderName !== undefined) {
+                if (typeof bankDetails.accountHolderName !== "string") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Account holder name must be a string",
+                    });
+                }
+                const accountHolderName = bankDetails.accountHolderName.trim();
+                if (accountHolderName.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Account holder name cannot be empty",
+                    });
+                }
+                if (accountHolderName.length > 100) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Account holder name is too long",
+                    });
+                }
+                bankDetailsFields.accountHolderName = accountHolderName;
+            }
+
+            // IFSC Code validation
+            if (bankDetails.IFSCCode !== undefined) {
+                if (typeof bankDetails.IFSCCode !== "string") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "IFSC code must be a string",
+                    });
+                }
+                const ifscCode = bankDetails.IFSCCode.trim().toUpperCase();
+                if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid IFSC code format",
+                    });
+                }
+                bankDetailsFields.IFSCCode = ifscCode;
+            }
+
+            // Bank Name validation
+            if (bankDetails.bankName !== undefined) {
+                if (typeof bankDetails.bankName !== "string") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Bank name must be a string",
+                    });
+                }
+                const bankName = bankDetails.bankName.trim();
+                if (bankName.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Bank name cannot be empty",
+                    });
+                }
+                if (bankName.length > 100) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Bank name is too long",
+                    });
+                }
+                bankDetailsFields.bankName = bankName;
+            }
+
+            // Set the bank details in worker profile
+            if (!updateFields.workerProfile) {
+                updateFields.workerProfile = {};
+            }
+            updateFields.workerProfile.bankDetails = bankDetailsFields;
         }
 
         // Check if at least one field is being updated

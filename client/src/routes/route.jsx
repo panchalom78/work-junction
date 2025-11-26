@@ -28,6 +28,7 @@ import WorkerBookings from "../pages/WorkerBookings";
 import CustomerProfile from "../pages/CustomerProfile";
 import CustomerChatPage from "../pages/CustomerChatPage";
 import ProtectedRoute from "./ProtectedRoute";
+import addNewWorker from "../components/tabs/addNewWorker";
 
 const Routers = () => {
     return (
@@ -43,6 +44,7 @@ const Routers = () => {
                     <Route path="/workerDashboard" element={<WorkerDashboard />} />
                     <Route path="/admin/*" element={<AdminDashboard />} />
                     <Route path="/serviceAgentDashboard" element={<ServiceAgentDashboard />} />
+                    <Route path="/createWorker" element={<addNewWorker />} />
                     <Route
                         path="/otpVerification"
                         element={<OTPVerificationPage />}

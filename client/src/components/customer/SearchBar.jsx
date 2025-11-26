@@ -9,6 +9,8 @@ import {
     Navigation,
     Loader2,
     Home,
+    Calculator,
+    Settings,
 } from "lucide-react";
 import { useWorkerSearchStore } from "../../store/workerSearch.store";
 
@@ -29,22 +31,19 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
     const [locationType, setLocationType] = useState("address");
     const [errors, setErrors] = useState({});
 
-    // Load available filters on component mount
     useEffect(() => {
         loadAvailableFilters();
         console.log(availableFilters);
-    }, []); // Remove availableFilters from dependencies to avoid infinite loop
+    }, []);
 
-    // Get services for selected skill
     const getServicesForSkill = () => {
-        if (!filters.skill || !availableFilters.skills) return []; // Add null check
+        if (!filters.skill || !availableFilters.skills) return [];
         const skill = availableFilters.skills.find(
             (s) => s.name === filters.skill
         );
         return skill ? skill.services : [];
     };
 
-    // Validate form before submission
     const validateForm = () => {
         const newErrors = {};
 
@@ -86,7 +85,6 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             "Current Location";
 
                         setFilter("location", `${locationName}`);
-                        // Clear location error if any
                         setErrors((prev) => ({ ...prev, location: "" }));
                     } else {
                         setFilter(
@@ -151,9 +149,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Validate form before submission
         if (!validateForm()) {
-            // Scroll to first error
             const firstErrorField = Object.keys(errors)[0];
             const element = document.querySelector(
                 `[name="${firstErrorField}"]`
@@ -193,7 +189,6 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
         setErrors((prev) => ({ ...prev, location: "" }));
     };
 
-    // Update error state when fields change
     const handleSkillChange = (value) => {
         setFilter("skill", value);
         if (value && value.trim() !== "") {
@@ -208,7 +203,6 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
         }
     };
 
-    // Check if search button should be disabled
     const isSearchDisabled = () => {
         return (
             !filters.skill ||
@@ -217,11 +211,19 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
         );
     };
 
-    if (loading) return <div className="text-center py-4">Loading filters...</div>;
+    if (loading)
+        return (
+            <div className="text-center py-8 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+                <div className="text-gray-600 font-mono text-sm">
+                    Loading filters...
+                </div>
+            </div>
+        );
 
     return (
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100 w-full overflow-hidden">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 break-words">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-200/60 w-full overflow-hidden">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 break-words font-mono tracking-tight">
                 Find Trusted Professionals Near You
             </h1>
 
@@ -230,20 +232,19 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                     {/* Skill Selection */}
                     <div className="w-full">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                             Skill *
                         </label>
                         <select
                             value={filters.skill}
                             onChange={(e) => handleSkillChange(e.target.value)}
-                            className={`w-full border rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 ${
+                            className={`w-full border rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono ${
                                 errors.skill
-                                    ? "border-red-500"
-                                    : "border-gray-300"
+                                    ? "border-red-500 bg-red-50/50"
+                                    : "border-gray-300 bg-white/80"
                             }`}
                         >
                             <option value="">Select Skill</option>
-                            {/* Add null check for availableFilters.skills */}
                             {availableFilters.skills &&
                                 availableFilters.skills.map((skill) => (
                                     <option key={skill._id} value={skill.name}>
@@ -252,7 +253,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 ))}
                         </select>
                         {errors.skill && (
-                            <p className="text-red-500 text-xs mt-1">
+                            <p className="text-red-500 text-xs mt-1 font-mono">
                                 {errors.skill}
                             </p>
                         )}
@@ -260,7 +261,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
 
                     {/* Service Selection */}
                     <div className="w-full">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                             Service
                         </label>
                         <select
@@ -268,7 +269,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             onChange={(e) =>
                                 setFilter("service", e.target.value)
                             }
-                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                            className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                             disabled={!filters.skill}
                         >
                             <option value="">Select Service</option>
@@ -285,7 +286,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
 
                     {/* Location */}
                     <div className="w-full">
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                             Location *
                         </label>
 
@@ -294,14 +295,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                             <button
                                 type="button"
                                 onClick={handleUseAddress}
-                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
+                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 font-mono text-xs sm:text-sm ${
                                     locationType === "address"
-                                        ? "bg-blue-100 border-blue-500 text-blue-700"
-                                        : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+                                        ? "bg-blue-100/80 border-blue-500 text-blue-700 backdrop-blur-sm"
+                                        : "bg-gray-100/80 border-gray-300 text-gray-600 hover:bg-gray-200/80 backdrop-blur-sm"
                                 }`}
                             >
                                 <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                                <span className="font-medium whitespace-nowrap">
                                     Use Address
                                 </span>
                             </button>
@@ -310,10 +311,10 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 type="button"
                                 onClick={handleUseCurrentLocation}
                                 disabled={isGettingLocation}
-                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 ${
+                                className={`flex-1 flex items-center justify-center space-x-1.5 sm:space-x-2 py-2 px-2 sm:px-3 rounded-xl sm:rounded-2xl border transition-all duration-200 font-mono text-xs sm:text-sm ${
                                     locationType === "current"
-                                        ? "bg-green-100 border-green-500 text-green-700"
-                                        : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+                                        ? "bg-green-100/80 border-green-500 text-green-700 backdrop-blur-sm"
+                                        : "bg-gray-100/80 border-gray-300 text-gray-600 hover:bg-gray-200/80 backdrop-blur-sm"
                                 } ${
                                     isGettingLocation
                                         ? "opacity-50 cursor-not-allowed"
@@ -325,7 +326,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 ) : (
                                     <Navigation className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                                 )}
-                                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                                <span className="font-medium whitespace-nowrap">
                                     {isGettingLocation
                                         ? "Detecting..."
                                         : "Current"}
@@ -346,10 +347,10 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                             handleLocationChange(e.target.value)
                                         }
                                         placeholder="Enter your address"
-                                        className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-9 sm:pr-10 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 ${
+                                        className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-9 sm:pr-10 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono ${
                                             errors.location
-                                                ? "border-red-500"
-                                                : "border-gray-300"
+                                                ? "border-red-500 bg-red-50/50"
+                                                : "border-gray-300 bg-white/80"
                                         }`}
                                     />
                                     {filters.location && (
@@ -364,10 +365,10 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 </>
                             ) : (
                                 <div
-                                    className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 ${
+                                    className={`w-full border rounded-xl sm:rounded-2xl pl-9 sm:pl-10 pr-3 py-2.5 sm:py-3 font-mono ${
                                         errors.location
-                                            ? "border-red-500 bg-red-50"
-                                            : "border-green-200 bg-green-50"
+                                            ? "border-red-500 bg-red-50/50"
+                                            : "border-green-200 bg-green-50/80 backdrop-blur-sm"
                                     }`}
                                 >
                                     <div className="flex items-center justify-between gap-2">
@@ -400,30 +401,30 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         </div>
 
                         {/* Location Help Text */}
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-gray-500 mt-2 font-mono">
                             {locationType === "address"
                                 ? "Enter complete address for accurate matching"
                                 : "We'll find nearby professionals"}
                         </p>
                         {errors.location && (
-                            <p className="text-red-500 text-xs mt-1">
+                            <p className="text-red-500 text-xs mt-1 font-mono">
                                 {errors.location}
                             </p>
                         )}
                     </div>
                 </div>
 
-                {/* Filters Toggle and Actions - Now Inside Form */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200">
+                {/* Filters Toggle and Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200/60">
                     <button
                         type="button"
                         onClick={() => setShowFilters(!showFilters)}
-                        className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base"
+                        className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base group font-mono"
                     >
-                        <Filter className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                        <Filter className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
                         <span>Advanced Filters</span>
                         <ChevronDown
-                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform flex-shrink-0 ${
+                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform flex-shrink-0 group-hover:scale-110 ${
                                 showFilters ? "rotate-180" : ""
                             }`}
                         />
@@ -433,17 +434,17 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                         <button
                             type="button"
                             onClick={handleClearFilters}
-                            className="text-gray-600 hover:text-gray-700 font-medium text-sm sm:text-base"
+                            className="text-gray-600 hover:text-gray-700 font-medium text-sm sm:text-base font-mono hover:scale-105 transition-transform"
                         >
                             Clear All
                         </button>
                         <button
                             type="submit"
                             disabled={isSearchDisabled()}
-                            className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold flex items-center justify-center space-x-2 text-sm sm:text-base ${
+                            className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-300 font-semibold flex items-center justify-center space-x-2 text-sm sm:text-base font-mono ${
                                 isSearchDisabled()
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg"
+                                    : "bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:shadow-lg hover:scale-105 backdrop-blur-sm"
                             }`}
                         >
                             <Search className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
@@ -454,10 +455,10 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
 
                 {/* Advanced Filters */}
                 {showFilters && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-200/60 bg-blue-50/30 rounded-2xl p-4 sm:p-6 backdrop-blur-sm">
                         {/* Price Range */}
                         <div className="w-full">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                                 Price Range (₹
                                 {availableFilters.priceRange?.minPrice || 0} - ₹
                                 {availableFilters.priceRange?.maxPrice || 10000}
@@ -479,7 +480,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("minPrice", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                                 />
                                 <input
                                     type="number"
@@ -496,14 +497,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("maxPrice", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                                 />
                             </div>
                         </div>
 
                         {/* Rating Range */}
                         <div className="w-full">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                                 Rating (
                                 {availableFilters.ratingRange?.minRating || 0} -{" "}
                                 {availableFilters.ratingRange?.maxRating || 5})
@@ -525,7 +526,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("minRating", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                                 />
                                 <input
                                     type="number"
@@ -543,14 +544,14 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                     onChange={(e) =>
                                         setFilter("maxRating", e.target.value)
                                     }
-                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                    className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                                 />
                             </div>
                         </div>
 
                         {/* Worker Name */}
                         <div className="w-full">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                                 Worker Name
                             </label>
                             <input
@@ -560,13 +561,13 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 onChange={(e) =>
                                     setFilter("workerName", e.target.value)
                                 }
-                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                             />
                         </div>
 
                         {/* Sort By */}
                         <div className="w-full">
-                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 font-mono">
                                 Sort By
                             </label>
                             <select
@@ -574,7 +575,7 @@ const SearchBar = ({ onSearch, initialFilters = {} }) => {
                                 onChange={(e) =>
                                     setFilter("sortBy", e.target.value)
                                 }
-                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500"
+                                className="w-full border border-gray-300 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-2 text-sm sm:text-base focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-mono bg-white/80"
                             >
                                 <option value="relevance">Relevance</option>
                                 <option value="rating">Rating</option>
