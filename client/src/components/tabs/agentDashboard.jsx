@@ -4,6 +4,33 @@ import axiosInstance from "../../utils/axiosInstance";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/auth.store";
+import {
+    Users,
+    CheckCircle,
+    Smartphone,
+    BarChart3,
+    Bell,
+    Mail,
+    Phone,
+    Calendar,
+    Edit3,
+    LogOut,
+    User,
+    Target,
+    TrendingUp,
+    Clock,
+    FileText,
+    Shield,
+    MapPin,
+    Save,
+    X,
+    Home,
+    Briefcase,
+    PieChart,
+    Activity,
+    DollarSign,
+    Star,
+} from "lucide-react";
 
 const AgentDashboard = () => {
     const navigate = useNavigate();
@@ -25,11 +52,6 @@ const AgentDashboard = () => {
         profileImage: "",
         area: "",
         joinDate: "",
-        performance: {
-            completionRate: 0,
-            responseTime: 0,
-            customerSatisfaction: 0,
-        },
     });
     const [recentActivity, setRecentActivity] = useState([]);
     const [workerDistribution, setWorkerDistribution] = useState({
@@ -88,111 +110,91 @@ const AgentDashboard = () => {
             setShowProfileModal(false);
             toast.success("Profile updated successfully");
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to update profile");
+            toast.error(
+                error.response?.data?.message || "Failed to update profile"
+            );
         } finally {
             setUpdating(false);
         }
     };
 
-
-
-
-    const StatCard = ({ title, value, change, icon, color, suffix }) => (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 group hover:border-blue-100 hover:translate-y-[-2px]">
-            <div className="flex items-center justify-between">
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-2">
-                        {title}
-                    </p>
-                    <div className="flex items-baseline space-x-2">
-                        <h3 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                            {value}
-                        </h3>
-                        {suffix && (
-                            <span className="text-sm text-gray-500">
-                                {suffix}
-                            </span>
+    const StatCard = ({ title, value, change, icon, color, suffix }) => {
+        const IconComponent = icon;
+        return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 group hover:border-blue-100 hover:translate-y-[-2px]">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600 mb-2">
+                            {title}
+                        </p>
+                        <div className="flex items-baseline space-x-2">
+                            <h3 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                                {value}
+                            </h3>
+                            {suffix && (
+                                <span className="text-sm text-gray-500">
+                                    {suffix}
+                                </span>
+                            )}
+                        </div>
+                        {change && (
+                            <div
+                                className={`flex items-center mt-2 text-xs font-medium ${
+                                    change > 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }`}
+                            >
+                                <TrendingUp
+                                    size={14}
+                                    className={`mr-1 ${
+                                        change < 0 ? "transform rotate-180" : ""
+                                    }`}
+                                />
+                                {Math.abs(change)}% from last month
+                            </div>
                         )}
                     </div>
-                    {change && (
-                        <div
-                            className={`flex items-center mt-2 text-xs font-medium ${change > 0 ? "text-green-600" : "text-red-600"
-                                }`}
-                        >
-                            <span
-                                className={`mr-1 transition-transform ${change > 0
-                                    ? "transform rotate-0"
-                                    : "transform rotate-180"
-                                    }`}
-                            >
-                                {change > 0 ? "↗" : "↘"}
-                            </span>
-                            {Math.abs(change)}% from last month
-                        </div>
-                    )}
-                </div>
-                <div
-                    className={`p-3 rounded-xl ${color} bg-opacity-10 group-hover:scale-110 transition-all duration-300 group-hover:rotate-12`}
-                >
-                    <span className="text-xl">{icon}</span>
+                    <div
+                        className={`p-3 rounded-xl ${color} bg-opacity-10 group-hover:scale-110 transition-all duration-300 group-hover:rotate-12`}
+                    >
+                        <IconComponent size={24} className={color} />
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-
-    const PerformanceMetric = ({ title, value, max, color, suffix }) => (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 hover:border-blue-100">
-            <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium text-gray-700">
-                    {title}
-                </span>
-                <span className="text-sm font-bold text-gray-900">
-                    {value}
-                    {suffix}
-                </span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                <div
-                    className={`h-2.5 rounded-full ${color} transition-all duration-1000 ease-out hover:shadow-lg`}
-                    style={{ width: `${(value / max) * 100}%` }}
-                ></div>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>0{suffix}</span>
-                <span>
-                    {max}
-                    {suffix}
-                </span>
-            </div>
-        </div>
-    );
+        );
+    };
 
     const ActivityItem = ({ activity }) => {
         const getActivityIcon = (type) => {
             const icons = {
-                assignment: "👤",
-                completion: "✅",
-                payment: "💰",
-                new_request: "🆕",
-                feedback: "⭐",
-                default: "📝",
+                assignment: <Users size={16} className="text-blue-600" />,
+                completion: (
+                    <CheckCircle size={16} className="text-green-600" />
+                ),
+                payment: <DollarSign size={16} className="text-yellow-600" />,
+                new_request: <FileText size={16} className="text-purple-600" />,
+                feedback: <Star size={16} className="text-orange-600" />,
+                default: <Activity size={16} className="text-gray-600" />,
             };
             return icons[type] || icons.default;
         };
 
         const getStatusColor = (status) => {
             const colors = {
-                completed: "text-green-700 bg-green-50 border border-green-200 hover:bg-green-100",
-                pending: "text-yellow-700 bg-yellow-50 border border-yellow-200 hover:bg-yellow-100",
-                "in-progress": "text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100",
-                cancelled: "text-red-700 bg-red-50 border border-red-200 hover:bg-red-100",
+                completed: "text-green-700 bg-green-50 border border-green-200",
+                pending:
+                    "text-yellow-700 bg-yellow-50 border border-yellow-200",
+                "in-progress":
+                    "text-blue-700 bg-blue-50 border border-blue-200",
+                cancelled: "text-red-700 bg-red-50 border border-red-200",
             };
             return colors[status] || colors.pending;
         };
 
         return (
             <div className="flex items-start space-x-4 p-4 hover:bg-blue-50 rounded-xl transition-all duration-200 border border-transparent hover:border-blue-200 hover:shadow-sm group">
-                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform duration-200">
+                <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
                     {getActivityIcon(activity.type)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -200,7 +202,7 @@ const AgentDashboard = () => {
                         {activity.message}
                     </p>
                     <p className="text-xs text-gray-500 mt-1.5 flex items-center">
-                        <i className="far fa-clock mr-1"></i>
+                        <Clock size={12} className="mr-1" />
                         {activity.time}
                     </p>
                 </div>
@@ -312,10 +314,12 @@ const AgentDashboard = () => {
                             className="flex items-center space-x-3 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-300 hover:border-blue-200 hover:translate-y-[-1px]"
                         >
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold shadow-md hover:shadow-lg transition-shadow">
-                                {agentProfile.name.split(' ').map(n => n[0]).join('')}
+                                <User size={20} />
                             </div>
                             <div className="hidden sm:block">
-                                <span className="font-medium text-gray-700 text-sm">Profile</span>
+                                <span className="font-medium text-gray-700 text-sm">
+                                    Profile
+                                </span>
                             </div>
                         </button>
                         <button
@@ -325,13 +329,15 @@ const AgentDashboard = () => {
                                     toast.success("Logged out successfully");
                                     navigate("/login");
                                 } else {
-                                    toast.error(error);
+                                    toast.error("Logout failed");
                                 }
                             }}
                             className="flex items-center space-x-2 bg-red-50 text-red-600 px-4 py-2.5 rounded-xl border border-red-200 hover:bg-red-100 hover:shadow-md transition-all duration-300 hover:translate-y-[-1px]"
                         >
-                            <i className="far fa-sign-out text-sm"></i>
-                            <span className="text-sm font-medium hidden sm:block">Logout</span>
+                            <LogOut size={16} />
+                            <span className="text-sm font-medium hidden sm:block">
+                                Logout
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -342,21 +348,21 @@ const AgentDashboard = () => {
                         title="Total Workers"
                         value={stats.totalWorkers}
                         change={12}
-                        icon="👷"
+                        icon={Users}
                         color="text-blue-600"
                     />
                     <StatCard
                         title="Active Workers"
                         value={stats.activeWorkers}
                         change={8}
-                        icon="✅"
+                        icon={CheckCircle}
                         color="text-green-600"
                     />
                     <StatCard
                         title="Non-Smartphone Workers"
                         value={stats.nonSmartphoneWorkers}
                         change={-2}
-                        icon="📱"
+                        icon={Smartphone}
                         color="text-purple-600"
                     />
                 </div>
@@ -371,16 +377,17 @@ const AgentDashboard = () => {
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -translate-y-16 translate-x-16"></div>
                                 <div className="flex items-center space-x-4 relative z-10">
                                     <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white border-opacity-30 hover:scale-105 transition-transform duration-200">
-                                        {agentProfile.name
-                                            .split(" ")
-                                            .map((n) => n[0])
-                                            .join("")}
+                                        <User size={28} />
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold">
                                             {agentProfile.name}
                                         </h3>
-                                        <p className="text-blue-100 opacity-90">
+                                        <p className="text-blue-100 opacity-90 flex items-center">
+                                            <MapPin
+                                                size={14}
+                                                className="mr-1"
+                                            />
                                             {agentProfile.area} • Service Agent
                                         </p>
                                     </div>
@@ -391,7 +398,7 @@ const AgentDashboard = () => {
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4 text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors duration-200">
                                         <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-                                            <i className="far fa-envelope"></i>
+                                            <Mail size={16} />
                                         </div>
                                         <span className="text-gray-700">
                                             {agentProfile.email}
@@ -399,7 +406,7 @@ const AgentDashboard = () => {
                                     </div>
                                     <div className="flex items-center space-x-4 text-sm hover:bg-green-50 p-2 rounded-lg transition-colors duration-200">
                                         <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-100 transition-colors">
-                                            <i className="far fa-phone"></i>
+                                            <Phone size={16} />
                                         </div>
                                         <span className="text-gray-700">
                                             {agentProfile.phone}
@@ -407,7 +414,7 @@ const AgentDashboard = () => {
                                     </div>
                                     <div className="flex items-center space-x-4 text-sm hover:bg-purple-50 p-2 rounded-lg transition-colors duration-200">
                                         <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 hover:bg-purple-100 transition-colors">
-                                            <i className="far fa-calendar"></i>
+                                            <Calendar size={16} />
                                         </div>
                                         <span className="text-gray-700">
                                             Joined{" "}
@@ -418,66 +425,31 @@ const AgentDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                                        <i className="far fa-chart-line mr-2 text-blue-600"></i>
-                                        Performance Metrics
-                                    </h4>
-                                    <div className="space-y-4">
-                                        <PerformanceMetric
-                                            title="Completion Rate"
-                                            value={
-                                                agentProfile.performance
-                                                    .completionRate
-                                            }
-                                            max={100}
-                                            color="bg-gradient-to-r from-green-400 to-green-500"
-                                            suffix="%"
-                                        />
-                                        <PerformanceMetric
-                                            title="Avg Response Time"
-                                            value={
-                                                agentProfile.performance
-                                                    .responseTime
-                                            }
-                                            max={30}
-                                            color="bg-gradient-to-r from-blue-400 to-blue-500"
-                                            suffix=" mins"
-                                        />
-                                        <PerformanceMetric
-                                            title="Customer Satisfaction"
-                                            value={
-                                                agentProfile.performance
-                                                    .customerSatisfaction
-                                            }
-                                            max={5}
-                                            color="bg-gradient-to-r from-purple-400 to-purple-500"
-                                            suffix="/5"
-                                        />
-                                    </div>
-                                </div>
-
                                 <div className="flex gap-3 mt-6">
                                     <button
-                                        onClick={() => setShowProfileModal(true)}
+                                        onClick={() =>
+                                            setShowProfileModal(true)
+                                        }
                                         className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:translate-y-[-1px] hover:shadow-blue-200 flex items-center justify-center"
                                     >
-                                        <i className="far fa-edit mr-2"></i>
+                                        <Edit3 size={16} className="mr-2" />
                                         Update Profile
                                     </button>
                                     <button
-                                        onClick={async() => {
+                                        onClick={async () => {
                                             const res = await logout();
                                             if (res.success) {
-                                                toast.success("Logged out successfully");
+                                                toast.success(
+                                                    "Logged out successfully"
+                                                );
                                                 navigate("/login");
                                             } else {
-                                                toast.error(error);
+                                                toast.error("Logout failed");
                                             }
                                         }}
                                         className="px-4 bg-red-50 text-red-600 border border-red-200 rounded-xl font-medium hover:bg-red-100 transition-all duration-300 hover:translate-y-[-1px] flex items-center justify-center"
                                     >
-                                        <i className="far fa-sign-out"></i>
+                                        <LogOut size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -489,7 +461,10 @@ const AgentDashboard = () => {
                         {/* Worker Distribution */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300">
                             <h3 className="font-semibold text-gray-900 mb-6 flex items-center">
-                                <i className="far fa-users mr-2 text-purple-600"></i>
+                                <Users
+                                    className="mr-2 text-purple-600"
+                                    size={20}
+                                />
                                 Worker Distribution
                             </h3>
 
@@ -598,7 +573,8 @@ const AgentDashboard = () => {
                             </div>
 
                             <div className="border-t border-gray-200 pt-4">
-                                <h4 className="font-medium text-gray-900 mb-3 text-sm">
+                                <h4 className="font-medium text-gray-900 mb-3 text-sm flex items-center">
+                                    <Briefcase size={16} className="mr-2" />
                                     Distribution by Skill
                                 </h4>
                                 <div className="space-y-3">
@@ -629,22 +605,67 @@ const AgentDashboard = () => {
                         {/* Quick Stats */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300">
                             <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-                                <i className="far fa-chart-bar mr-2 text-blue-600"></i>
+                                <BarChart3
+                                    className="mr-2 text-blue-600"
+                                    size={20}
+                                />
                                 Request Statistics
                             </h3>
                             <div className="space-y-4">
                                 {[
-                                    { label: "Total Requests", value: stats.totalRequests, color: "text-gray-900" },
-                                    { label: "Pending", value: stats.pendingRequests, color: "text-yellow-600" },
-                                    { label: "Completed", value: stats.completedRequests, color: "text-green-600" },
-                                    { label: "Success Rate", value: `${stats.totalRequests > 0 ? ((stats.completedRequests / stats.totalRequests) * 100).toFixed(1) : 0}%`, color: "text-blue-600" },
+                                    {
+                                        label: "Total Requests",
+                                        value: stats.totalRequests,
+                                        color: "text-gray-900",
+                                        icon: <FileText size={16} />,
+                                    },
+                                    {
+                                        label: "Pending",
+                                        value: stats.pendingRequests,
+                                        color: "text-yellow-600",
+                                        icon: <Clock size={16} />,
+                                    },
+                                    {
+                                        label: "Completed",
+                                        value: stats.completedRequests,
+                                        color: "text-green-600",
+                                        icon: <CheckCircle size={16} />,
+                                    },
+                                    {
+                                        label: "Success Rate",
+                                        value: `${
+                                            stats.totalRequests > 0
+                                                ? (
+                                                      (stats.completedRequests /
+                                                          stats.totalRequests) *
+                                                      100
+                                                  ).toFixed(1)
+                                                : 0
+                                        }%`,
+                                        color: "text-blue-600",
+                                        icon: <Target size={16} />,
+                                    },
                                 ].map((item, index) => (
                                     <div
                                         key={index}
                                         className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0 hover:bg-blue-50 px-2 rounded-lg transition-colors duration-200"
                                     >
-                                        <span className="text-gray-600">{item.label}</span>
-                                        <span className={`font-bold ${item.color} hover:scale-105 transition-transform duration-200`}>
+                                        <div className="flex items-center space-x-3">
+                                            <div
+                                                className={`p-1.5 rounded-lg bg-opacity-10 ${item.color.replace(
+                                                    "text-",
+                                                    "bg-"
+                                                )}`}
+                                            >
+                                                {item.icon}
+                                            </div>
+                                            <span className="text-gray-600">
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                        <span
+                                            className={`font-bold ${item.color} hover:scale-105 transition-transform duration-200`}
+                                        >
                                             {item.value}
                                         </span>
                                     </div>
@@ -659,7 +680,10 @@ const AgentDashboard = () => {
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-all duration-300">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="font-semibold text-gray-900 flex items-center">
-                                    <i className="far fa-bell mr-2 text-purple-600"></i>
+                                    <Bell
+                                        className="mr-2 text-purple-600"
+                                        size={20}
+                                    />
                                     Recent Activity
                                 </h3>
                             </div>
@@ -674,7 +698,10 @@ const AgentDashboard = () => {
                                     ))
                                 ) : (
                                     <div className="text-center py-8 text-gray-500 hover:text-gray-600 transition-colors">
-                                        <i className="far fa-inbox text-3xl mb-3 text-gray-300 hover:text-gray-400 transition-colors"></i>
+                                        <Activity
+                                            size={48}
+                                            className="mx-auto mb-3 text-gray-300"
+                                        />
                                         <p>No recent activity</p>
                                     </div>
                                 )}
@@ -689,35 +716,60 @@ const AgentDashboard = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
                         <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                            <h3 className="text-xl font-semibold text-gray-800">
+                            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+                                <User className="mr-2" size={20} />
                                 Update Profile
                             </h3>
                             <button
                                 onClick={() => setShowProfileModal(false)}
                                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
                             >
-                                <i className="far fa-times text-lg"></i>
+                                <X size={20} />
                             </button>
                         </div>
 
                         <form onSubmit={updateProfile} className="p-6">
                             <div className="space-y-5">
                                 {[
-                                    { label: "Full Name", name: "name", type: "text", required: true },
-                                    { label: "Email Address", name: "email", type: "email", required: true },
-                                    { label: "Phone Number", name: "phone", type: "tel", required: true },
+                                    {
+                                        label: "Full Name",
+                                        name: "name",
+                                        type: "text",
+                                        required: true,
+                                        icon: <User size={16} />,
+                                    },
+                                    {
+                                        label: "Email Address",
+                                        name: "email",
+                                        type: "email",
+                                        required: true,
+                                        icon: <Mail size={16} />,
+                                    },
+                                    {
+                                        label: "Phone Number",
+                                        name: "phone",
+                                        type: "tel",
+                                        required: true,
+                                        icon: <Phone size={16} />,
+                                    },
                                 ].map((field) => (
                                     <div key={field.name}>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            {field.label}
+                                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                            {field.icon}
+                                            <span className="ml-2">
+                                                {field.label}
+                                            </span>
                                         </label>
                                         <input
                                             type={field.type}
-                                            value={profileForm[field.name] || ""}
+                                            value={
+                                                profileForm[field.name] || ""
+                                            }
                                             onChange={(e) =>
                                                 setProfileForm((prev) => ({
                                                     ...prev,
-                                                    [field.name]: e.target.value,
+                                                    [field.name]:
+                                                        e.target.value,
                                                 }))
                                             }
                                             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-400"
@@ -735,12 +787,12 @@ const AgentDashboard = () => {
                                 >
                                     {updating ? (
                                         <>
-                                            <i className="far fa-spinner-third animate-spin mr-2"></i>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                             Updating...
                                         </>
                                     ) : (
                                         <>
-                                            <i className="far fa-save mr-2"></i>
+                                            <Save size={16} className="mr-2" />
                                             Update Profile
                                         </>
                                     )}
@@ -748,8 +800,9 @@ const AgentDashboard = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowProfileModal(false)}
-                                    className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-medium hover:bg-gray-200 transition-all duration-300 hover:translate-y-[-1px]"
+                                    className="flex-1 bg-gray-100 text-gray-700 py-3.5 rounded-xl font-medium hover:bg-gray-200 transition-all duration-300 hover:translate-y-[-1px] flex items-center justify-center"
                                 >
+                                    <X size={16} className="mr-2" />
                                     Cancel
                                 </button>
                             </div>
@@ -781,12 +834,22 @@ const AgentDashboard = () => {
                     animation: scaleIn 0.2s ease-out;
                 }
                 @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
                 }
                 @keyframes scaleIn {
-                    from { transform: scale(0.95); opacity: 0; }
-                    to { transform: scale(1); opacity: 1; }
+                    from {
+                        transform: scale(0.95);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
                 }
             `}</style>
         </div>

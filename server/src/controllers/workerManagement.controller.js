@@ -6,95 +6,271 @@ import ServiceAgent from "../models/serviceAgent.model.js";
 import { Skill } from "../models/skill.model.js";
 
 /* ------------------------- 🧩 1. GET ALL WORKERS ------------------------- */
+// ==================== GET ALL WORKERS ====================
+/* ------------------------- 🧩 1. GET ALL WORKERS ------------------------- */
+// ==================== GET ALL WORKERS ====================
 export const getAllWorkers = async (req, res) => {
     try {
-        const serviceAgentId = req.user._id;
-        const { search, status, page = 1, limit = 10 } = req.query;
+        const {
+            page = 1,
+            limit = 10,
+            search = "",
+            status = "all",
+            skill = "",
+            service = "",
+        } = req.query;
 
+        const userId = req.user._id;
+        // Base query for workers - only those verified by service agents
         const query = {
             role: "WORKER",
-            "workerProfile.createdBy": serviceAgentId,
+            "workerProfile.verification.serviceAgentId": {
+                $exists: true,
+                $eq: userId,
+            },
         };
 
-        // 🔍 Search filter
+        // Search filter
         if (search) {
             query.$or = [
                 { name: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } },
                 { phone: { $regex: search, $options: "i" } },
-                { "address.city": { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
                 { "address.area": { $regex: search, $options: "i" } },
+                { "address.city": { $regex: search, $options: "i" } },
             ];
         }
 
-        // 🔘 Status filter
-        if (status && status !== "all") {
-            if (status === "active") {
+        // Status filter
+        if (status !== "all") {
+            if (status === "suspended") {
+                query["workerProfile.isSuspended"] = true;
+            } else if (status === "active") {
+                query["workerProfile.isSuspended"] = { $ne: true };
                 query["workerProfile.verification.status"] = "APPROVED";
-                query["workerProfile.availabilityStatus"] = "available";
-            } else if (status === "suspended") {
-                query.$or = [
-                    { "workerProfile.availabilityStatus": "off-duty" },
-                    { "workerProfile.verification.status": "REJECTED" },
-                ];
             } else if (status === "pending") {
                 query["workerProfile.verification.status"] = "PENDING";
+                // For pending, we still want serviceAgentId to exist (assigned but not approved)
+                query["workerProfile.verification.serviceAgentId"] = {
+                    $exists: true,
+                    $ne: null,
+                };
+            } else if (status === "rejected") {
+                query["workerProfile.verification.status"] = "REJECTED";
+                // For rejected, we still want serviceAgentId to exist (was assigned but rejected)
+                query["workerProfile.verification.serviceAgentId"] = {
+                    $exists: true,
+                    $ne: null,
+                };
             }
         }
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        console.log(
+            "Query for service agent verified workers:",
+            JSON.stringify(query, null, 2)
+        );
+
+        // Get workers with pagination
         const workers = await User.find(query)
             .select("-password -otp")
+            .populate({
+                path: "workerProfile.skills.skillId",
+                select: "name description",
+            })
+            .populate({
+                path: "workerProfile.verification.serviceAgentId",
+                select: "name email phone",
+            })
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(parseInt(limit))
             .lean();
 
-        const workerIds = workers.map((w) => w._id);
-        const workerServices = await WorkerService.find({
-            workerId: { $in: workerIds },
-        })
-            .populate("skillId", "name")
-            .populate("serviceId", "name");
+        // Get worker IDs for service lookup
+        const workerIds = workers.map((worker) => worker._id);
 
-        const formattedWorkers = workers.map((worker) => {
-            const services = workerServices.filter((ws) =>
-                ws.workerId.equals(worker._id)
-            );
+        // Build service query
+        const serviceQuery = { workerId: { $in: workerIds }, isActive: true };
 
-            let status = "pending";
-            if (worker.workerProfile?.verification?.status === "APPROVED") {
-                status =
-                    worker.workerProfile.availabilityStatus === "available"
-                        ? "active"
-                        : "suspended";
-            } else if (
-                worker.workerProfile?.verification?.status === "REJECTED"
-            ) {
-                status = "rejected";
+        // Apply skill filter to services if specified
+        if (skill) {
+            serviceQuery.skillId = new mongoose.Types.ObjectId(skill);
+        }
+
+        // Apply service filter to services if specified
+        if (service) {
+            serviceQuery.serviceId = new mongoose.Types.ObjectId(service);
+        }
+
+        // Get worker services with filtering
+        const workerServices = await WorkerService.find(serviceQuery)
+            .populate({
+                path: "skillId",
+                select: "name description",
+            })
+            .lean();
+
+        // Get all service IDs to fetch service names
+        const serviceIds = [
+            ...new Set(workerServices.map((ws) => ws.serviceId)),
+        ];
+
+        // Fetch service names from Skill model
+        const servicesData = await Skill.aggregate([
+            { $unwind: "$services" },
+            { $match: { "services.serviceId": { $in: serviceIds } } },
+            {
+                $project: {
+                    serviceId: "$services.serviceId",
+                    serviceName: "$services.name",
+                },
+            },
+        ]);
+
+        // Create a map of serviceId to serviceName
+        const serviceNameMap = {};
+        servicesData.forEach((service) => {
+            serviceNameMap[service.serviceId.toString()] = service.serviceName;
+        });
+
+        // Group services by workerId and calculate stats
+        const servicesByWorker = {};
+        const workerStats = {};
+
+        workerServices.forEach((service) => {
+            const workerId = service.workerId.toString();
+
+            if (!servicesByWorker[workerId]) {
+                servicesByWorker[workerId] = [];
+            }
+            servicesByWorker[workerId].push(service);
+
+            // Initialize stats for worker
+            if (!workerStats[workerId]) {
+                workerStats[workerId] = {
+                    totalServices: 0,
+                    totalEarnings: 0,
+                    totalRating: 0,
+                };
             }
 
+            workerStats[workerId].totalServices++;
+            workerStats[workerId].totalEarnings += service.price || 0;
+            workerStats[workerId].totalRating += service.rating || 0;
+        });
+
+        // Filter workers based on service criteria
+        let filteredWorkers = workers;
+
+        // If skill or service filter is applied, only include workers that have matching services
+        if (skill || service) {
+            filteredWorkers = workers.filter(
+                (worker) => servicesByWorker[worker._id.toString()]?.length > 0
+            );
+        }
+
+        // Transform the data
+        const transformedWorkers = filteredWorkers.map((worker) => {
+            const workerIdStr = worker._id.toString();
+            const services = servicesByWorker[workerIdStr] || [];
+            const stats = workerStats[workerIdStr] || {
+                totalServices: 0,
+                totalEarnings: 0,
+                totalRating: 0,
+            };
+
+            const averageRating =
+                stats.totalServices > 0
+                    ? stats.totalRating / stats.totalServices
+                    : 0;
+
+            // Get worker's skills from workerProfile
+            const skills =
+                worker.workerProfile?.skills
+                    ?.map((skillObj) => ({
+                        _id: skillObj.skillId?._id,
+                        name: skillObj.skillId?.name,
+                        description: skillObj.skillId?.description,
+                    }))
+                    .filter((skill) => skill._id) || [];
+
+            // Transform services for frontend with serviceName
+            const transformedServices = services.map((service) => ({
+                _id: service._id,
+                serviceId: service.serviceId,
+                skillId: service.skillId?._id,
+                name: service.skillId?.name || "Unknown Service",
+                serviceName:
+                    serviceNameMap[service.serviceId.toString()] ||
+                    "Unknown Service",
+                details: service.details,
+                pricingType: service.pricingType,
+                price: service.price,
+                estimatedDuration: service.estimatedDuration,
+            }));
+
+            // Get verification info
+            const verification = worker.workerProfile?.verification || {};
+            const serviceAgentInfo = verification.serviceAgentId
+                ? {
+                      _id: verification.serviceAgentId._id,
+                      name: verification.serviceAgentId.name,
+                      email: verification.serviceAgentId.email,
+                      phone: verification.serviceAgentId.phone,
+                  }
+                : null;
+
             return {
-                ...worker,
-                status,
-                serviceCount: services.length,
-                services,
+                _id: worker._id,
+                name: worker.name,
+                phone: worker.phone,
+                email: worker.email,
+                address: worker.address,
+                isActive: worker.isActive,
+                isVerified: worker.isVerified,
+                createdAt: worker.createdAt,
+                updatedAt: worker.updatedAt,
+                workerProfile: {
+                    availabilityStatus:
+                        worker.workerProfile?.availabilityStatus || "available",
+                    skills: skills,
+                    services: transformedServices,
+                    verification: {
+                        ...verification,
+                        serviceAgentId: serviceAgentInfo,
+                    },
+                    bankDetails: worker.workerProfile?.bankDetails || {},
+                    timetable: worker.workerProfile?.timetable || {},
+                    nonAvailability:
+                        worker.workerProfile?.nonAvailability || [],
+                    isSuspended: worker.workerProfile?.isSuspended || false,
+                    createdByAgent:
+                        worker.workerProfile?.createdByAgent || false,
+                },
+                rating: parseFloat(averageRating.toFixed(1)),
+                completedJobs: stats.totalServices,
+                earnings: stats.totalEarnings,
+                status: worker.workerProfile?.isSuspended
+                    ? "suspended"
+                    : worker.workerProfile?.verification?.status === "PENDING"
+                    ? "pending"
+                    : worker.workerProfile?.verification?.status === "REJECTED"
+                    ? "rejected"
+                    : "active",
+                // Additional field to show which service agent verified this worker
+                verifiedBy: serviceAgentInfo,
             };
         });
 
-        const totalWorkers = await User.countDocuments(query);
-
-        return successResponse(res, 200, "Workers fetched successfully", {
-            workers: formattedWorkers,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(totalWorkers / parseInt(limit)),
-                totalWorkers,
-            },
+        res.status(200).json({
+            success: true,
+            data: transformedWorkers,
         });
     } catch (error) {
         console.error("Error fetching workers:", error);
-        return errorResponse(res, 500, "Failed to fetch workers");
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
     }
 };
 
@@ -108,24 +284,69 @@ export const getWorkerDetails = async (req, res) => {
             return errorResponse(res, 400, "Invalid worker ID");
         }
 
-        // Fetch worker with FULLY populated skills & services
+        // Fetch worker basic info
         const worker = await User.findById(workerId)
-            .select("-password -otp") // Exclude sensitive fields
+            .select("-password -otp")
             .populate({
                 path: "workerProfile.skills.skillId",
                 select: "name",
-            })
-            .populate({
-                path: "workerProfile.services",
-                populate: [
-                    { path: "skillId", select: "name" },
-                    { path: "serviceId", select: "name" },
-                ],
             });
 
         if (!worker || worker.role !== "WORKER") {
             return errorResponse(res, 404, "Worker not found");
         }
+
+        // Fetch worker services directly from WorkerService model
+        const workerServices = await WorkerService.find({ workerId })
+            .populate("skillId", "name")
+            .populate("serviceId", "name");
+
+        // Alternative approach if serviceId is not directly populateable:
+        // We need to get service names from Skill model
+        const servicesWithNames = await Promise.all(
+            workerServices.map(async (service) => {
+                let serviceName = "Unknown Service";
+
+                // Try to get service name from populated serviceId first
+                if (service.serviceId && service.serviceId.name) {
+                    serviceName = service.serviceId.name;
+                } else {
+                    // If not populated, fetch from Skill model
+                    try {
+                        const skill = await Skill.findOne({
+                            "services.serviceId": service.serviceId,
+                        });
+                        if (skill) {
+                            const serviceData = skill.services.find((s) =>
+                                s.serviceId.equals(service.serviceId)
+                            );
+                            serviceName =
+                                serviceData?.name || "Unknown Service";
+                        }
+                    } catch (error) {
+                        console.error("Error fetching service name:", error);
+                    }
+                }
+
+                return {
+                    _id: service._id,
+                    skillId: {
+                        _id: service.skillId._id,
+                        name: service.skillId.name,
+                    },
+                    serviceId: {
+                        _id: service.serviceId,
+                    },
+                    serviceName: serviceName,
+                    details: service.details || "",
+                    pricingType: service.pricingType,
+                    price: service.price,
+                    isActive: service.isActive,
+                    estimatedDuration: service.estimatedDuration,
+                    portfolioImages: service.portfolioImages || [],
+                };
+            })
+        );
 
         // Build clean response
         const workerData = {
@@ -149,15 +370,7 @@ export const getWorkerDetails = async (req, res) => {
                     _id: s.skillId._id,
                     name: s.skillId.name,
                 })),
-                services: (worker.workerProfile?.services || []).map((s) => ({
-                    _id: s._id,
-                    skillId: { _id: s.skillId._id, name: s.skillId.name },
-                    serviceId: { _id: s.serviceId._id, name: s.serviceId.name },
-                    details: s.details || "",
-                    pricingType: s.pricingType,
-                    price: s.price,
-                    isActive: s.isActive,
-                })),
+                services: servicesWithNames,
             },
         };
 

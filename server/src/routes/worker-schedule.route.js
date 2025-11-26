@@ -15,7 +15,7 @@ import { authorize, protect } from "../middlewares/auth.middleware.js";
 const router = express.Router();
 
 // Apply authentication middleware to all routes
-router.use(protect, authorize("WORKER"));
+router.use(protect, authorize("WORKER", "SERVICE_AGENT"));
 
 // Worker's own schedule management (for WORKER role)
 router.get("/my/timetable", getMyTimetable);

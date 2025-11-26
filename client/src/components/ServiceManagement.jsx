@@ -1037,7 +1037,8 @@ const WorkerServiceManagement = ({ onShowServiceModal }) => {
                                             <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
                                                 <Clock className="w-3.5 h-3.5" />
                                                 <span>
-                                                    {service.estimatedDuration}
+                                                    {service.estimatedDuration}{" "}
+                                                    hours
                                                 </span>
                                             </div>
 

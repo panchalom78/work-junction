@@ -489,44 +489,45 @@ export const updateWorkerSkillsAndAvailability = async (req, res) => {
     }
 };
 export const getAgentWorkers = async (req, res) => {
-  try {
-    const agentId = req.user?._id;
+    try {
+        const agentId = req.user?._id;
 
-    if (!agentId) {
-      return res.status(400).json({
-        success: false,
-        message: "Agent authentication required",
-      });
+        if (!agentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Agent authentication required",
+            });
+        }
+
+        const workers = await User.find({
+            role: "WORKER",
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId, // ✔ Fetch only this agent’s workers
+        })
+            .select(
+                "name phone address workerProfile.availabilityStatus workerProfile.skills workerProfile.services workerProfile.verification"
+            )
+            .populate("workerProfile.skills.skillId", "name")
+            .populate({
+                path: "workerProfile.services",
+                populate: [
+                    { path: "skillId", select: "name" },
+                    { path: "serviceId", select: "name" },
+                ],
+            });
+
+        return res.json({
+            success: true,
+            data: workers,
+        });
+    } catch (error) {
+        console.error("Get Agent Workers Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch workers",
+            error: error.message,
+        });
     }
-
-    const workers = await User.find({
-      role: "WORKER",
-      "workerProfile.createdByAgent": true,
-      "workerProfile.createdBy": agentId,  // ✔ Fetch only this agent’s workers
-    })
-      .select("name phone address workerProfile.availabilityStatus workerProfile.skills workerProfile.services workerProfile.verification")
-      .populate("workerProfile.skills.skillId", "name")
-      .populate({
-        path: "workerProfile.services",
-        populate: [
-          { path: "skillId", select: "name" },
-          { path: "serviceId", select: "name" },
-        ],
-      });
-
-    return res.json({
-      success: true,
-      data: workers,
-    });
-
-  } catch (error) {
-    console.error("Get Agent Workers Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch workers",
-      error: error.message,
-    });
-  }
 };
 
 export const updateAvailability = async (req, res) => {
@@ -1617,131 +1618,147 @@ export const getAllBookings = createHandler("ALL");
 export const getWorkerBookings = async (req, res) => {
     try {
         const { workerId } = req.params;
-        
+
         // Validate workerId
         if (!workerId) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid worker ID format'
+                message: "Invalid worker ID format",
             });
         }
 
         // Check if worker exists and is actually a worker
         const worker = await User.findOne({
             _id: workerId,
-            role: 'WORKER',
-            isActive: true
+            role: "WORKER",
+            isActive: true,
         })
-        .select('name phone email workerProfile address isActive')
-        .lean();
+            .select("name phone email workerProfile address isActive")
+            .lean();
 
         if (!worker) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker not found or inactive'
+                message: "Worker not found or inactive",
             });
         }
 
         // Get all bookings for this worker with populated data
-        const bookings = await Booking.find({ 
-            workerId: workerId 
+        const bookings = await Booking.find({
+            workerId: workerId,
         })
-        .populate('customerId', 'name phone email address')
-        .populate('serviceId', 'name category description')
-        .populate('workerServiceId', 'price skills experience serviceId')
-        .sort({ createdAt: -1 })
-        .lean();
+            .populate("customerId", "name phone email address")
+            .populate("serviceId", "name category description")
+            .populate("workerServiceId", "price skills experience serviceId")
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Transform the data for frontend
-        const transformedBookings = await Promise.all(bookings.map(async (booking) => {
-            const customer = booking.customerId || {};
-            const service = booking.serviceId || {};
-            const workerService = booking.workerServiceId || {};
+        const transformedBookings = await Promise.all(
+            bookings.map(async (booking) => {
+                const customer = booking.customerId || {};
+                const service = booking.serviceId || {};
+                const workerService = booking.workerServiceId || {};
 
-            // Get skill name and service name from Skill collection
-            let skillName = 'N/A';
-            let serviceName = 'N/A';
-            
-            if (workerService.serviceId) {
-                try {
-                    const skillData = await Skill.findOne({
-                        'services.serviceId': workerService.serviceId
-                    }).select('name services').lean();
+                // Get skill name and service name from Skill collection
+                let skillName = "N/A";
+                let serviceName = "N/A";
 
-                    if (skillData) {
-                        skillName = skillData.name || 'N/A';
-                        
-                        // Find the specific service within the skill
-                        const specificService = skillData.services.find(
-                            service => service.serviceId.toString() === workerService.serviceId.toString()
-                        );
-                        serviceName = specificService?.name || service.name || 'N/A';
+                if (workerService.serviceId) {
+                    try {
+                        const skillData = await Skill.findOne({
+                            "services.serviceId": workerService.serviceId,
+                        })
+                            .select("name services")
+                            .lean();
+
+                        if (skillData) {
+                            skillName = skillData.name || "N/A";
+
+                            // Find the specific service within the skill
+                            const specificService = skillData.services.find(
+                                (service) =>
+                                    service.serviceId.toString() ===
+                                    workerService.serviceId.toString()
+                            );
+                            serviceName =
+                                specificService?.name || service.name || "N/A";
+                        }
+                    } catch (error) {
+                        console.error("Error fetching skill data:", error);
+                        // Fallback to service name if skill lookup fails
+                        serviceName = service.name || "N/A";
                     }
-                } catch (error) {
-                    console.error('Error fetching skill data:', error);
-                    // Fallback to service name if skill lookup fails
-                    serviceName = service.name || 'N/A';
+                } else {
+                    // Fallback if no serviceId in workerService
+                    serviceName = service.name || "N/A";
                 }
-            } else {
-                // Fallback if no serviceId in workerService
-                serviceName = service.name || 'N/A';
-            }
 
-            return {
-                _id: booking._id,
-                status: booking.status,
-                customer: {
-                    _id: customer._id,
-                    name: customer.name || 'N/A',
-                    phone: customer.phone || 'N/A',
-                    email: customer.email,
-                    address: customer.address || {}
-                },
-                worker: {
-                    _id: worker._id,
-                    name: worker.name,
-                    phone: worker.phone,
-                    email: worker.email
-                },
-                serviceDetails: {
-                    serviceId: service,
-                    skillName: skillName,
-                    serviceName: serviceName,
-                    price: workerService.price || booking.price || 0,
-                    category: service.category,
-                    description: service.description
-                },
-                bookingInfo: {
-                    date: booking.bookingDate,
-                    time: booking.bookingTime
-                },
-                timeline: {
-                    serviceInitiatedAt: booking.serviceInitiatedAt,
-                    serviceStartedAt: booking.serviceStartedAt,
-                    serviceCompletedAt: booking.serviceCompletedAt,
-                    createdAt: booking.createdAt
-                },
-                payment: booking.payment || {},
-                review: booking.review || null,
-                cancellationReason: booking.cancellationReason,
-                declineReason: booking.declineReason
-            };
-        }));
+                return {
+                    _id: booking._id,
+                    status: booking.status,
+                    customer: {
+                        _id: customer._id,
+                        name: customer.name || "N/A",
+                        phone: customer.phone || "N/A",
+                        email: customer.email,
+                        address: customer.address || {},
+                    },
+                    worker: {
+                        _id: worker._id,
+                        name: worker.name,
+                        phone: worker.phone,
+                        email: worker.email,
+                    },
+                    serviceDetails: {
+                        serviceId: service,
+                        skillName: skillName,
+                        serviceName: serviceName,
+                        price: workerService.price || booking.price || 0,
+                        category: service.category,
+                        description: service.description,
+                    },
+                    bookingInfo: {
+                        date: booking.bookingDate,
+                        time: booking.bookingTime,
+                    },
+                    timeline: {
+                        serviceInitiatedAt: booking.serviceInitiatedAt,
+                        serviceStartedAt: booking.serviceStartedAt,
+                        serviceCompletedAt: booking.serviceCompletedAt,
+                        createdAt: booking.createdAt,
+                    },
+                    payment: booking.payment || {},
+                    review: booking.review || null,
+                    cancellationReason: booking.cancellationReason,
+                    declineReason: booking.declineReason,
+                };
+            })
+        );
 
         // Calculate counts by status
         const statusCounts = {
-            PENDING: transformedBookings.filter(b => b.status === 'PENDING').length,
-            ACCEPTED: transformedBookings.filter(b => b.status === 'ACCEPTED').length,
-            IN_PROGRESS: transformedBookings.filter(b => b.status === 'PAYMENT_PENDING').length,
-            COMPLETED: transformedBookings.filter(b => b.status === 'COMPLETED').length,
-            CANCELLED: transformedBookings.filter(b => b.status === 'CANCELLED').length,
-            DECLINED: transformedBookings.filter(b => b.status === 'DECLINED').length,
-            ALL: transformedBookings.length
+            PENDING: transformedBookings.filter((b) => b.status === "PENDING")
+                .length,
+            ACCEPTED: transformedBookings.filter((b) => b.status === "ACCEPTED")
+                .length,
+            IN_PROGRESS: transformedBookings.filter(
+                (b) => b.status === "PAYMENT_PENDING"
+            ).length,
+            COMPLETED: transformedBookings.filter(
+                (b) => b.status === "COMPLETED"
+            ).length,
+            CANCELLED: transformedBookings.filter(
+                (b) => b.status === "CANCELLED"
+            ).length,
+            DECLINED: transformedBookings.filter((b) => b.status === "DECLINED")
+                .length,
+            ALL: transformedBookings.length,
         };
 
         return res.status(200).json({
             success: true,
-            message: 'Worker bookings retrieved successfully',
+            message: "Worker bookings retrieved successfully",
             data: {
                 worker: {
                     _id: worker._id,
@@ -1749,22 +1766,23 @@ export const getWorkerBookings = async (req, res) => {
                     phone: worker.phone,
                     email: worker.email,
                     address: worker.address,
-                    availabilityStatus: worker.workerProfile?.availabilityStatus || 'available',
+                    availabilityStatus:
+                        worker.workerProfile?.availabilityStatus || "available",
                     isActive: worker.isActive,
-                    createdByAgent: worker.workerProfile?.createdByAgent || false
+                    createdByAgent:
+                        worker.workerProfile?.createdByAgent || false,
                 },
                 bookings: transformedBookings,
                 stats: statusCounts,
-                totalBookings: transformedBookings.length
-            }
+                totalBookings: transformedBookings.length,
+            },
         });
-
     } catch (error) {
-        console.error('Get worker bookings error:', error);
+        console.error("Get worker bookings error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -1772,13 +1790,19 @@ export const getWorkerBookings = async (req, res) => {
 export const updatePaymentStatus = async (req, res) => {
     try {
         const { bookingId } = req.params;
-        const { paymentType, status, transactionId, transactionDate, updatedBy = 'agent' } = req.body;
+        const {
+            paymentType,
+            status,
+            transactionId,
+            transactionDate,
+            updatedBy = "agent",
+        } = req.body;
 
         // Validate booking ID
         if (!bookingId) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid booking ID format'
+                message: "Invalid booking ID format",
             });
         }
 
@@ -1786,32 +1810,33 @@ export const updatePaymentStatus = async (req, res) => {
         if (!paymentType) {
             return res.status(400).json({
                 success: false,
-                message: 'Payment type is required'
+                message: "Payment type is required",
             });
         }
 
         if (!status) {
             return res.status(400).json({
                 success: false,
-                message: 'Payment status is required'
+                message: "Payment status is required",
             });
         }
 
         // Validate payment type
-        const validPaymentTypes = ['CASH', 'RAZORPAY'];
+        const validPaymentTypes = ["CASH", "RAZORPAY"];
         if (!validPaymentTypes.includes(paymentType)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid payment type. Must be CASH, UPI, or RAZORPAY'
+                message: "Invalid payment type. Must be CASH, UPI, or RAZORPAY",
             });
         }
 
         // Validate payment status
-        const validPaymentStatuses = ['PENDING', 'COMPLETED', 'FAILED'];
+        const validPaymentStatuses = ["PENDING", "COMPLETED", "FAILED"];
         if (!validPaymentStatuses.includes(status)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid payment status. Must be PENDING, COMPLETED, or FAILED'
+                message:
+                    "Invalid payment status. Must be PENDING, COMPLETED, or FAILED",
             });
         }
 
@@ -1820,15 +1845,16 @@ export const updatePaymentStatus = async (req, res) => {
         if (!booking) {
             return res.status(404).json({
                 success: false,
-                message: 'Booking not found'
+                message: "Booking not found",
             });
         }
 
         // Check if booking is in a state that allows payment updates
-        if (booking.status === 'CANCELLED' || booking.status === 'DECLINED') {
+        if (booking.status === "CANCELLED" || booking.status === "DECLINED") {
             return res.status(400).json({
                 success: false,
-                message: 'Cannot update payment for cancelled or declined booking'
+                message:
+                    "Cannot update payment for cancelled or declined booking",
             });
         }
 
@@ -1837,7 +1863,7 @@ export const updatePaymentStatus = async (req, res) => {
             paymentType,
             status,
             amount: booking.price, // Use booking price as payment amount
-            updatedBy
+            updatedBy,
         };
 
         // Add transaction details if provided
@@ -1847,29 +1873,29 @@ export const updatePaymentStatus = async (req, res) => {
 
         if (transactionDate) {
             paymentUpdateData.transactionDate = new Date(transactionDate);
-        } else if (status === 'COMPLETED') {
+        } else if (status === "COMPLETED") {
             paymentUpdateData.transactionDate = new Date();
         }
 
         // If payment is being marked as completed, also update booking status if needed
-        if (status === 'COMPLETED' && booking.status === 'PAYMENT_PENDING') {
-            booking.status = 'COMPLETED';
+        if (status === "COMPLETED" && booking.status === "PAYMENT_PENDING") {
+            booking.status = "COMPLETED";
             booking.serviceCompletedAt = new Date();
         }
 
         // Update payment data
         booking.payment = {
             ...booking.payment,
-            ...paymentUpdateData
+            ...paymentUpdateData,
         };
 
         await booking.save();
 
         // Get updated booking with populated data
         const updatedBooking = await Booking.findById(bookingId)
-            .populate('customerId', 'name phone email address')
-            .populate('serviceId', 'name category description')
-            .populate('workerId', 'name phone')
+            .populate("customerId", "name phone email address")
+            .populate("serviceId", "name category description")
+            .populate("workerId", "name phone")
             .lean();
 
         return res.status(200).json({
@@ -1877,16 +1903,15 @@ export const updatePaymentStatus = async (req, res) => {
             message: `Payment status updated to ${status}`,
             data: {
                 booking: updatedBooking,
-                payment: booking.payment
-            }
+                payment: booking.payment,
+            },
         });
-
     } catch (error) {
-        console.error('Update payment status error:', error);
+        console.error("Update payment status error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -1904,21 +1929,21 @@ export const getPaymentDetails = async (req, res) => {
         if (bookingId) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid booking ID format'
+                message: "Invalid booking ID format",
             });
         }
 
         // Find booking with payment details
         const booking = await Booking.findById(bookingId)
-            .select('payment price status serviceDetails')
-            .populate('customerId', 'name phone')
-            .populate('serviceId', 'name category')
+            .select("payment price status serviceDetails")
+            .populate("customerId", "name phone")
+            .populate("serviceId", "name category")
             .lean();
 
         if (!booking) {
             return res.status(404).json({
                 success: false,
-                message: 'Booking not found'
+                message: "Booking not found",
             });
         }
 
@@ -1930,24 +1955,23 @@ export const getPaymentDetails = async (req, res) => {
             amount: booking.price,
             status: booking.status,
             payment: booking.payment || {
-                status: 'PENDING',
+                status: "PENDING",
                 paymentType: null,
-                amount: booking.price
-            }
+                amount: booking.price,
+            },
         };
 
         return res.status(200).json({
             success: true,
-            message: 'Payment details retrieved successfully',
-            data: paymentDetails
+            message: "Payment details retrieved successfully",
+            data: paymentDetails,
         });
-
     } catch (error) {
-        console.error('Get payment details error:', error);
+        console.error("Get payment details error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -1959,7 +1983,6 @@ export const getPaymentDetails = async (req, res) => {
  */
 // controllers/workerController.js
 
-
 /**
  * @desc    Get worker profile
  * @route   GET /api/worker/profile
@@ -1970,33 +1993,30 @@ export const getWorkerProfile = async (req, res) => {
         const workerId = req.user._id;
 
         const worker = await User.findById(workerId)
-            .select('name phone email address workerProfile isActive')
+            .select("name phone email address workerProfile isActive")
             .lean();
 
         if (!worker) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker not found'
+                message: "Worker not found",
             });
         }
 
         return res.status(200).json({
             success: true,
-            message: 'Worker profile retrieved successfully',
-            data: worker
+            message: "Worker profile retrieved successfully",
+            data: worker,
         });
-
     } catch (error) {
-        console.error('Get worker profile error:', error);
+        console.error("Get worker profile error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
-
-
 
 /**
  * @desc    Get all workers created by the logged-in agent
@@ -2007,30 +2027,30 @@ export const getAgentCreatedWorkers = async (req, res) => {
     try {
         const agentId = req.user._id; // Get logged-in agent ID
         const { search, page = 1, limit = 50 } = req.query;
-        
+
         console.log("Agent ID:", agentId); // Debug log
 
         // Build query for workers created by this specific agent
-        let query = { 
-            role: 'WORKER', 
+        let query = {
+            role: "WORKER",
             isActive: true,
-            'workerProfile.createdByAgent': true,
-            'workerProfile.createdBy': agentId // Only workers created by this agent
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId, // Only workers created by this agent
         };
 
         // Add search functionality
         if (search) {
             query.$or = [
-                { name: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { 'address.area': { $regex: search, $options: 'i' } },
-                { 'address.city': { $regex: search, $options: 'i' } }
+                { name: { $regex: search, $options: "i" } },
+                { phone: { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+                { "address.area": { $regex: search, $options: "i" } },
+                { "address.city": { $regex: search, $options: "i" } },
             ];
         }
 
         const workers = await User.find(query)
-            .select('name phone email address workerProfile isActive createdAt')
+            .select("name phone email address workerProfile isActive createdAt")
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit)
@@ -2045,29 +2065,33 @@ export const getAgentCreatedWorkers = async (req, res) => {
                     { $match: { workerId: worker._id } },
                     {
                         $group: {
-                            _id: '$status',
-                            count: { $sum: 1 }
-                        }
-                    }
+                            _id: "$status",
+                            count: { $sum: 1 },
+                        },
+                    },
                 ]);
 
                 const stats = {
                     total: 0,
                     pending: 0,
                     active: 0,
-                    completed: 0
+                    completed: 0,
                 };
 
-                bookingStats.forEach(stat => {
+                bookingStats.forEach((stat) => {
                     stats.total += stat.count;
-                    if (stat._id === 'PENDING') stats.pending = stat.count;
-                    if (stat._id === 'ACCEPTED' || stat._id === 'PAYMENT_PENDING') stats.active += stat.count;
-                    if (stat._id === 'COMPLETED') stats.completed = stat.count;
+                    if (stat._id === "PENDING") stats.pending = stat.count;
+                    if (
+                        stat._id === "ACCEPTED" ||
+                        stat._id === "PAYMENT_PENDING"
+                    )
+                        stats.active += stat.count;
+                    if (stat._id === "COMPLETED") stats.completed = stat.count;
                 });
 
                 return {
                     ...worker,
-                    stats
+                    stats,
                 };
             })
         );
@@ -2077,16 +2101,15 @@ export const getAgentCreatedWorkers = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: 'Agent-created workers retrieved successfully',
-            data: workersWithStats
+            message: "Agent-created workers retrieved successfully",
+            data: workersWithStats,
         });
-
     } catch (error) {
-        console.error('Get agent workers error:', error);
+        console.error("Get agent workers error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -2100,111 +2123,122 @@ export const getAgentWorkerBookings = async (req, res) => {
     try {
         const { workerId } = req.params;
         const agentId = req.user._id; // Get logged-in agent ID
-        
+
         // Validate workerId
         if (!isValidObjectId(workerId)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid worker ID format'
+                message: "Invalid worker ID format",
             });
         }
 
         // First, verify that the worker was created by this agent
         const worker = await User.findOne({
             _id: workerId,
-            role: 'WORKER',
+            role: "WORKER",
             isActive: true,
-            'workerProfile.createdByAgent': true,
-            'workerProfile.createdBy': agentId
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId,
         })
-        .select('name phone email workerProfile address isActive')
-        .lean();
+            .select("name phone email workerProfile address isActive")
+            .lean();
 
         if (!worker) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker not found or access denied'
+                message: "Worker not found or access denied",
             });
         }
 
         // Get all bookings for this worker with populated data
-        const bookings = await Booking.find({ 
-            workerId: workerId 
+        const bookings = await Booking.find({
+            workerId: workerId,
         })
-        .populate('customerId', 'name phone email address')
-        .populate('serviceId', 'name category description')
-        .populate('workerServiceId', 'price skills experience serviceId')
-        .sort({ createdAt: -1 })
-        .lean();
+            .populate("customerId", "name phone email address")
+            .populate("serviceId", "name category description")
+            .populate("workerServiceId", "price skills experience serviceId")
+            .sort({ createdAt: -1 })
+            .lean();
 
         // Transform the data for frontend
-        const transformedBookings = await Promise.all(bookings.map(async (booking) => {
-            const customer = booking.customerId || {};
-            const service = booking.serviceId || {};
-            const workerService = booking.workerServiceId || {};
+        const transformedBookings = await Promise.all(
+            bookings.map(async (booking) => {
+                const customer = booking.customerId || {};
+                const service = booking.serviceId || {};
+                const workerService = booking.workerServiceId || {};
 
-            // Get skill name and service name from Skill collection
-            let skillName = 'General Service';
-            let serviceName = service.name || 'N/A';
-            
-            // You can add your skill lookup logic here if needed
-            // For now, using basic fallbacks
+                // Get skill name and service name from Skill collection
+                let skillName = "General Service";
+                let serviceName = service.name || "N/A";
 
-            return {
-                _id: booking._id,
-                status: booking.status,
-                customer: {
-                    _id: customer._id,
-                    name: customer.name || 'N/A',
-                    phone: customer.phone || 'N/A',
-                    email: customer.email,
-                    address: customer.address || {}
-                },
-                worker: {
-                    _id: worker._id,
-                    name: worker.name,
-                    phone: worker.phone,
-                    email: worker.email
-                },
-                serviceDetails: {
-                    serviceId: service,
-                    skillName: skillName,
-                    serviceName: serviceName,
-                    price: workerService.price || booking.price || 0,
-                    category: service.category,
-                    description: service.description
-                },
-                bookingInfo: {
-                    date: booking.bookingDate,
-                    time: booking.bookingTime
-                },
-                timeline: {
-                    serviceInitiatedAt: booking.serviceInitiatedAt,
-                    serviceStartedAt: booking.serviceStartedAt,
-                    serviceCompletedAt: booking.serviceCompletedAt,
-                    createdAt: booking.createdAt
-                },
-                payment: booking.payment || {},
-                review: booking.review || null,
-                cancellationReason: booking.cancellationReason,
-                declineReason: booking.declineReason
-            };
-        }));
+                // You can add your skill lookup logic here if needed
+                // For now, using basic fallbacks
+
+                return {
+                    _id: booking._id,
+                    status: booking.status,
+                    customer: {
+                        _id: customer._id,
+                        name: customer.name || "N/A",
+                        phone: customer.phone || "N/A",
+                        email: customer.email,
+                        address: customer.address || {},
+                    },
+                    worker: {
+                        _id: worker._id,
+                        name: worker.name,
+                        phone: worker.phone,
+                        email: worker.email,
+                    },
+                    serviceDetails: {
+                        serviceId: service,
+                        skillName: skillName,
+                        serviceName: serviceName,
+                        price: workerService.price || booking.price || 0,
+                        category: service.category,
+                        description: service.description,
+                    },
+                    bookingInfo: {
+                        date: booking.bookingDate,
+                        time: booking.bookingTime,
+                    },
+                    timeline: {
+                        serviceInitiatedAt: booking.serviceInitiatedAt,
+                        serviceStartedAt: booking.serviceStartedAt,
+                        serviceCompletedAt: booking.serviceCompletedAt,
+                        createdAt: booking.createdAt,
+                    },
+                    payment: booking.payment || {},
+                    review: booking.review || null,
+                    cancellationReason: booking.cancellationReason,
+                    declineReason: booking.declineReason,
+                };
+            })
+        );
 
         // Calculate counts by status
         const statusCounts = {
-            PENDING: transformedBookings.filter(b => b.status === 'PENDING').length,
-            ACCEPTED: transformedBookings.filter(b => b.status === 'ACCEPTED').length,
-            IN_PROGRESS: transformedBookings.filter(b => b.status === 'PAYMENT_PENDING').length,
-            COMPLETED: transformedBookings.filter(b => b.status === 'COMPLETED').length,
-            CANCELLED: transformedBookings.filter(b => b.status === 'CANCELLED').length,
-            DECLINED: transformedBookings.filter(b => b.status === 'DECLINED').length,
-            ALL: transformedBookings.length
+            PENDING: transformedBookings.filter((b) => b.status === "PENDING")
+                .length,
+            ACCEPTED: transformedBookings.filter((b) => b.status === "ACCEPTED")
+                .length,
+            IN_PROGRESS: transformedBookings.filter(
+                (b) => b.status === "PAYMENT_PENDING"
+            ).length,
+            COMPLETED: transformedBookings.filter(
+                (b) => b.status === "COMPLETED"
+            ).length,
+            CANCELLED: transformedBookings.filter(
+                (b) => b.status === "CANCELLED"
+            ).length,
+            DECLINED: transformedBookings.filter((b) => b.status === "DECLINED")
+                .length,
+            ALL: transformedBookings.length,
         };
 
         return res.status(200).json({
             success: true,
-            message: 'Worker bookings retrieved successfully',
+            message: "Worker bookings retrieved successfully",
             data: {
                 worker: {
                     _id: worker._id,
@@ -2212,23 +2246,24 @@ export const getAgentWorkerBookings = async (req, res) => {
                     phone: worker.phone,
                     email: worker.email,
                     address: worker.address,
-                    availabilityStatus: worker.workerProfile?.availabilityStatus || 'available',
+                    availabilityStatus:
+                        worker.workerProfile?.availabilityStatus || "available",
                     isActive: worker.isActive,
-                    createdByAgent: worker.workerProfile?.createdByAgent || false,
-                    agentId: worker.workerProfile?.createdBy
+                    createdByAgent:
+                        worker.workerProfile?.createdByAgent || false,
+                    agentId: worker.workerProfile?.createdBy,
                 },
                 bookings: transformedBookings,
                 stats: statusCounts,
-                totalBookings: transformedBookings.length
-            }
+                totalBookings: transformedBookings.length,
+            },
         });
-
     } catch (error) {
-        console.error('Get worker bookings error:', error);
+        console.error("Get worker bookings error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
@@ -2247,171 +2282,172 @@ export const getWorkerCompletedJobsCount = async (req, res) => {
         if (!isValidObjectId(workerId)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid worker ID format'
+                message: "Invalid worker ID format",
             });
         }
 
         // Verify that the worker belongs to this agent
         const worker = await User.findOne({
             _id: workerId,
-            role: 'WORKER',
-            'workerProfile.createdBy': agentId,
-            'workerProfile.createdByAgent': true
-        }).select('name phone');
+            role: "WORKER",
+            "workerProfile.createdBy": agentId,
+            "workerProfile.createdByAgent": true,
+        }).select("name phone");
 
         if (!worker) {
             return res.status(404).json({
                 success: false,
-                message: 'Worker not found or access denied'
+                message: "Worker not found or access denied",
             });
         }
 
         // Count completed jobs for this worker
         const completedJobsCount = await Booking.countDocuments({
             workerId: workerId,
-            status: 'COMPLETED'
+            status: "COMPLETED",
         });
 
         // Get additional stats
         const totalJobsCount = await Booking.countDocuments({
-            workerId: workerId
+            workerId: workerId,
         });
 
         const pendingJobsCount = await Booking.countDocuments({
             workerId: workerId,
-            status: 'PENDING'
+            status: "PENDING",
         });
 
         const activeJobsCount = await Booking.countDocuments({
             workerId: workerId,
-            status: { $in: ['ACCEPTED', 'PAYMENT_PENDING'] }
+            status: { $in: ["ACCEPTED", "PAYMENT_PENDING"] },
         });
 
         return res.status(200).json({
             success: true,
-            message: 'Worker completed jobs count retrieved successfully',
+            message: "Worker completed jobs count retrieved successfully",
             data: {
                 worker: {
                     _id: worker._id,
                     name: worker.name,
-                    phone: worker.phone
+                    phone: worker.phone,
                 },
                 stats: {
                     completed: completedJobsCount,
                     total: totalJobsCount,
                     pending: pendingJobsCount,
-                    active: activeJobsCount
-                }
-            }
+                    active: activeJobsCount,
+                },
+            },
         });
-
     } catch (error) {
-        console.error('Get worker completed jobs count error:', error);
+        console.error("Get worker completed jobs count error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: "Internal server error",
+            error: error.message,
         });
     }
 };
 
 export const getWorkersWithPendingBookings = async (req, res) => {
-  try {
-    const agentId = req.user._id; // Assuming agent is authenticated
+    try {
+        const agentId = req.user._id; // Assuming agent is authenticated
 
-    // Verify the user is a service agent
-    if (req.user.role !== "SERVICE_AGENT") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only service agents can access this resource."
-      });
+        // Verify the user is a service agent
+        if (req.user.role !== "SERVICE_AGENT") {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "Access denied. Only service agents can access this resource.",
+            });
+        }
+
+        // Find workers created by this agent
+        const agentWorkers = await User.find({
+            role: "WORKER",
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId,
+        }).select("name phone workerProfile address");
+
+        if (!agentWorkers.length) {
+            return res.status(200).json({
+                success: true,
+                message: "No workers found for this agent",
+                data: [],
+            });
+        }
+
+        const workerIds = agentWorkers.map((worker) => worker._id);
+
+        const status = ["PENDING", "ACCEPTED", "PAYMENT_PENDING"];
+        // Find pending bookings for these workers
+        const pendingBookings = await Booking.find({
+            workerId: { $in: workerIds },
+            status: { $in: status },
+        })
+            .populate("customerId", "name phone address")
+            .populate("serviceId", "serviceName skillName price")
+            .sort({ createdAt: -1 });
+
+        // Group bookings by worker and count pending requests
+        const workersWithPendingBookings = agentWorkers.map((worker) => {
+            const workerBookings = pendingBookings.filter(
+                (booking) =>
+                    booking.workerId.toString() === worker._id.toString()
+            );
+
+            return {
+                _id: worker._id,
+                name: worker.name,
+                phone: worker.phone,
+                address: worker.address,
+                workerProfile: worker.workerProfile,
+                pendingBookingsCount: workerBookings.length,
+                pendingBookings: workerBookings.map((booking) => ({
+                    _id: booking._id,
+                    customer: {
+                        name: booking.customerId?.name,
+                        phone: booking.customerId?.phone,
+                        address: booking.customerId?.address,
+                    },
+                    serviceDetails: {
+                        serviceName: booking.serviceId?.serviceName,
+                        skillName: booking.serviceId?.skillName,
+                        price: booking.price || booking.serviceId?.price,
+                    },
+                    bookingInfo: {
+                        date: booking.bookingDate,
+                        time: booking.bookingTime,
+                    },
+                    status: booking.status,
+                    createdAt: booking.createdAt,
+                })),
+            };
+        });
+
+        // Filter workers who actually have pending bookings
+        const workersWithBookings = workersWithPendingBookings.filter(
+            (worker) => worker.pendingBookingsCount > 0
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Workers with pending bookings fetched successfully",
+            data: workersWithBookings,
+            stats: {
+                totalWorkers: agentWorkers.length,
+                workersWithPendingBookings: workersWithBookings.length,
+                totalPendingBookings: pendingBookings.length,
+            },
+        });
+    } catch (error) {
+        console.error("Get workers with pending bookings error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
     }
-
-    // Find workers created by this agent
-    const agentWorkers = await User.find({
-      role: "WORKER",
-      "workerProfile.createdByAgent": true,
-      "workerProfile.createdBy": agentId
-    }).select("name phone workerProfile address");
-
-    if (!agentWorkers.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No workers found for this agent",
-        data: []
-      });
-    }
-
-    const workerIds = agentWorkers.map(worker => worker._id);
-
-    // Find pending bookings for these workers
-    const pendingBookings = await Booking.find({
-      workerId: { $in: workerIds },
-      status: "PENDING"
-    })
-    .populate("customerId", "name phone address")
-    .populate("serviceId", "serviceName skillName price")
-    .sort({ createdAt: -1 });
-
-    // Group bookings by worker and count pending requests
-    const workersWithPendingBookings = agentWorkers.map(worker => {
-      const workerBookings = pendingBookings.filter(
-        booking => booking.workerId.toString() === worker._id.toString()
-      );
-
-      return {
-        _id: worker._id,
-        name: worker.name,
-        phone: worker.phone,
-        address: worker.address,
-        workerProfile: worker.workerProfile,
-        pendingBookingsCount: workerBookings.length,
-        pendingBookings: workerBookings.map(booking => ({
-          _id: booking._id,
-          customer: {
-            name: booking.customerId?.name,
-            phone: booking.customerId?.phone,
-            address: booking.customerId?.address
-          },
-          serviceDetails: {
-            serviceName: booking.serviceId?.serviceName,
-            skillName: booking.serviceId?.skillName,
-            price: booking.price || booking.serviceId?.price
-          },
-          bookingInfo: {
-            date: booking.bookingDate,
-            time: booking.bookingTime
-          },
-          status: booking.status,
-          createdAt: booking.createdAt
-        }))
-      };
-    });
-
-    // Filter workers who actually have pending bookings
-    const workersWithBookings = workersWithPendingBookings.filter(
-      worker => worker.pendingBookingsCount > 0
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Workers with pending bookings fetched successfully",
-      data: workersWithBookings,
-      stats: {
-        totalWorkers: agentWorkers.length,
-        workersWithPendingBookings: workersWithBookings.length,
-        totalPendingBookings: pendingBookings.length
-      }
-    });
-
-  } catch (error) {
-    console.error("Get workers with pending bookings error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
 };
 
 /**
@@ -2419,86 +2455,101 @@ export const getWorkersWithPendingBookings = async (req, res) => {
  * GET /api/service-agent/agent-workers-with-stats
  */
 export const getAgentWorkersWithStats = async (req, res) => {
-  try {
-    const agentId = req.user._id;
+    try {
+        const agentId = req.user._id;
 
-    if (req.user.role !== "SERVICE_AGENT") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only service agents can access this resource."
-      });
+        if (req.user.role !== "SERVICE_AGENT") {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "Access denied. Only service agents can access this resource.",
+            });
+        }
+
+        // Find workers created by this agent
+        const agentWorkers = await User.find({
+            role: "WORKER",
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId,
+        }).select("name phone workerProfile address isActive");
+
+        if (!agentWorkers.length) {
+            return res.status(200).json({
+                success: true,
+                message: "No workers found for this agent",
+                data: [],
+            });
+        }
+
+        const workerIds = agentWorkers.map((worker) => worker._id);
+
+        // Get all bookings for these workers grouped by status
+        const bookings = await Booking.find({
+            workerId: { $in: workerIds },
+        });
+
+        // Create worker stats
+        const workersWithStats = agentWorkers.map((worker) => {
+            const workerBookings = bookings.filter(
+                (booking) =>
+                    booking.workerId.toString() === worker._id.toString()
+            );
+
+            const stats = {
+                total: workerBookings.length,
+                pending: workerBookings.filter((b) => b.status === "PENDING")
+                    .length,
+                accepted: workerBookings.filter((b) => b.status === "ACCEPTED")
+                    .length,
+                payment_pending: workerBookings.filter(
+                    (b) => b.status === "PAYMENT_PENDING"
+                ).length,
+                completed: workerBookings.filter(
+                    (b) => b.status === "COMPLETED"
+                ).length,
+                declined: workerBookings.filter((b) => b.status === "DECLINED")
+                    .length,
+                cancelled: workerBookings.filter(
+                    (b) => b.status === "CANCELLED"
+                ).length,
+            };
+
+            return {
+                _id: worker._id,
+                name: worker.name,
+                phone: worker.phone,
+                address: worker.address,
+                isActive: worker.isActive,
+                workerProfile: worker.workerProfile,
+                stats: stats,
+                hasPendingBookings: stats.pending > 0,
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Agent workers with stats fetched successfully",
+            data: workersWithStats,
+            summary: {
+                totalWorkers: agentWorkers.length,
+                activeWorkers: agentWorkers.filter((w) => w.isActive).length,
+                workersWithPendingBookings: workersWithStats.filter(
+                    (w) => w.hasPendingBookings
+                ).length,
+                totalPendingBookings: workersWithStats.reduce(
+                    (sum, worker) => sum + worker.stats.pending,
+                    0
+                ),
+            },
+        });
+    } catch (error) {
+        console.error("Get agent workers with stats error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
     }
-
-    // Find workers created by this agent
-    const agentWorkers = await User.find({
-      role: "WORKER",
-      "workerProfile.createdByAgent": true,
-      "workerProfile.createdBy": agentId
-    }).select("name phone workerProfile address isActive");
-
-    if (!agentWorkers.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No workers found for this agent",
-        data: []
-      });
-    }
-
-    const workerIds = agentWorkers.map(worker => worker._id);
-
-    // Get all bookings for these workers grouped by status
-    const bookings = await Booking.find({
-      workerId: { $in: workerIds }
-    });
-
-    // Create worker stats
-    const workersWithStats = agentWorkers.map(worker => {
-      const workerBookings = bookings.filter(
-        booking => booking.workerId.toString() === worker._id.toString()
-      );
-
-      const stats = {
-        total: workerBookings.length,
-        pending: workerBookings.filter(b => b.status === 'PENDING').length,
-        accepted: workerBookings.filter(b => b.status === 'ACCEPTED').length,
-        payment_pending: workerBookings.filter(b => b.status === 'PAYMENT_PENDING').length,
-        completed: workerBookings.filter(b => b.status === 'COMPLETED').length,
-        declined: workerBookings.filter(b => b.status === 'DECLINED').length,
-        cancelled: workerBookings.filter(b => b.status === 'CANCELLED').length
-      };
-
-      return {
-        _id: worker._id,
-        name: worker.name,
-        phone: worker.phone,
-        address: worker.address,
-        isActive: worker.isActive,
-        workerProfile: worker.workerProfile,
-        stats: stats,
-        hasPendingBookings: stats.pending > 0
-      };
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Agent workers with stats fetched successfully",
-      data: workersWithStats,
-      summary: {
-        totalWorkers: agentWorkers.length,
-        activeWorkers: agentWorkers.filter(w => w.isActive).length,
-        workersWithPendingBookings: workersWithStats.filter(w => w.hasPendingBookings).length,
-        totalPendingBookings: workersWithStats.reduce((sum, worker) => sum + worker.stats.pending, 0)
-      }
-    });
-
-  } catch (error) {
-    console.error("Get agent workers with stats error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
 };
 
 /**
@@ -2506,91 +2557,97 @@ export const getAgentWorkersWithStats = async (req, res) => {
  * GET /api/service-agent/worker/:workerId/pending-bookings
  */
 export const getWorkerPendingBookings = async (req, res) => {
-  try {
-    const { workerId } = req.params;
-    const agentId = req.user._id;
+    try {
+        const { workerId } = req.params;
+        const agentId = req.user._id;
 
-    if (req.user.role !== "SERVICE_AGENT") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied. Only service agents can access this resource."
-      });
+        if (req.user.role !== "SERVICE_AGENT") {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "Access denied. Only service agents can access this resource.",
+            });
+        }
+
+        // Verify the worker belongs to this agent
+        const worker = await User.findOne({
+            _id: workerId,
+            role: "WORKER",
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId,
+        });
+
+        if (!worker) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Worker not found or you don't have permission to access this worker",
+            });
+        }
+
+        const pendingBookings = await Booking.find({
+            workerId: workerId,
+            status: "PENDING",
+        })
+            .populate("customerId", "name phone address")
+            .populate("serviceId", "serviceName skillName price")
+            .populate("workerServiceId", "serviceName price")
+            .sort({ createdAt: -1 });
+
+        const formattedBookings = pendingBookings.map((booking) => ({
+            _id: booking._id,
+            customer: {
+                _id: booking.customerId?._id,
+                name: booking.customerId?.name,
+                phone: booking.customerId?.phone,
+                address: booking.customerId?.address,
+            },
+            serviceDetails: {
+                serviceName:
+                    booking.serviceId?.serviceName ||
+                    booking.workerServiceId?.serviceName,
+                skillName: booking.serviceId?.skillName,
+                price:
+                    booking.price ||
+                    booking.serviceId?.price ||
+                    booking.workerServiceId?.price,
+            },
+            bookingInfo: {
+                date: booking.bookingDate,
+                time: booking.bookingTime,
+            },
+            status: booking.status,
+            timeline: {
+                createdAt: booking.createdAt,
+            },
+            worker: {
+                _id: worker._id,
+                name: worker.name,
+                phone: worker.phone,
+            },
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Pending bookings fetched successfully",
+            data: {
+                worker: {
+                    _id: worker._id,
+                    name: worker.name,
+                    phone: worker.phone,
+                },
+                pendingBookings: formattedBookings,
+                count: formattedBookings.length,
+            },
+        });
+    } catch (error) {
+        console.error("Get worker pending bookings error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
     }
-
-    // Verify the worker belongs to this agent
-    const worker = await User.findOne({
-      _id: workerId,
-      role: "WORKER",
-      "workerProfile.createdByAgent": true,
-      "workerProfile.createdBy": agentId
-    });
-
-    if (!worker) {
-      return res.status(404).json({
-        success: false,
-        message: "Worker not found or you don't have permission to access this worker"
-      });
-    }
-
-    const pendingBookings = await Booking.find({
-      workerId: workerId,
-      status: "PENDING"
-    })
-    .populate("customerId", "name phone address")
-    .populate("serviceId", "serviceName skillName price")
-    .populate("workerServiceId", "serviceName price")
-    .sort({ createdAt: -1 });
-
-    const formattedBookings = pendingBookings.map(booking => ({
-      _id: booking._id,
-      customer: {
-        _id: booking.customerId?._id,
-        name: booking.customerId?.name,
-        phone: booking.customerId?.phone,
-        address: booking.customerId?.address
-      },
-      serviceDetails: {
-        serviceName: booking.serviceId?.serviceName || booking.workerServiceId?.serviceName,
-        skillName: booking.serviceId?.skillName,
-        price: booking.price || booking.serviceId?.price || booking.workerServiceId?.price
-      },
-      bookingInfo: {
-        date: booking.bookingDate,
-        time: booking.bookingTime
-      },
-      status: booking.status,
-      timeline: {
-        createdAt: booking.createdAt
-      },
-      worker: {
-        _id: worker._id,
-        name: worker.name,
-        phone: worker.phone
-      }
-    }));
-
-    res.status(200).json({
-      success: true,
-      message: "Pending bookings fetched successfully",
-      data: {
-        worker: {
-          _id: worker._id,
-          name: worker.name,
-          phone: worker.phone
-        },
-        pendingBookings: formattedBookings,
-        count: formattedBookings.length
-      }
-    });
-
-  } catch (error) {
-    console.error("Get worker pending bookings error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
 };
 // controllers/serviceAgentController.js
 
@@ -2599,66 +2656,70 @@ export const getWorkerPendingBookings = async (req, res) => {
  * GET /api/service-agent/workers/:workerId/details
  */
 export const getWorkerDetails = async (req, res) => {
-  try {
-    const { workerId } = req.params;
-    const agentId = req.user._id;
+    try {
+        const { workerId } = req.params;
+        const agentId = req.user._id;
 
-    // Verify the worker belongs to this agent
-    const worker = await User.findOne({
-      _id: workerId,
-      role: "WORKER",
-      "workerProfile.createdByAgent": true,
-      "workerProfile.createdBy": agentId
-    })
-    .populate("workerProfile.skills.skillId", "name description")
-    .select("name email phone address workerProfile createdAt");
+        // Verify the worker belongs to this agent
+        const worker = await User.findOne({
+            _id: workerId,
+            role: "WORKER",
+            "workerProfile.createdByAgent": true,
+            "workerProfile.createdBy": agentId,
+        })
+            .populate("workerProfile.skills.skillId", "name description")
+            .select("name email phone address workerProfile createdAt");
 
-    if (!worker) {
-      return res.status(404).json({
-        success: false,
-        message: "Worker not found or you don't have permission to access this worker"
-      });
+        if (!worker) {
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Worker not found or you don't have permission to access this worker",
+            });
+        }
+
+        // Get worker services
+        const services = await WorkerService.find({
+            workerId: workerId,
+        }).select("serviceName skillName price duration isActive");
+
+        // Get worker bookings
+        const bookings = await Booking.find({ workerId: workerId })
+            .populate("customerId", "name phone")
+            .populate("serviceId", "serviceName skillName price")
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        // Calculate worker stats
+        const allBookings = await Booking.find({ workerId: workerId });
+        const stats = {
+            total: allBookings.length,
+            completed: allBookings.filter((b) => b.status === "COMPLETED")
+                .length,
+            pending: allBookings.filter((b) => b.status === "PENDING").length,
+            active: allBookings.filter(
+                (b) => b.status === "ACCEPTED" || b.status === "PAYMENT_PENDING"
+            ).length,
+        };
+
+        res.status(200).json({
+            success: true,
+            message: "Worker details fetched successfully",
+            data: {
+                worker: {
+                    ...worker.toObject(),
+                    stats: stats,
+                },
+                services: services,
+                bookings: bookings,
+            },
+        });
+    } catch (error) {
+        console.error("Get worker details error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message,
+        });
     }
-
-    // Get worker services
-    const services = await WorkerService.find({ workerId: workerId })
-      .select("serviceName skillName price duration isActive");
-
-    // Get worker bookings
-    const bookings = await Booking.find({ workerId: workerId })
-      .populate("customerId", "name phone")
-      .populate("serviceId", "serviceName skillName price")
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    // Calculate worker stats
-    const allBookings = await Booking.find({ workerId: workerId });
-    const stats = {
-      total: allBookings.length,
-      completed: allBookings.filter(b => b.status === 'COMPLETED').length,
-      pending: allBookings.filter(b => b.status === 'PENDING').length,
-      active: allBookings.filter(b => b.status === 'ACCEPTED' || b.status === 'PAYMENT_PENDING').length
-    };
-
-    res.status(200).json({
-      success: true,
-      message: "Worker details fetched successfully",
-      data: {
-        worker: {
-          ...worker.toObject(),
-          stats: stats
-        },
-        services: services,
-        bookings: bookings
-      }
-    });
-
-  } catch (error) {
-    console.error("Get worker details error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
-  }
 };

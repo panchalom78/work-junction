@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWorkerSearchStore } from "../../store/workerSearch.store";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calculator, PieChart, Code, Settings } from "lucide-react";
 
 const ServiceCategories = () => {
     const navigate = useNavigate();
@@ -9,27 +9,80 @@ const ServiceCategories = () => {
         useWorkerSearchStore();
     const [categories, setCategories] = useState([]);
 
-    // Map skill names to icons and colors
+    // Map skill names to technical icons and colors
     const getCategoryDetails = (skillName) => {
         const categoryMap = {
-            Plumbing: { icon: "🔧", color: "bg-blue-500" },
-            Electrical: { icon: "⚡", color: "bg-yellow-500" },
-            Cleaning: { icon: "✨", color: "bg-green-500" },
-            Carpentry: { icon: "🪵", color: "bg-orange-500" },
-            Painting: { icon: "🎨", color: "bg-purple-500" },
-            "AC Repair": { icon: "❄️", color: "bg-cyan-500" },
-            Gardening: { icon: "🌿", color: "bg-emerald-500" },
-            "Pest Control": { icon: "🐛", color: "bg-red-500" },
-            "Appliance Repair": { icon: "🔌", color: "bg-indigo-500" },
-            Masonry: { icon: "🧱", color: "bg-stone-500" },
-            Roofing: { icon: "🏠", color: "bg-amber-500" },
-            Flooring: { icon: "🔲", color: "bg-teal-500" },
+            Plumbing: {
+                icon: "🔧",
+                color: "from-blue-500 to-blue-600",
+                technicalIcon: Settings,
+            },
+            Electrical: {
+                icon: "⚡",
+                color: "from-yellow-500 to-orange-500",
+                technicalIcon: Code,
+            },
+            Cleaning: {
+                icon: "✨",
+                color: "from-green-500 to-emerald-600",
+                technicalIcon: Settings,
+            },
+            Carpentry: {
+                icon: "🪵",
+                color: "from-orange-500 to-amber-600",
+                technicalIcon: Settings,
+            },
+            Painting: {
+                icon: "🎨",
+                color: "from-purple-500 to-indigo-600",
+                technicalIcon: Settings,
+            },
+            "AC Repair": {
+                icon: "❄️",
+                color: "from-cyan-500 to-blue-500",
+                technicalIcon: Settings,
+            },
+            Gardening: {
+                icon: "🌿",
+                color: "from-emerald-500 to-green-600",
+                technicalIcon: Settings,
+            },
+            "Pest Control": {
+                icon: "🐛",
+                color: "from-red-500 to-rose-600",
+                technicalIcon: Settings,
+            },
+            "Appliance Repair": {
+                icon: "🔌",
+                color: "from-indigo-500 to-purple-600",
+                technicalIcon: Settings,
+            },
+            Masonry: {
+                icon: "🧱",
+                color: "from-stone-500 to-gray-600",
+                technicalIcon: Settings,
+            },
+            Roofing: {
+                icon: "🏠",
+                color: "from-amber-500 to-yellow-600",
+                technicalIcon: Settings,
+            },
+            Flooring: {
+                icon: "🔲",
+                color: "from-teal-500 to-cyan-600",
+                technicalIcon: Settings,
+            },
         };
 
-        return categoryMap[skillName] || { icon: "🛠️", color: "bg-gray-500" };
+        return (
+            categoryMap[skillName] || {
+                icon: "🛠️",
+                color: "from-gray-500 to-slate-600",
+                technicalIcon: Settings,
+            }
+        );
     };
 
-    // Load skills from API
     useEffect(() => {
         const fetchSkills = async () => {
             try {
@@ -42,14 +95,13 @@ const ServiceCategories = () => {
         fetchSkills();
     }, []);
 
-    // Transform API skills into categories when availableFilters changes
     useEffect(() => {
         if (availableFilters.skills && availableFilters.skills.length > 0) {
             const transformedCategories = availableFilters.skills.map(
                 (skill) => ({
                     name: skill.name,
                     ...getCategoryDetails(skill.name),
-                    _id: skill._id, // Include the skill ID from API
+                    _id: skill._id,
                 })
             );
             setCategories(transformedCategories);
@@ -62,22 +114,25 @@ const ServiceCategories = () => {
 
     if (loading) {
         return (
-            <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
-                <div className="text-gray-600">Loading categories...</div>
+            <div className="text-center py-12 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+                <div className="text-gray-600 font-mono text-sm">
+                    Loading categories...
+                </div>
             </div>
         );
     }
 
     if (!loading && categories.length === 0) {
         return (
-            <div className="text-center py-8">
-                <div className="text-gray-500 mb-4">
+            <div className="text-center py-12 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg">
+                <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <div className="text-gray-500 mb-4 font-mono">
                     No service categories available
                 </div>
                 <button
                     onClick={() => loadAvailableFilters()}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-6 py-3 rounded-2xl hover:shadow-lg transition-all duration-300 font-mono"
                 >
                     Retry
                 </button>
@@ -87,31 +142,35 @@ const ServiceCategories = () => {
 
     return (
         <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 font-mono tracking-tight">
                 Service Categories
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                {categories.map((category) => (
-                    <div
-                        key={category._id}
-                        onClick={() => handleCategoryClick(category)}
-                        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 cursor-pointer group text-center"
-                    >
+                {categories.map((category) => {
+                    const TechnicalIcon = category.technicalIcon;
+                    return (
                         <div
-                            className={`w-16 h-16 ${category.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 text-2xl`}
+                            key={category._id}
+                            onClick={() => handleCategoryClick(category)}
+                            className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-lg border border-gray-200/60 hover:shadow-2xl transition-all duration-300 cursor-pointer group text-center hover:scale-105"
                         >
-                            {category.icon}
-                        </div>
-                        <div className="font-semibold text-gray-900">
-                            {category.name}
-                        </div>
-                        {category.services && category.services.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
-                                {category.services.length} services
+                            <div
+                                className={`w-16 h-16 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 text-2xl text-white shadow-lg`}
+                            >
+                                {category.icon}
                             </div>
-                        )}
-                    </div>
-                ))}
+                            <div className="font-semibold text-gray-900 font-mono text-sm">
+                                {category.name}
+                            </div>
+                            {category.services &&
+                                category.services.length > 0 && (
+                                    <div className="text-xs text-gray-500 mt-1 font-mono">
+                                        {category.services.length} services
+                                    </div>
+                                )}
+                        </div>
+                    );
+                })}
             </div>
         </>
     );

@@ -1146,13 +1146,8 @@ const WorkerVerificationPage = () => {
                                         <CheckCircle className="w-4 h-4" />
                                         <span className="text-sm font-medium">
                                             Location captured:{" "}
-                                            {addressData.coordinates.latitude.toFixed(
-                                                4
-                                            )}
-                                            ,{" "}
-                                            {addressData.coordinates.longitude.toFixed(
-                                                4
-                                            )}
+                                            {addressData.coordinates?.latitude},{" "}
+                                            {addressData.coordinates?.longitude}
                                         </span>
                                     </div>
                                 </div>
