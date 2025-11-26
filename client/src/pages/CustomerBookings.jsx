@@ -20,7 +20,7 @@ import {
     ThumbsUp,
     ThumbsDown,
     CreditCard,
-    DollarSign,
+    IndianRupee ,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";
 import ChatInitiateButton from "../components/ChatInitiateButton";

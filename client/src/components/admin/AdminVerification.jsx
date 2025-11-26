@@ -222,46 +222,46 @@ const AdminVerification = () => {
     };
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 lg:p-6">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-4xl w-full max-h-[95vh] overflow-y-auto mx-auto">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Worker Verification Review</h2>
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900">Worker Verification Review</h2>
             <button
               onClick={handleClose}
               className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               disabled={actionLoading}
               aria-label="Close modal"
             >
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7" />
             </button>
           </div>
 
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
             {/* Worker Info */}
-            <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 lg:space-x-6">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 break-words">
+                  <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 break-words">
                     {selectedWorker.name || 'Unknown Worker'}
                   </h3>
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 mt-1 sm:mt-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 lg:space-x-6 mt-1 sm:mt-2 lg:mt-3">
                     <div className="flex items-center space-x-2">
-                      <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-xs sm:text-sm text-gray-600">{selectedWorker.phone || 'N/A'}</span>
+                      <Phone className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gray-400 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm lg:text-base text-gray-600">{selectedWorker.phone || 'N/A'}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-xs sm:text-sm text-gray-600 break-words">{selectedWorker.email || 'N/A'}</span>
+                      <Mail className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gray-400 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm lg:text-base text-gray-600 break-words">{selectedWorker.email || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
-                <div className={`px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs font-medium border ${priorityConfig.color}`}>
+                <div className={`px-2 py-1 sm:px-3 sm:py-1 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm font-medium border ${priorityConfig.color}`}>
                   <div className="flex items-center space-x-1">
-                    <PriorityIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">{priorityConfig.label}</span>
+                    <PriorityIcon className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
+                    <span>{priorityConfig.label}</span>
                   </div>
                 </div>
               </div>
@@ -269,8 +269,8 @@ const AdminVerification = () => {
 
             {/* Verification Documents */}
             <div>
-              <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Verification Documents</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 lg:mb-6">Verification Documents</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                 {['selfie', 'aadhar', 'police'].map((docType) => {
                   const docConfig = {
                     selfie: {
@@ -294,10 +294,10 @@ const AdminVerification = () => {
                   }[docType];
 
                   return (
-                    <div key={docConfig.key} className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                      <div className="flex items-center justify-between mb-2 sm:mb-3">
-                        <h5 className="font-medium text-gray-900 text-sm sm:text-base">{docConfig.label}</h5>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
+                    <div key={docConfig.key} className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
+                        <h5 className="font-medium text-gray-900 text-sm sm:text-base lg:text-lg">{docConfig.label}</h5>
+                        <span className={`px-2 py-1 rounded-full text-xs sm:text-sm ${
                           docConfig.verified ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
                         }`}>
                           {docConfig.verified ? 'Verified' : 'Pending'}
@@ -315,7 +315,7 @@ const AdminVerification = () => {
                         </div>
                       ) : (
                         <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                          <FileText className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-gray-400" />
                         </div>
                       )}
                     </div>
@@ -326,7 +326,7 @@ const AdminVerification = () => {
 
             {/* Rejection Reason */}
             <div>
-              <label htmlFor="rejection-reason" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="rejection-reason" className="block text-sm sm:text-base lg:text-lg font-medium text-gray-700 mb-2 lg:mb-3">
                 Rejection Reason (if rejecting)
               </label>
               <textarea
@@ -334,17 +334,17 @@ const AdminVerification = () => {
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="Enter reason for rejection..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                className="w-full px-3 py-2 sm:px-4 sm:py-3 lg:px-5 lg:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-none"
                 rows={3}
                 disabled={actionLoading}
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end space-y-3 space-y-reverse sm:space-y-0 sm:space-x-3 pt-3 sm:pt-4 border-t">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end space-y-3 space-y-reverse sm:space-y-0 sm:space-x-3 lg:space-x-4 pt-3 sm:pt-4 lg:pt-6 border-t">
               <button
                 onClick={handleClose}
-                className="px-4 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                className="px-4 py-2.5 sm:px-5 sm:py-3 lg:px-6 lg:py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm sm:text-base font-medium disabled:opacity-50"
                 disabled={actionLoading}
               >
                 Cancel
@@ -352,16 +352,16 @@ const AdminVerification = () => {
               <button
                 onClick={() => handleVerificationAction(selectedWorker._id, 'REJECTED', rejectionReason)}
                 disabled={actionLoading || (rejectionReason.trim() === '' && selectedWorker.status !== 'REJECTED')}
-                className="px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center min-w-[80px]"
+                className="px-4 py-2.5 sm:px-5 sm:py-3 lg:px-6 lg:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium flex items-center justify-center min-w-[80px] sm:min-w-[100px]"
               >
-                {actionLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Reject'}
+                {actionLoading ? <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : 'Reject'}
               </button>
               <button
                 onClick={() => handleVerificationAction(selectedWorker._id, 'APPROVED')}
                 disabled={actionLoading}
-                className="px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center min-w-[80px]"
+                className="px-4 py-2.5 sm:px-5 sm:py-3 lg:px-6 lg:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium flex items-center justify-center min-w-[80px] sm:min-w-[100px]"
               >
-                {actionLoading ? <Loader className="w-4 h-4 animate-spin" /> : 'Approve'}
+                {actionLoading ? <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : 'Approve'}
               </button>
             </div>
           </div>
@@ -436,200 +436,294 @@ const AdminVerification = () => {
     );
   };
 
+  // Tablet card view for medium screens
+  const TabletWorkerCard = ({ worker }) => {
+    const priorityConfig = getPriorityConfig(worker.priority);
+    const PriorityIcon = priorityConfig.icon;
+
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-gray-900 text-base truncate">{worker.name}</h3>
+              <div className="flex items-center space-x-3 mt-1">
+                <div className="flex items-center space-x-1">
+                  <Phone className="w-3 h-3 text-gray-400" />
+                  <span className="text-sm text-gray-600">{worker.phone}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Mail className="w-3 h-3 text-gray-400" />
+                  <span className="text-sm text-gray-600 truncate max-w-[120px]">{worker.email || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`px-3 py-1 rounded-full text-sm font-medium border ${priorityConfig.color}`}>
+            <div className="flex items-center space-x-1">
+              <PriorityIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">{priorityConfig.label}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <span className="text-gray-500 block">Service</span>
+            <p className="font-medium text-gray-900 truncate">{worker.service || 'General Worker'}</p>
+          </div>
+          <div>
+            <span className="text-gray-500 block">Submitted</span>
+            <p className="font-medium text-gray-900">{formatTimeAgo(worker.submitted)}</p>
+          </div>
+          <div>
+            <span className="text-gray-500 block">Documents</span>
+            <div className="flex items-center space-x-2 mt-1">
+              {['isSelfieVerified', 'isAddharDocVerified', 'isPoliceVerificationDocVerified'].map((field) => (
+                <div
+                  key={field}
+                  className={`w-3 h-3 rounded-full ${
+                    worker.verification?.[field] ? 'bg-green-500' : 'bg-orange-500'
+                  }`}
+                  title={field.replace('is', '').replace('Verified', '')}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-3 border-t border-gray-100">
+          <button
+            onClick={() => {
+              setSelectedWorker(worker);
+              setShowWorkerModal(true);
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            aria-label={`Review ${worker.name}'s verification`}
+          >
+            <Eye className="w-4 h-4" />
+            <span>Review Details</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Memoized empty state
   const emptyState = useMemo(() => (
-    <div className="text-center py-12 sm:py-16">
-      <Shield className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3" />
-      <p className="text-sm sm:text-base text-gray-600 font-medium">No pending verifications</p>
-      <p className="text-xs sm:text-sm text-gray-500 mt-1">All worker verifications have been processed</p>
+    <div className="text-center py-12 sm:py-16 lg:py-24">
+      <Shield className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-gray-400 mx-auto mb-3 lg:mb-4" />
+      <p className="text-sm sm:text-base lg:text-lg text-gray-600 font-medium">No pending verifications</p>
+      <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-1 lg:mt-2">All worker verifications have been processed</p>
     </div>
   ), []);
 
   // Memoized loading state
   const loadingState = useMemo(() => (
-    <div className="flex items-center justify-center h-32 sm:h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    <div className="flex items-center justify-center h-32 sm:h-64 lg:h-96">
+      <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
     </div>
   ), []);
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Worker Verification</h1>
-          <p className="text-sm text-gray-600 mt-1">Review and approve worker verification requests</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Worker Verification</h1>
+            <p className="text-sm sm:text-base lg:text-lg text-gray-600 mt-1 lg:mt-2">Review and approve worker verification requests</p>
+          </div>
+          <button
+            onClick={handleExportCSV}
+            disabled={exportLoading || verificationQueue.length === 0}
+            className="flex items-center justify-center px-4 py-2.5 sm:px-5 sm:py-3 lg:px-6 lg:py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium w-full sm:w-auto"
+          >
+            {exportLoading ? (
+              <Loader className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            )}
+            {exportLoading ? 'Exporting...' : 'Export CSV'}
+          </button>
         </div>
-        <button
-          onClick={handleExportCSV}
-          disabled={exportLoading || verificationQueue.length === 0}
-          className="flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium w-full sm:w-auto"
-        >
-          {exportLoading ? (
-            <Loader className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4 mr-2" />
+
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 lg:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search workers by name or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3 lg:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                  aria-label="Search workers"
+                />
+              </div>
+            </div>
+
+            {/* Priority Filter */}
+            <div className="flex items-center space-x-2 lg:space-x-3">
+              <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="flex-1 sm:flex-none px-3 py-2.5 sm:py-3 lg:py-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base w-full sm:w-48 lg:w-56"
+                aria-label="Filter by priority"
+              >
+                {PRIORITIES.map(priority => (
+                  <option key={priority.value} value={priority.value}>
+                    {priority.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Verification Queue */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {loading ? loadingState : verificationQueue.length === 0 ? emptyState : (
+            <>
+              {/* Mobile View */}
+              <div className="sm:hidden space-y-3 p-4">
+                {verificationQueue.map((worker) => (
+                  <MobileWorkerCard key={worker._id} worker={worker} />
+                ))}
+              </div>
+
+              {/* Tablet View */}
+              <div className="hidden sm:block lg:hidden space-y-4 p-4">
+                {verificationQueue.map((worker) => (
+                  <TabletWorkerCard key={worker._id} worker={worker} />
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Worker</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Priority</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Service</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Submitted</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Documents</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {verificationQueue.map((worker) => {
+                      const priorityConfig = getPriorityConfig(worker.priority);
+                      const PriorityIcon = priorityConfig.icon;
+
+                      return (
+                        <tr key={worker._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <User className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 text-base truncate">{worker.name}</p>
+                                <div className="flex items-center space-x-3 mt-1">
+                                  <div className="flex items-center space-x-1">
+                                    <Phone className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm text-gray-600">{worker.phone}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Mail className="w-4 h-4 text-gray-400" />
+                                    <span className="text-sm text-gray-600 truncate max-w-[150px]">{worker.email || 'N/A'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className={`px-4 py-2 rounded-full text-sm font-medium border ${priorityConfig.color}`}>
+                              <div className="flex items-center space-x-2">
+                                <PriorityIcon className="w-4 h-4" />
+                                <span>{priorityConfig.label}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-base text-gray-900">
+                            {worker.service || 'General Worker'}
+                          </td>
+                          <td className="px-6 py-4 text-base text-gray-900">
+                            {formatTimeAgo(worker.submitted)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-2" title="Selfie, Aadhar, Police Verification">
+                              {['isSelfieVerified', 'isAddharDocVerified', 'isPoliceVerificationDocVerified'].map((field) => (
+                                <div
+                                  key={field}
+                                  className={`w-3 h-3 rounded-full ${
+                                    worker.verification?.[field] ? 'bg-green-500' : 'bg-orange-500'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => {
+                                setSelectedWorker(worker);
+                                setShowWorkerModal(true);
+                              }}
+                              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-base font-medium hover:bg-blue-700 transition-colors"
+                              aria-label={`Review ${worker.name}'s verification`}
+                            >
+                              <Eye className="w-5 h-5" />
+                              <span>Review</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
-          {exportLoading ? 'Exporting...' : 'Export CSV'}
-        </button>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search workers by name or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                aria-label="Search workers"
-              />
+          {/* Pagination */}
+          {verificationQueue.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 lg:px-6 lg:py-4 bg-gray-50 border-t border-gray-200 gap-3">
+              <p className="text-sm lg:text-base text-gray-700">
+                Showing page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 lg:p-3 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4 lg:w-5 lg:h-5" />
+                </button>
+                <span className="text-sm lg:text-base text-gray-700 px-2 min-w-[20px] text-center">
+                  {currentPage}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 lg:p-3 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4 lg:w-5 lg:h-5" />
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Priority Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="flex-1 sm:flex-none px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm w-full sm:w-48"
-              aria-label="Filter by priority"
-            >
-              {PRIORITIES.map(priority => (
-                <option key={priority.value} value={priority.value}>
-                  {priority.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          )}
         </div>
-      </div>
-
-      {/* Verification Queue */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {loading ? loadingState : verificationQueue.length === 0 ? emptyState : (
-          <>
-            {/* Mobile View */}
-            <div className="sm:hidden space-y-3 p-4">
-              {verificationQueue.map((worker) => (
-                <MobileWorkerCard key={worker._id} worker={worker} />
-              ))}
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Worker</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Priority</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Service</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Submitted</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Documents</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {verificationQueue.map((worker) => {
-                    const priorityConfig = getPriorityConfig(worker.priority);
-                    const PriorityIcon = priorityConfig.icon;
-
-                    return (
-                      <tr key={worker._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-gray-900 text-sm truncate">{worker.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{worker.phone}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className={`px-3 py-1 rounded-full text-xs font-medium border ${priorityConfig.color}`}>
-                            <div className="flex items-center space-x-1">
-                              <PriorityIcon className="w-3 h-3" />
-                              <span>{priorityConfig.label}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {worker.service || 'General Worker'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {formatTimeAgo(worker.submitted)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-1" title="Selfie, Aadhar, Police Verification">
-                            {['isSelfieVerified', 'isAddharDocVerified', 'isPoliceVerificationDocVerified'].map((field) => (
-                              <div
-                                key={field}
-                                className={`w-2 h-2 rounded-full ${
-                                  worker.verification?.[field] ? 'bg-green-500' : 'bg-orange-500'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => {
-                              setSelectedWorker(worker);
-                              setShowWorkerModal(true);
-                            }}
-                            className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                            aria-label={`Review ${worker.name}'s verification`}
-                          >
-                            <Eye className="w-4 h-4" />
-                            <span>Review</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        {/* Pagination */}
-        {verificationQueue.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 gap-3">
-            <p className="text-xs text-gray-700">
-              Showing page {currentPage} of {totalPages}
-            </p>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Previous page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-sm text-gray-700 px-2 min-w-[20px] text-center">
-                {currentPage}
-              </span>
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Next page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {showWorkerModal && <WorkerVerificationModal />}

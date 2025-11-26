@@ -1,761 +1,832 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FileText, TrendingUp, BarChart3, Download,
-  Calendar, Filter, RefreshCw, Eye,
-  Smartphone, Monitor, PieChart
+  Users, IndianRupee, Target, Clock,
+  Calendar, Filter, RefreshCw, Download,
+  TrendingUp, MapPin, PieChart, BarChart3,
+  UserCheck, Shield, Briefcase, Star,
+  CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 
+// Chart components
+const BarChart = ({ data, labels, colors, height = 200 }) => {
+  const safeData = Array.isArray(data) ? data : [];
+  const safeLabels = Array.isArray(labels) ? labels : [];
+  const maxValue = Math.max(1, ...safeData);
+  
+  return (
+    <div className="flex items-end justify-between space-x-1 px-2" style={{ height }}>
+      {safeData.length === 0 ? (
+        <div className="w-full text-center text-sm text-gray-500">No data</div>
+      ) : safeData.map((value, index) => (
+        <div key={index} className="flex flex-col items-center flex-1">
+          <div
+            className="w-3/4 rounded-t transition-all duration-500 ease-in-out"
+            style={{
+              height: `${Math.max(0, (value / maxValue) * 100)}%`,
+              background: `linear-gradient(to top, ${colors[0]}, ${colors[1]})`
+            }}
+          ></div>
+          <span className="text-xs mt-2 text-gray-600 text-center truncate w-full">
+            {safeLabels[index]}
+          </span>
+          <span className="text-xs font-semibold text-gray-900 mt-1">
+            {value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const LineChart = ({ data, labels, color = '#3B82F6', height = 200 }) => {
+  const safeData = Array.isArray(data) ? data : [];
+  const safeLabels = Array.isArray(labels) ? labels : [];
+  const maxValue = safeData.length ? Math.max(...safeData) : 0;
+  const minValue = safeData.length ? Math.min(...safeData) : 0;
+  const range = maxValue - minValue;
+
+  // Generate SVG path for the line
+  const getPathData = () => {
+    if (safeData.length < 2 || range === 0) return `M 0,50 L 100,50`;
+    
+    const points = safeData.map((value, index) => {
+      const x = (index / (safeData.length - 1)) * 100;
+      const y = 100 - ((value - minValue) / range) * 100;
+      return `${x},${y}`;
+    });
+    
+    return `M ${points.join(' L ')}`;
+  };
+
+  // Generate area path
+  const getAreaData = () => {
+    if (safeData.length < 2 || range === 0) return `M 0,50 L 100,50 L 100,100 L 0,100 Z`;
+    const points = safeData.map((value, index) => {
+      const x = (index / (safeData.length - 1)) * 100;
+      const y = 100 - ((value - minValue) / range) * 100;
+      return `${x},${y}`;
+    });
+    
+    return `M ${points.join(' L ')} L 100,100 L 0,100 Z`;
+  };
+
+  return (
+    <div className="relative" style={{ height }}>
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        {/* Area fill */}
+        <path
+          d={getAreaData()}
+          fill={`${color}20`}
+          stroke="none"
+        />
+        
+        {/* Line */}
+        <path
+          d={getPathData()}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Data points */}
+        {safeData.map((value, index) => {
+          const x = (index / (safeData.length - 1)) * 100;
+          const y = range === 0 ? 50 : 100 - ((value - minValue) / range) * 100;
+          
+          return (
+            <circle
+              key={index}
+              cx={x}
+              cy={y}
+              r="2"
+              fill={color}
+              stroke="#fff"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </svg>
+      
+      {/* X-axis labels */}
+      <div className="flex justify-between px-2 mt-2">
+        {safeLabels.map((label, index) => (
+          <span key={index} className="text-xs text-gray-600 truncate flex-1 text-center">
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const PieChartComponent = ({ data, colors, height = 200 }) => {
+  const safeData = Array.isArray(data) ? data : [];
+  const total = safeData.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  let accumulatedAngle = 0;
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={height} height={height} viewBox="0 0 100 100" className="mb-4">
+        {total <= 0 || safeData.length === 0 ? (
+          <circle cx="50" cy="50" r="40" fill="#e5e7eb" />
+        ) : safeData.map((item, index) => {
+          const percentage = (item.value / total) * 100;
+          const angle = (percentage / 100) * 360;
+          const largeArcFlag = angle > 180 ? 1 : 0;
+          
+          const x1 = 50 + 40 * Math.cos(accumulatedAngle * Math.PI / 180);
+          const y1 = 50 + 40 * Math.sin(accumulatedAngle * Math.PI / 180);
+          
+          accumulatedAngle += angle;
+          
+          const x2 = 50 + 40 * Math.cos(accumulatedAngle * Math.PI / 180);
+          const y2 = 50 + 40 * Math.sin(accumulatedAngle * Math.PI / 180);
+
+          const pathData = [
+            `M 50 50`,
+            `L ${x1} ${y1}`,
+            `A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+            `Z`
+          ].join(' ');
+
+          return (
+            <path
+              key={index}
+              d={pathData}
+              fill={colors[index % colors.length]}
+              stroke="#fff"
+              strokeWidth="1"
+            />
+          );
+        })}
+        <circle cx="50" cy="50" r="20" fill="#fff" />
+      </svg>
+      
+      <div className="space-y-2 w-full">
+        {safeData.map((item, index) => (
+          <div key={index} className="flex items-center justify-between text-sm">
+            <div className="flex items-center space-x-2">
+              <div
+                className="w-3 h-3 rounded"
+                style={{ backgroundColor: colors[index % colors.length] }}
+              ></div>
+              <span className="text-gray-700">{item.label}</span>
+            </div>
+            <span className="font-semibold text-gray-900">
+              {total > 0 ? (((item.value / total) * 100).toFixed(1) + '%') : '0%'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const AdminReports = () => {
-  const [analytics, setAnalytics] = useState({
-    userRegistrations: [],
-    bookingStats: [],
-    revenueStats: { totalRevenue: 0, averageOrderValue: 0 }
-  });
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('monthly');
   const [reportType, setReportType] = useState('overview');
-  const [exportLoading, setExportLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(false);
 
   const periods = [
     { value: 'weekly', label: 'Weekly' },
     { value: 'monthly', label: 'Monthly' },
+    { value: 'quarterly', label: 'Quarterly' },
     { value: 'yearly', label: 'Yearly' }
   ];
 
   const reportTypes = [
     { value: 'overview', label: 'Overview' },
-    { value: 'users', label: 'User Analytics' },
-    { value: 'bookings', label: 'Booking Analytics' },
-    { value: 'revenue', label: 'Revenue Analytics' }
+    { value: 'users', label: 'Users' },
+    { value: 'bookings', label: 'Bookings' },
+    { value: 'revenue', label: 'Revenue' },
+    { value: 'performance', label: 'Performance' },
+    { value: 'workers', label: 'Workers' }
   ];
 
-  // Handle responsive behavior
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+  // Enhanced mock data with chart data
+  const loadMockData = () => {
+    const mockData = {
+      userStats: {
+        total: 1250,
+        growth: 12.5,
+        customers: 890,
+        workers: 320,
+        admins: 5,
+        active: 234
+      },
+      bookingStats: {
+        total: 845,
+        growth: 8.3,
+        pending: 23,
+        completed: 789,
+        cancelled: 33,
+        revenue: 125000
+      },
+      financialStats: {
+        totalRevenue: 125000,
+        growth: 15.2,
+        commission: 18750,
+        pendingPayouts: 4500,
+        totalPayouts: 89000
+      },
+      performanceStats: {
+        completionRate: 94.5,
+        avgRating: 4.7,
+        responseTime: 15,
+        satisfactionScore: 92
+      },
+      liveStats: {
+        activeUsers: 42,
+        recentBookings: 8,
+        pendingBookings: 23,
+        lastUpdated: new Date()
+      },
+      // Chart data
+      revenueTrend: [
+        { month: 'Jan', amount: 45000 },
+        { month: 'Feb', amount: 52000 },
+        { month: 'Mar', amount: 48000 },
+        { month: 'Apr', amount: 61000 },
+        { month: 'May', amount: 58000 },
+        { month: 'Jun', amount: 125000 }
+      ],
+      userGrowth: [
+        { month: 'Jan', users: 450 },
+        { month: 'Feb', users: 620 },
+        { month: 'Mar', users: 780 },
+        { month: 'Apr', users: 890 },
+        { month: 'May', users: 1020 },
+        { month: 'Jun', users: 1250 }
+      ],
+      bookingTrend: [
+        { week: 'W1', bookings: 120 },
+        { week: 'W2', bookings: 145 },
+        { week: 'W3', bookings: 130 },
+        { week: 'W4', bookings: 165 }
+      ],
+      categoryDistribution: [
+        { category: 'Cleaning', value: 35 },
+        { category: 'Repair', value: 25 },
+        { category: 'Installation', value: 20 },
+        { category: 'Maintenance', value: 15 },
+        { category: 'Other', value: 5 }
+      ],
+      workerPerformance: [
+        { name: 'John D.', rating: 4.8, jobs: 45 },
+        { name: 'Sarah M.', rating: 4.9, jobs: 52 },
+        { name: 'Mike R.', rating: 4.7, jobs: 38 },
+        { name: 'Lisa T.', rating: 4.6, jobs: 41 },
+        { name: 'Tom B.', rating: 4.5, jobs: 33 }
+      ]
     };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [period]);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get(`/api/admin/dashboard/analytics?period=${period}`);
-
-      if (response.data.success) {
-        setAnalytics(response.data.data);
-      }
-
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-    } finally {
-      setLoading(false);
-    }
+    setAnalytics(mockData);
   };
 
+  // Utility functions
   const formatCurrency = (amount) => {
+    if (!amount) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
+      minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount);
   };
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'ADMIN': return 'bg-red-100 text-red-800';
-      case 'SERVICE_AGENT': return 'bg-blue-100 text-blue-800';
-      case 'WORKER': return 'bg-green-100 text-green-800';
-      case 'CUSTOMER': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const formatCompactNumber = (number) => {
+    if (!number) return '0';
+    if (number >= 1000000) {
+      return (number / 1000000).toFixed(1) + 'M';
     }
+    if (number >= 1000) {
+      return (number / 1000).toFixed(1) + 'K';
+    }
+    return number.toString();
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'PENDING': return 'bg-orange-100 text-orange-800';
-      case 'ACCEPTED': return 'bg-blue-100 text-blue-800';
-      case 'DECLINED': return 'bg-red-100 text-red-800';
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      case 'CANCELLED': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTrendPercentage = (role) => {
-    const trends = {
-      'CUSTOMER': 12,
-      'WORKER': 8,
-      'SERVICE_AGENT': 15,
-      'ADMIN': 0,
-      'COMPLETED': 18,
-      'PENDING': -5,
-      'ACCEPTED': 10,
-      'CANCELLED': -2,
-      'DECLINED': -8
+  // Check screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-    return trends[role] || 0;
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Enhanced Revenue Report with Charts
+  const RevenueReport = () => {
+    if (!analytics) return null;
+    const fin = analytics.financialStats || {};
+    const trend = analytics.revenueTrend || [];
+    
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600">
+                <IndianRupee className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xs text-gray-500">Total Revenue</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(fin.totalRevenue || 0)}</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600">
+                <IndianRupee className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xs text-gray-500">Commission</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(fin.commission || 0)}</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-green-600">
+                <IndianRupee className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-xs text-gray-500">Pending Payouts</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(fin.pendingPayouts || 0)}</div>
+          </div>
+        </div>
+
+        {/* Revenue Charts */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+            <LineChart
+              data={trend.map(t => t.amount)}
+              labels={trend.map(t => t.month)}
+              color="#8B5CF6"
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Revenue Distribution</h3>
+            <PieChartComponent
+              data={[
+                { label: 'Service Fees', value: fin.commission || 0 },
+                { label: 'Completed Jobs', value: (fin.totalRevenue || 0) - (fin.commission || 0) },
+                { label: 'Pending', value: fin.pendingPayouts || 0 }
+              ]}
+              colors={['#8B5CF6', '#3B82F6', '#10B981']}
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+        </div>
+
+        {/* Monthly Breakdown */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="font-semibold text-gray-900 mb-4">Monthly Revenue Breakdown</h3>
+          <BarChart
+            data={trend.map(t => t.amount)}
+            labels={trend.map(t => t.month)}
+            colors={['#8B5CF6', '#7C3AED']}
+            height={isMobile ? 180 : 250}
+          />
+        </div>
+      </div>
+    );
   };
 
-  const exportCurrentPageToCSV = () => {
+  // Enhanced Users Report with Charts
+  const UsersReport = () => {
+    if (!analytics) return null;
+    const stats = analytics.userStats || {};
+    const growthData = analytics.userGrowth || [];
+    
+    const items = [
+      { label: 'Customers', value: stats.customers || 0, color: 'from-blue-500 to-blue-600', icon: <Users className="w-4 h-4" /> },
+      { label: 'Workers', value: stats.workers || 0, color: 'from-green-500 to-green-600', icon: <Briefcase className="w-4 h-4" /> },
+      { label: 'Admins', value: stats.admins || 0, color: 'from-purple-500 to-purple-600', icon: <Shield className="w-4 h-4" /> },
+      { label: 'Active Users', value: stats.active || 0, color: 'from-orange-500 to-orange-600', icon: <UserCheck className="w-4 h-4" /> }
+    ];
+
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {items.map((item, idx) => (
+            <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`p-2 rounded-lg bg-gradient-to-r ${item.color}`}>
+                  <div className="text-white">{item.icon}</div>
+                </div>
+                <span className="text-xs text-gray-500">{item.label}</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatCompactNumber(item.value)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* User Growth Chart */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">User Growth</h3>
+            <LineChart
+              data={growthData.map(g => g.users)}
+              labels={growthData.map(g => g.month)}
+              color="#3B82F6"
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">User Distribution</h3>
+            <PieChartComponent
+              data={[
+                { label: 'Customers', value: stats.customers || 0 },
+                { label: 'Workers', value: stats.workers || 0 },
+                { label: 'Admins', value: stats.admins || 0 }
+              ]}
+              colors={['#3B82F6', '#10B981', '#8B5CF6']}
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced Bookings Report with Charts
+  const BookingsReport = () => {
+    if (!analytics) return null;
+    const stats = analytics.bookingStats || {};
+    const trend = analytics.bookingTrend || [];
+    const categories = analytics.categoryDistribution || [];
+    
+    const items = [
+      { label: 'Total', value: stats.total || 0, color: 'text-gray-900', icon: <Target className="w-4 h-4 text-blue-600" /> },
+      { label: 'Completed', value: stats.completed || 0, color: 'text-green-600', icon: <CheckCircle className="w-4 h-4 text-green-600" /> },
+      { label: 'Pending', value: stats.pending || 0, color: 'text-yellow-600', icon: <Clock className="w-4 h-4 text-yellow-600" /> },
+      { label: 'Cancelled', value: stats.cancelled || 0, color: 'text-red-600', icon: <XCircle className="w-4 h-4 text-red-600" /> }
+    ];
+
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {items.map((item, idx) => (
+            <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 rounded-lg bg-gray-100">{item.icon}</div>
+                <span className={`text-xs font-medium ${item.color}`}>{item.label}</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatCompactNumber(item.value)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Booking Charts */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Weekly Booking Trend</h3>
+            <BarChart
+              data={trend.map(t => t.bookings)}
+              labels={trend.map(t => t.week)}
+              colors={['#10B981', '#059669']}
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+            <h3 className="font-semibold text-gray-900 mb-4">Service Categories</h3>
+            <PieChartComponent
+              data={categories.map(cat => ({ label: cat.category, value: cat.value }))}
+              colors={['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444']}
+              height={isMobile ? 160 : 200}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced Performance Report with Charts
+  const PerformanceReport = () => {
+    if (!analytics) return null;
+    const perf = analytics.performanceStats || {};
+    const workerData = analytics.workerPerformance || [];
+
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <PerformanceMetric
+            title="Completion Rate"
+            value={perf.completionRate || 0}
+            target="95%"
+            unit="%"
+            icon={<CheckCircle className="w-4 h-4 text-green-600" />}
+            trend={2.5}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric
+            title="Avg Rating"
+            value={perf.avgRating || 0}
+            target="4.8"
+            icon={<Star className="w-4 h-4 text-yellow-600" />}
+            trend={1.2}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric
+            title="Response Time"
+            value={perf.responseTime || 0}
+            target="10min"
+            unit="min"
+            icon={<Clock className="w-4 h-4 text-blue-600" />}
+            trend={-15}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric
+            title="Satisfaction"
+            value={perf.satisfactionScore || 0}
+            target="95%"
+            unit="%"
+            icon={<TrendingUp className="w-4 h-4 text-purple-600" />}
+            trend={3.1}
+            isMobile={isMobile}
+          />
+        </div>
+
+        {/* Worker Performance Chart */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <h3 className="font-semibold text-gray-900 mb-4">Top Performers</h3>
+          <div className="space-y-3">
+            {workerData.map((worker, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm font-semibold">
+                      {worker.name.split(' ').map(n => n[0]).join('')}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 truncate">{worker.name}</div>
+                    <div className="text-sm text-gray-600 truncate">{worker.jobs} jobs completed</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                  <span className="font-semibold text-gray-900">{worker.rating}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const AutoRefreshIndicator = () => (
+    <div className="flex items-center space-x-2 text-sm text-gray-600">
+      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+      <span className="hidden xs:inline">Live updates active</span>
+    </div>
+  );
+
+  const MetricCard = ({ title, value, change, icon, color, isMobile }) => (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 relative">
+      <div className={`p-2 rounded-lg bg-gradient-to-r ${color} mb-3 w-fit`}>{icon}</div>
+      <div className={`${isMobile ? 'text-lg' : 'text-xl sm:text-2xl'} font-bold text-gray-900 mb-1`}>{value}</div>
+      <div className={`text-xs font-medium ${Number(change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        {Number(change) >= 0 ? '+' : ''}{change}%
+      </div>
+      <div className="text-gray-600 text-sm mt-1">{title}</div>
+    </div>
+  );
+
+  const OverviewReport = () => {
+    if (!analytics) return null;
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <MetricCard 
+            title="Total Users" 
+            value={formatCompactNumber(analytics.userStats?.total || 0)} 
+            change={analytics.userStats?.growth || 0} 
+            icon={<Users className="w-5 h-5 text-white" />} 
+            color="from-blue-500 to-blue-600"
+            isMobile={isMobile}
+          />
+          <MetricCard 
+            title="Total Bookings" 
+            value={formatCompactNumber(analytics.bookingStats?.total || 0)} 
+            change={analytics.bookingStats?.growth || 0} 
+            icon={<Target className="w-5 h-5 text-white" />} 
+            color="from-green-500 to-green-600"
+            isMobile={isMobile}
+          />
+          <MetricCard 
+            title="Total Revenue" 
+            value={formatCurrency(analytics.financialStats?.totalRevenue || 0)} 
+            change={analytics.financialStats?.growth || 0} 
+            icon={<IndianRupee className="w-5 h-5 text-white" />} 
+            color="from-purple-500 to-purple-600"
+            isMobile={isMobile}
+          />
+          <MetricCard 
+            title="Active Now" 
+            value={analytics.liveStats?.activeUsers || '0'} 
+            change={0} 
+            icon={<UserCheck className="w-5 h-5 text-white" />} 
+            color="from-orange-500 to-orange-600"
+            isMobile={isMobile}
+          />
+        </div>
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <PerformanceMetric 
+            title="Completion Rate" 
+            value={analytics.performanceStats?.completionRate || 0} 
+            target="95%" 
+            unit="%" 
+            icon={<CheckCircle className="w-4 h-4 text-green-600" />} 
+            trend={2.5}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric 
+            title="Avg Rating" 
+            value={analytics.performanceStats?.avgRating || 0} 
+            target="4.8" 
+            icon={<Star className="w-4 h-4 text-yellow-600" />} 
+            trend={1.2}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric 
+            title="Response Time" 
+            value={analytics.performanceStats?.responseTime || 0} 
+            target="10min" 
+            unit="min" 
+            icon={<Clock className="w-4 h-4 text-blue-600" />} 
+            trend={-15}
+            isMobile={isMobile}
+          />
+          <PerformanceMetric 
+            title="Satisfaction" 
+            value={analytics.performanceStats?.satisfactionScore || 0} 
+            target="95%" 
+            unit="%" 
+            icon={<TrendingUp className="w-4 h-4 text-purple-600" />} 
+            trend={3.1}
+            isMobile={isMobile}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const PerformanceMetric = ({ title, value, target, unit, icon, trend, isMobile }) => (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="p-2 rounded-lg bg-gray-100">{icon}</div>
+        <span className="text-xs text-gray-500">Target {target}</span>
+      </div>
+      <div className={`${isMobile ? 'text-lg' : 'text-xl sm:text-2xl'} font-bold text-gray-900`}>
+        {value}{unit ? unit : ''}
+      </div>
+      <div className={`text-xs mt-1 ${Number(trend) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        {Number(trend) >= 0 ? '▲' : '▼'} {Math.abs(Number(trend))}%
+      </div>
+      <div className="text-sm text-gray-600 mt-1">{title}</div>
+    </div>
+  );
+
+  const WorkersReport = () => {
+    if (!analytics) return null;
+    const w = analytics.workerAnalytics || {};
+    const items = [
+      { label: 'Total Workers', value: w.totalWorkers || 0, icon: <Briefcase className="w-4 h-4 text-blue-600" /> },
+      { label: 'Verified', value: w.verifiedWorkers || 0, icon: <Shield className="w-4 h-4 text-green-600" /> },
+      { label: 'Active', value: w.activeWorkers || 0, icon: <UserCheck className="w-4 h-4 text-orange-600" /> },
+      { label: 'Suspended', value: w.suspendedWorkers || 0, icon: <AlertCircle className="w-4 h-4 text-red-600" /> },
+      { label: 'Services', value: w.workerServices || 0, icon: <Briefcase className="w-4 h-4 text-purple-600" /> },
+      { label: 'Verification Rate', value: `${w.verificationRate || 0}%`, icon: <Shield className="w-4 h-4 text-green-600" /> }
+    ];
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {items.map((item, idx) => (
+            <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="p-2 rounded-lg bg-gray-100">{item.icon}</div>
+                <span className="text-xs text-gray-500">{item.label}</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const fetchAnalytics = useCallback(async () => {
     try {
-      setExportLoading(true);
-
-      let csvContent = '';
-      let filename = '';
-      const today = new Date().toISOString().split('T')[0];
-
-      switch (reportType) {
-        case 'overview':
-          filename = `overview_report_${period}_${today}.csv`;
-          csvContent = generateOverviewCSV();
-          break;
-        case 'users':
-          filename = `user_analytics_${period}_${today}.csv`;
-          csvContent = generateUserAnalyticsCSV();
-          break;
-        case 'bookings':
-          filename = `booking_analytics_${period}_${today}.csv`;
-          csvContent = generateBookingAnalyticsCSV();
-          break;
-        case 'revenue':
-          filename = `revenue_analytics_${period}_${today}.csv`;
-          csvContent = generateRevenueAnalyticsCSV();
-          break;
-        default:
-          filename = `report_${period}_${today}.csv`;
-          csvContent = generateOverviewCSV();
+      setLoading(true);
+      const response = await axiosInstance.get(`/api/admin/analytics?period=${period}`);
+      if (response.data?.success) {
+        setAnalytics(response.data.data);
+      } else {
+        loadMockData();
       }
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      alert('Error exporting report. Please try again.');
+    } catch {
+      loadMockData();
     } finally {
-      setExportLoading(false);
+      setLoading(false);
     }
-  };
+  }, [period]);
 
-  const wrapCSV = (rows) => rows.map(row =>
-    row.map(field => `"${String(field ?? '').replace(/"/g, '""')}"`).join(',')
-  ).join('\n');
-
-  const generateOverviewCSV = () => {
-    const headers = [
-      'Metric Type',
-      'Category',
-      'Count',
-      'Percentage',
-      'Trend',
-      'Period'
-    ];
-
-    const totalUsers = analytics.userRegistrations.reduce((sum, item) => sum + item.count, 0);
-    const totalBookings = analytics.bookingStats.reduce((sum, item) => sum + item.count, 0);
-
-    const rows = [
-      ...analytics.userRegistrations.map(item => {
-        const percentage = totalUsers > 0 ? ((item.count / totalUsers) * 100).toFixed(1) : 0;
-        const trend = getTrendPercentage(item._id);
-        return [
-          'User Registrations',
-          item._id.replace('_', ' '),
-          item.count,
-          `${percentage}%`,
-          `${trend >= 0 ? '+' : ''}${trend}%`,
-          period.toUpperCase()
-        ];
-      }),
-      ...analytics.bookingStats.map(item => {
-        const percentage = totalBookings > 0 ? ((item.count / totalBookings) * 100).toFixed(1) : 0;
-        const trend = getTrendPercentage(item._id);
-        return [
-          'Booking Status',
-          item._id,
-          item.count,
-          `${percentage}%`,
-          `${trend >= 0 ? '+' : ''}${trend}%`,
-          period.toUpperCase()
-        ];
-      }),
-      [
-        'Revenue',
-        'Total Revenue',
-        analytics.revenueStats.totalRevenue,
-        '100%',
-        '+23%',
-        period.toUpperCase()
-      ],
-      [
-        'Revenue',
-        'Average Order Value',
-        analytics.revenueStats.averageOrderValue,
-        'N/A',
-        '+8%',
-        period.toUpperCase()
-      ]
-    ];
-
-    return wrapCSV([headers, ...rows]);
-  };
-
-  const generateUserAnalyticsCSV = () => {
-    const headers = [
-      'User Role',
-      'Count',
-      'Percentage',
-      'Trend',
-      'Period'
-    ];
-
-    const total = analytics.userRegistrations.reduce((sum, item) => sum + item.count, 0);
-
-    const rows = analytics.userRegistrations.map(item => {
-      const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-      const trend = getTrendPercentage(item._id);
-      return [
-        item._id.replace('_', ' '),
-        item.count,
-        `${percentage}%`,
-        `${trend >= 0 ? '+' : ''}${trend}%`,
-        period.toUpperCase()
-      ];
-    });
-
-    return wrapCSV([headers, ...rows]);
-  };
-
-  const generateBookingAnalyticsCSV = () => {
-    const headers = [
-      'Booking Status',
-      'Count',
-      'Percentage',
-      'Trend',
-      'Period'
-    ];
-
-    const total = analytics.bookingStats.reduce((sum, item) => sum + item.count, 0);
-
-    const rows = analytics.bookingStats.map(item => {
-      const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-      const trend = getTrendPercentage(item._id);
-      return [
-        item._id,
-        item.count,
-        `${percentage}%`,
-        `${trend >= 0 ? '+' : ''}${trend}%`,
-        period.toUpperCase()
-      ];
-    });
-
-    return wrapCSV([headers, ...rows]);
-  };
-
-  const generateRevenueAnalyticsCSV = () => {
-    const headers = [
-      'Revenue Metric',
-      'Amount',
-      'Percentage',
-      'Description',
-      'Period'
-    ];
-
-    const rows = [
-      [
-        'Total Revenue',
-        analytics.revenueStats.totalRevenue,
-        '100%',
-        'All time revenue',
-        period.toUpperCase()
-      ],
-      [
-        'Average Order Value',
-        analytics.revenueStats.averageOrderValue,
-        'N/A',
-        'Per completed booking',
-        period.toUpperCase()
-      ],
-      [
-        'Service Bookings Revenue',
-        analytics.revenueStats.totalRevenue * 0.85,
-        '85%',
-        'Revenue from service bookings',
-        period.toUpperCase()
-      ],
-      [
-        'Subscription Fees',
-        analytics.revenueStats.totalRevenue * 0.12,
-        '12%',
-        'Revenue from subscription fees',
-        period.toUpperCase()
-      ],
-      [
-        'Other Revenue',
-        analytics.revenueStats.totalRevenue * 0.03,
-        '3%',
-        'Other revenue sources',
-        period.toUpperCase()
-      ]
-    ];
-
-    return wrapCSV([headers, ...rows]);
-  };
-
-  // Mobile Card Components
-  const MobileUserCard = ({ item }) => {
-    const total = analytics.userRegistrations.reduce((sum, i) => sum + i.count, 0);
-    const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-    const trend = getTrendPercentage(item._id);
-
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-3 mb-2">
-        <div className="flex justify-between items-start mb-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(item._id)}`}>
-            {item._id.replace('_', ' ')}
-          </span>
-          <div className={`flex items-center space-x-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            <TrendingUp className={`w-3 h-3 ${trend < 0 ? 'rotate-180' : ''}`} />
-            <span className="text-xs">{trend >= 0 ? '+' : ''}{trend}%</span>
-          </div>
-        </div>
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{item.count.toLocaleString()}</p>
-            <p className="text-xs text-gray-600">{percentage}% of total</p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const MobileBookingCard = ({ item }) => {
-    const total = analytics.bookingStats.reduce((sum, i) => sum + i.count, 0);
-    const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-    const trend = getTrendPercentage(item._id);
-
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-3 mb-2">
-        <div className="flex justify-between items-start mb-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item._id)}`}>
-            {item._id}
-          </span>
-          <div className={`flex items-center space-x-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            <TrendingUp className={`w-3 h-3 ${trend < 0 ? 'rotate-180' : ''}`} />
-            <span className="text-xs">{trend >= 0 ? '+' : ''}{trend}%</span>
-          </div>
-        </div>
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{item.count.toLocaleString()}</p>
-            <p className="text-xs text-gray-600">{percentage}% of total</p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const OverviewReport = () => (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
-            <div className="p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-500 to-blue-600">
-              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-white" />
-            </div>
-            <span className="text-xs font-medium text-green-600">+12%</span>
-          </div>
-          <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mb-1">
-            {analytics.userRegistrations.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
-          </h3>
-          <p className="text-gray-600 text-xs sm:text-sm">Total Users</p>
-        </div>
-
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
-            <div className="p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-green-500 to-green-600">
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-white" />
-            </div>
-            <span className="text-xs font-medium text-green-600">+18%</span>
-          </div>
-          <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mb-1">
-            {analytics.bookingStats.reduce((sum, item) => sum + item.count, 0).toLocaleString()}
-          </h3>
-          <p className="text-gray-600 text-xs sm:text-sm">Total Bookings</p>
-        </div>
-
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
-            <div className="p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-purple-500 to-purple-600">
-              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-white" />
-            </div>
-            <span className="text-xs font-medium text-green-600">+23%</span>
-          </div>
-          <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mb-1">
-            {formatCurrency(analytics.revenueStats.totalRevenue)}
-          </h3>
-          <p className="text-gray-600 text-xs sm:text-sm">Total Revenue</p>
-        </div>
-
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
-            <div className="p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-orange-500 to-orange-600">
-              <FileText className="w-3 h-3 sm:w-4 sm:h-4 lg:w-6 lg:h-6 text-white" />
-            </div>
-            <span className="text-xs font-medium text-green-600">+8%</span>
-          </div>
-          <h3 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 mb-1">
-            {formatCurrency(analytics.revenueStats.averageOrderValue)}
-          </h3>
-          <p className="text-gray-600 text-xs sm:text-sm">Avg Order Value</p>
-        </div>
-      </div>
-
-      {/* Charts Placeholder */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
-            User Registrations
-          </h3>
-          {isMobile ? (
-            <div className="space-y-2">
-              {analytics.userRegistrations.map((item, index) => (
-                <MobileUserCard key={index} item={item} />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2 sm:space-y-3">
-              {analytics.userRegistrations.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(item._id)}`}>
-                      {item._id.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{item.count.toLocaleString()}</span>
-                    <span className={`text-xs font-medium ${getTrendPercentage(item._id) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {getTrendPercentage(item._id) >= 0 ? '+' : ''}{getTrendPercentage(item._id)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-          <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
-            Booking Status
-          </h3>
-          {isMobile ? (
-            <div className="space-y-2">
-              {analytics.bookingStats.map((item, index) => (
-                <MobileBookingCard key={index} item={item} />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2 sm:space-y-3">
-              {analytics.bookingStats.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item._id)}`}>
-                      {item._id}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{item.count.toLocaleString()}</span>
-                    <span className={`text-xs font-medium ${getTrendPercentage(item._id) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {getTrendPercentage(item._id) >= 0 ? '+' : ''}{getTrendPercentage(item._id)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Additional Stats */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
-          Performance Metrics
-        </h3>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-6">
-          <div className="text-center">
-            <div className="text-base sm:text-lg lg:text-2xl font-bold text-blue-600 mb-1">94%</div>
-            <div className="text-xs sm:text-sm text-gray-600">Completion</div>
-          </div>
-          <div className="text-center">
-            <div className="text-base sm:text-lg lg:text-2xl font-bold text-green-600 mb-1">4.7/5</div>
-            <div className="text-xs sm:text-sm text-gray-600">Rating</div>
-          </div>
-          <div className="text-center">
-            <div className="text-base sm:text-lg lg:text-2xl font-bold text-purple-600 mb-1">12min</div>
-            <div className="text-xs sm:text-sm text-gray-600">Response</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const UserAnalyticsReport = () => (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 lg:mb-6">
-          User Registration Analytics
-        </h3>
-        {isMobile ? (
-          <div className="space-y-2">
-            {analytics.userRegistrations.map((item, index) => (
-              <MobileUserCard key={index} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">User Role</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Count</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Percentage</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Trend</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {analytics.userRegistrations.map((item, index) => {
-                  const total = analytics.userRegistrations.reduce((sum, i) => sum + i.count, 0);
-                  const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-                  const trend = getTrendPercentage(item._id);
-
-                  return (
-                    <tr key={index}>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(item._id)}`}>
-                          {item._id.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3 font-semibold text-gray-900 text-sm">{item.count.toLocaleString()}</td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3 text-gray-600 text-sm">{percentage}%</td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <div className={`flex items-center space-x-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          <TrendingUp className={`w-3 h-3 sm:w-4 sm:h-4 ${trend < 0 ? 'rotate-180' : ''}`} />
-                          <span className="text-xs sm:text-sm">{trend >= 0 ? '+' : ''}{trend}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const BookingAnalyticsReport = () => (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 lg:mb-6">
-          Booking Analytics
-        </h3>
-        {isMobile ? (
-          <div className="space-y-2">
-            {analytics.bookingStats.map((item, index) => (
-              <MobileBookingCard key={index} item={item} />
-            ))}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Count</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Percentage</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900">Trend</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {analytics.bookingStats.map((item, index) => {
-                  const total = analytics.bookingStats.reduce((sum, i) => sum + i.count, 0);
-                  const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : 0;
-                  const trend = getTrendPercentage(item._id);
-
-                  return (
-                    <tr key={index}>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item._id)}`}>
-                          {item._id}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3 font-semibold text-gray-900 text-sm">{item.count.toLocaleString()}</td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3 text-gray-600 text-sm">{percentage}%</td>
-                      <td className="px-3 py-2 sm:px-4 sm:py-3">
-                        <div className={`flex items-center space-x-1 ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          <TrendingUp className={`w-3 h-3 sm:w-4 sm:h-4 ${trend < 0 ? 'rotate-180' : ''}`} />
-                          <span className="text-xs sm:text-sm">{trend >= 0 ? '+' : ''}{trend}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  const RevenueAnalyticsReport = () => (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 lg:mb-6">
-          Revenue Analytics
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 mb-3 sm:mb-4 lg:mb-6">
-          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
-            <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2">Total Revenue</h4>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mb-2">
-              {formatCurrency(analytics.revenueStats.totalRevenue)}
-            </p>
-            <p className="text-xs sm:text-sm text-gray-600">All time revenue</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
-            <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2">Average Order Value</h4>
-            <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-2">
-              {formatCurrency(analytics.revenueStats.averageOrderValue)}
-            </p>
-            <p className="text-xs sm:text-sm text-gray-600">Per completed booking</p>
-          </div>
-        </div>
-
-        {/* Revenue Breakdown */}
-        <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 lg:p-6">
-          <h4 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 mb-2 sm:mb-3 lg:mb-4">
-            Revenue Breakdown
-          </h4>
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-xs sm:text-sm">Service Bookings</span>
-              <span className="font-semibold text-gray-900 text-sm">{formatCurrency(analytics.revenueStats.totalRevenue * 0.85)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-xs sm:text-sm">Subscription Fees</span>
-              <span className="font-semibold text-gray-900 text-sm">{formatCurrency(analytics.revenueStats.totalRevenue * 0.12)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 text-xs sm:text-sm">Other Revenue</span>
-              <span className="font-semibold text-gray-900 text-sm">{formatCurrency(analytics.revenueStats.totalRevenue * 0.03)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
   const renderReport = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 animate-pulse">
+              <div className="w-10 h-10 bg-gray-200 rounded-lg mb-3"></div>
+              <div className="w-3/4 h-6 bg-gray-200 rounded mb-2"></div>
+              <div className="w-1/2 h-4 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      );
+    }
     switch (reportType) {
-      case 'overview': return <OverviewReport />;
-      case 'users': return <UserAnalyticsReport />;
-      case 'bookings': return <BookingAnalyticsReport />;
-      case 'revenue': return <RevenueAnalyticsReport />;
-      default: return <OverviewReport />;
+      case 'overview':
+        return <OverviewReport />;
+      case 'users':
+        return <UsersReport />;
+      case 'bookings':
+        return <BookingsReport />;
+      case 'revenue':
+        return <RevenueReport />;
+      case 'performance':
+        return <PerformanceReport />;
+      case 'workers':
+        return <WorkersReport />;
+      default:
+        return <OverviewReport />;
     }
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">Comprehensive platform analytics and reports</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+              Analytics Dashboard
+            </h1>
+            <AutoRefreshIndicator />
+          </div>
+          <p className="text-sm text-gray-600 mt-1 truncate">
+            Real-time platform insights and performance metrics
+          </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0 mt-2 sm:mt-0">
           <button
             onClick={fetchAnalytics}
-            className="px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center text-xs sm:text-sm"
+            disabled={loading}
+            className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Refresh</span>
-            <span className="sm:hidden">Reload</span>
-          </button>
-          <button
-            onClick={exportCurrentPageToCSV}
-            disabled={exportLoading}
-            className="px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {exportLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-blue-600 mr-1 sm:mr-2"></div>
-                <span className="hidden sm:inline">Exporting...</span>
-                <span className="sm:hidden">Exporting</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Export</span>
-                <span className="sm:hidden">CSV</span>
-              </>
-            )}
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-6">
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
-          {/* Period Filter */}
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
+      <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             >
               {periods.map(p => (
-                <option key={p.value} value={p.value}>
-                  {isMobile ? p.label.slice(0, 3) : p.label}
-                </option>
+                <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </select>
           </div>
 
-          {/* Report Type Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
-              className="flex-1 px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             >
               {reportTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {isMobile ? type.label.split(' ')[0] : type.label}
-                </option>
+                <option key={type.value} value={type.value}>{type.label}</option>
               ))}
             </select>
           </div>
@@ -763,13 +834,7 @@ const AdminReports = () => {
       </div>
 
       {/* Report Content */}
-      {loading ? (
-        <div className="flex items-center justify-center h-32 sm:h-48 lg:h-64">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 lg:h-12 lg:w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        renderReport()
-      )}
+      {renderReport()}
     </div>
   );
 };

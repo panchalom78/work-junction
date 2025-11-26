@@ -2,21 +2,281 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users, Search, Filter, MoreVertical, Eye, Edit,
   Ban, CheckCircle, XCircle, Phone, Mail, MapPin,
-  ChevronLeft, ChevronRight, Loader, Shield, UserCheck
+  ChevronLeft, ChevronRight, Loader, Shield, UserCheck,
+  Briefcase, UserCog, User2Icon, Calendar
 } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 import toast from 'react-hot-toast';
 
-// Constants for better maintainability
+// Enhanced role configuration with cards
 const ROLES = [
-  { value: 'ALL', label: 'All Users' },
-  { value: 'CUSTOMER', label: 'Customers' },
-  { value: 'WORKER', label: 'Workers' },
-  { value: 'SERVICE_AGENT', label: 'Service Agents' },
-  { value: 'ADMIN', label: 'Admins' }
+  {
+    value: 'ALL',
+    label: 'All Users',
+    icon: Users,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    description: 'Manage all platform users',
+    count: 0
+  },
+  {
+    value: 'CUSTOMER',
+    label: 'Customers',
+    icon: Users,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    description: 'Service consumers and clients',
+    count: 0
+  },
+  {
+    value: 'WORKER',
+    label: 'Workers',
+    icon: Briefcase,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    description: 'Service providers and professionals',
+    count: 0
+  },
+  {
+    value: 'SERVICE_AGENT',
+    label: 'Service Agents',
+    icon: UserCog,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    description: 'Service coordination and management',
+    count: 0
+  },
+  {
+    value: 'ADMIN',
+    label: 'Admins',
+    icon: Shield,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    description: 'Platform administrators',
+    count: 0
+  }
 ];
 
 const PAGE_SIZE = 10;
+
+// Mobile User Card Component
+const MobileUserCard = ({ user, onView, onStatusToggle, actionLoading, getRoleConfig }) => {
+  const roleConfig = getRoleConfig(user.role);
+  const RoleIcon = roleConfig.icon;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-all duration-200">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <RoleIcon className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-900 text-sm truncate">{user.name}</p>
+            <p className="text-xs text-gray-500 truncate mt-1">{user.email}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => onStatusToggle(user._id)}
+          disabled={actionLoading}
+          className={`p-2 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 ml-2 ${user.isActive
+              ? 'text-red-600 hover:bg-red-100'
+              : 'text-green-600 hover:bg-green-100'
+            }`}
+          title={user.isActive ? 'Deactivate' : 'Activate'}
+        >
+          {actionLoading ? (
+            <Loader className="w-4 h-4 animate-spin" />
+          ) : user.isActive ? (
+            <Ban className="w-4 h-4" />
+          ) : (
+            <CheckCircle className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="flex items-center space-x-1">
+          <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <span className="text-xs text-gray-600 truncate">{user.phone || 'N/A'}</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <span className="text-xs text-gray-600 truncate">{user.address?.city || 'N/A'}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}>
+            {roleConfig.label}
+          </span>
+          <div className="flex items-center space-x-1">
+            {user.isActive ? (
+              <CheckCircle className="w-3 h-3 text-green-500" />
+            ) : (
+              <XCircle className="w-3 h-3 text-red-500" />
+            )}
+            <span className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
+              {user.isActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onView(user)}
+          className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors flex-shrink-0 ml-2"
+        >
+          <Eye className="w-3 h-3" />
+          <span>View</span>
+        </button>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center space-x-1 text-xs text-gray-500">
+          <Calendar className="w-3 h-3" />
+          <span>Joined: {new Date(user.createdAt).toLocaleDateString('en-IN')}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// User Modal Component
+const UserModal = ({ user, onClose, onStatusToggle, actionLoading, getRoleConfig }) => {
+  if (!user) return null;
+
+  const roleConfig = getRoleConfig(user.role);
+  const RoleIcon = roleConfig.icon;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+      <div className="bg-white rounded-xl sm:rounded-2xl w-full max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+              <RoleIcon className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">{user.name}</h2>
+              <p className="text-sm text-gray-600">{user.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <XCircle className="w-6 h-6 text-gray-400" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</label>
+              <div className="mt-1">
+                <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${roleConfig.color}`}>
+                  {roleConfig.label}
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</label>
+              <div className="mt-1 flex items-center space-x-2">
+                {user.isActive ? (
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+                <span className={`font-medium text-sm ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                  {user.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Info */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Contact Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Phone</p>
+                  <p className="text-sm text-gray-600">{user.phone || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Location</p>
+                  <p className="text-sm text-gray-600">{user.address?.city || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Info */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Additional Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Member Since</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {new Date(user.createdAt).toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Last Updated</label>
+                <p className="mt-1 text-sm text-gray-900">
+                  {new Date(user.updatedAt).toLocaleDateString('en-IN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 p-4 sm:p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl sm:rounded-b-2xl">
+          <button
+            onClick={() => onStatusToggle(user._id)}
+            disabled={actionLoading}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${user.isActive
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-green-600 text-white hover:bg-green-700'
+              } disabled:opacity-50`}
+          >
+            {actionLoading ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : user.isActive ? (
+              <>
+                <Ban className="w-4 h-4" />
+                <span>Deactivate User</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                <span>Activate User</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminUserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -29,6 +289,43 @@ const AdminUserManagement = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [roleStats, setRoleStats] = useState({
+    ALL: 0,
+    CUSTOMER: 0,
+    WORKER: 0,
+    SERVICE_AGENT: 0,
+    ADMIN: 0
+  });
+  const [showRoleCards, setShowRoleCards] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Fetch role statistics separately
+  const fetchRoleStats = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get('/api/admin/stats');
+      console.log('Role stats response:', response);
+
+      if (response.data?.success) {
+        const stats = response.data.data;
+        setRoleStats(prev => ({
+          ...prev,
+          ...stats,
+          ALL: (stats.CUSTOMER || 0) + (stats.WORKER || 0) + (stats.SERVICE_AGENT || 0) + (stats.ADMIN || 0)
+        }));
+      } else {
+        // Fallback: calculate from users list if stats endpoint doesn't exist
+        console.warn('Stats endpoint not available, calculating from users list');
+      }
+    } catch (error) {
+      console.error('Error fetching role stats:', error);
+      // If stats endpoint fails, we'll calculate from users later
+    }
+  }, []);
+
+  // Fetch initial role statistics
+  useEffect(() => {
+    fetchRoleStats();
+  }, [fetchRoleStats]);
 
   // Debounced search implementation
   useEffect(() => {
@@ -62,10 +359,24 @@ const AdminUserManagement = () => {
       });
 
       const response = await axiosInstance.get(`/api/admin/users?${params}`);
+      console.log('Users response:', response);
 
       if (response.data?.success) {
-        setUsers(response.data.data.users || []);
-        setTotalPages(response.data.data.pagination?.pages || 1);
+        const usersData = response.data.data.users || [];
+        const paginationData = response.data.data.pagination || {};
+
+        setUsers(usersData);
+        setTotalPages(paginationData.pages || 1);
+
+        // Update role statistics if available in response
+        if (response.data.data.roleStats) {
+          const stats = response.data.data.roleStats;
+          setRoleStats(prev => ({
+            ...prev,
+            ...stats,
+            ALL: (stats.CUSTOMER || 0) + (stats.WORKER || 0) + (stats.SERVICE_AGENT || 0) + (stats.ADMIN || 0)
+          }));
+        }
       } else {
         throw new Error('Invalid response format');
       }
@@ -76,6 +387,23 @@ const AdminUserManagement = () => {
       setUsers([]);
     } finally {
       setLoading(false);
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    setSearchLoading(true);
+    setCurrentPage(1);
+    fetchUsers();
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
     }
   };
 
@@ -97,6 +425,7 @@ const AdminUserManagement = () => {
         if (response.data?.success) {
           toast.success(`User ${!user.isActive ? 'activated' : 'deactivated'} successfully`);
           await fetchUsers(); // Refresh the list
+          await fetchRoleStats(); // Refresh stats
           if (selectedUser?._id === userId) {
             setSelectedUser(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
           }
@@ -113,12 +442,16 @@ const AdminUserManagement = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   const handleRoleFilter = (role) => {
     setRoleFilter(role);
+    setShowRoleCards(false);
+    setCurrentPage(1);
+  };
+
+  const handleShowAllRoles = () => {
+    setRoleFilter('ALL');
+    setShowRoleCards(true);
+    setCurrentPage(1);
   };
 
   const formatDate = (dateString) => {
@@ -144,16 +477,16 @@ const AdminUserManagement = () => {
       },
       'SERVICE_AGENT': {
         color: 'bg-blue-100 text-blue-800 border-blue-200',
-        icon: UserCheck,
+        icon: UserCog,
         label: 'Service Agent'
       },
       'WORKER': {
         color: 'bg-green-100 text-green-800 border-green-200',
-        icon: Users,
+        icon: Briefcase,
         label: 'Worker'
       },
       'CUSTOMER': {
-        color: 'bg-gray-100 text-gray-800 border-gray-200',
+        color: 'bg-purple-100 text-purple-800 border-purple-200',
         icon: Users,
         label: 'Customer'
       }
@@ -161,232 +494,45 @@ const AdminUserManagement = () => {
     return configs[role] || configs.CUSTOMER;
   }, []);
 
-  const UserModal = () => {
-    if (!selectedUser) return null;
-
-    const roleConfig = getRoleConfig(selectedUser.role);
-    const RoleIcon = roleConfig.icon;
-
-    const handleClose = () => {
-      if (!actionLoading) {
-        setShowUserModal(false);
-        setSelectedUser(null);
-      }
-    };
-
+  // Role Cards Component with proper counts
+  const RoleCards = () => {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-2xl w-full max-h-[95vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">User Details</h2>
-            <button
-              onClick={handleClose}
-              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-              disabled={actionLoading}
-              aria-label="Close modal"
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        {ROLES.map((role) => {
+          const RoleIcon = role.icon;
+          const count = roleStats[role.value] || 0;
+          const isActive = roleFilter === role.value;
+
+          return (
+            <div
+              key={role.value}
+              onClick={() => handleRoleFilter(role.value)}
+              className={`bg-white rounded-lg sm:rounded-xl border-2 p-3 sm:p-4 cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105 ${isActive
+                  ? 'border-blue-500 ring-2 ring-blue-200'
+                  : 'border-gray-200 hover:border-gray-300'
+                }`}
             >
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-          </div>
-
-          <div className="space-y-4 sm:space-y-6">
-            {/* User Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <RoleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 break-words">
-                  {selectedUser.name || 'Unknown User'}
-                </h3>
-                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 mt-1 sm:mt-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}>
-                    {roleConfig.label}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    {selectedUser.isVerified && (
-                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
-                    )}
-                    <span className="text-xs text-gray-500">
-                      {selectedUser.isVerified ? 'Verified' : 'Not Verified'}
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg ${role.color.split(' ')[0]}`}>
+                  <RoleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-current" />
                 </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600">Email</p>
-                  <p className="font-medium text-sm sm:text-base truncate">{selectedUser.email || 'N/A'}</p>
+                <div className="text-right">
+                  <div className="text-xl sm:text-2xl font-bold text-gray-900">{count}</div>
+                  <div className="text-xs text-gray-500">users</div>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-600">Phone</p>
-                  <p className="font-medium text-sm sm:text-base">{selectedUser.phone || 'N/A'}</p>
-                </div>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-xs sm:text-sm mb-1">{role.label}</h3>
+              <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{role.description}</p>
 
-              {selectedUser.address && (
-                <div className="flex items-start space-x-2 sm:space-x-3 md:col-span-2">
-                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-600">Address</p>
-                    <p className="font-medium text-sm sm:text-base break-words">
-                      {[
-                        selectedUser.address.houseNo,
-                        selectedUser.address.street,
-                        selectedUser.address.area,
-                        selectedUser.address.city,
-                        selectedUser.address.state,
-                        selectedUser.address.pincode
-                      ].filter(Boolean).join(', ')}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Status Section */}
-            <div className="border-t pt-3 sm:pt-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Account Status</p>
-                  <div className="flex items-center space-x-2 mt-1">
-                    {selectedUser.isActive ? (
-                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                    ) : (
-                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-                    )}
-                    <span className={`font-medium text-sm sm:text-base ${selectedUser.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                      {selectedUser.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleUserAction(selectedUser._id, 'toggleStatus')}
-                  disabled={actionLoading}
-                  className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium transition-colors text-sm flex items-center justify-center min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${selectedUser.isActive
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                >
-                  {actionLoading ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : selectedUser.isActive ? (
-                    'Deactivate'
-                  ) : (
-                    'Activate'
-                  )}
+              <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
+                <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                  View Details →
                 </button>
               </div>
             </div>
-
-            {/* Account Information */}
-            <div className="border-t pt-3 sm:pt-4">
-              <p className="text-xs sm:text-sm text-gray-600 mb-2">Account Information</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-                <div>
-                  <span className="text-gray-500">Joined:</span>
-                  <span className="ml-2 font-medium">{formatDate(selectedUser.createdAt)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Last Updated:</span>
-                  <span className="ml-2 font-medium">{formatDate(selectedUser.updatedAt)}</span>
-                </div>
-                <div className="sm:col-span-2">
-                  <span className="text-gray-500">User ID:</span>
-                  <span className="ml-2 font-medium font-mono text-xs break-all">{selectedUser._id}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Mobile User Card Component
-  const MobileUserCard = ({ user }) => {
-    const roleConfig = getRoleConfig(user.role);
-    const RoleIcon = roleConfig.icon;
-
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <RoleIcon className="w-4 h-4 text-white" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-gray-900 text-sm truncate">{user.name}</h3>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            </div>
-          </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}>
-            {roleConfig.label}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-gray-500">Phone:</span>
-            <p className="font-medium text-gray-900 truncate">{user.phone || 'N/A'}</p>
-          </div>
-          <div>
-            <span className="text-gray-500">Location:</span>
-            <p className="font-medium text-gray-900 truncate">{user.address?.city || 'N/A'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div className="flex items-center space-x-2">
-            {user.isActive ? (
-              <CheckCircle className="w-3 h-3 text-green-500" />
-            ) : (
-              <XCircle className="w-3 h-3 text-red-500" />
-            )}
-            <span className={`text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
-              {user.isActive ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => {
-                setSelectedUser(user);
-                setShowUserModal(true);
-              }}
-              className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-              title="View Details"
-            >
-              <Eye className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => handleUserAction(user._id, 'toggleStatus')}
-              disabled={actionLoading}
-              className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${user.isActive
-                  ? 'text-red-600 hover:bg-red-100'
-                  : 'text-green-600 hover:bg-green-100'
-                }`}
-              title={user.isActive ? 'Deactivate' : 'Activate'}
-            >
-              {actionLoading ? (
-                <Loader className="w-3 h-3 animate-spin" />
-              ) : user.isActive ? (
-                <Ban className="w-3 h-3" />
-              ) : (
-                <CheckCircle className="w-3 h-3" />
-              )}
-            </button>
-          </div>
-        </div>
+          );
+        })}
       </div>
     );
   };
@@ -408,52 +554,88 @@ const AdminUserManagement = () => {
   ), []);
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">User Management</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">User Management</h1>
           <p className="text-sm text-gray-600 mt-1">Manage all platform users</p>
         </div>
-        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
-          <Users className="w-4 h-4" />
-          <span>Total: {users.length} users</span>
+        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
+          <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span>Total: {roleStats['ALL'] || 0} users</span>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
+      {/* Role Cards - Show when no specific role is selected or when showing all */}
+      {showRoleCards && roleFilter === 'ALL' && <RoleCards />}
+
+      {/* Filters Section */}
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search Area */}
+          <div className="flex-1 flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search users by name, email, or phone..."
                 value={searchTerm}
                 onChange={handleSearch}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                onKeyPress={handleKeyPress}
+                className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 aria-label="Search users"
               />
             </div>
+            <button
+              onClick={handleSearchSubmit}
+              disabled={searchLoading}
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base font-medium flex items-center justify-center min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {searchLoading ? (
+                <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              ) : (
+                <>
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  <span className="hidden xs:inline">Search</span>
+                  <span className="xs:hidden">Go</span>
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Role Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <select
-              value={roleFilter}
-              onChange={(e) => handleRoleFilter(e.target.value)}
-              className="flex-1 sm:flex-none px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm w-full sm:w-48"
-              aria-label="Filter by role"
-            >
-              {ROLES.map(role => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
-                </option>
-              ))}
-            </select>
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Role Filter */}
+            <div className="flex items-center space-x-2 flex-1">
+              <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <select
+                value={roleFilter}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setRoleFilter(value);
+                  setShowRoleCards(value === 'ALL');
+                }}
+                className="flex-1 px-3 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base w-full"
+                aria-label="Filter by role"
+              >
+                {ROLES.map(role => (
+                  <option key={role.value} value={role.value}>
+                    {role.label} ({roleStats[role.value] || 0})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Show All Roles Button */}
+            {roleFilter !== 'ALL' && (
+              <button
+                onClick={handleShowAllRoles}
+                className="px-4 py-2.5 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base font-medium whitespace-nowrap"
+              >
+                Show All
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -465,21 +647,31 @@ const AdminUserManagement = () => {
             {/* Mobile View */}
             <div className="sm:hidden space-y-3 p-4">
               {users.map((user) => (
-                <MobileUserCard key={user._id} user={user} />
+                <MobileUserCard
+                  key={user._id}
+                  user={user}
+                  onView={(user) => {
+                    setSelectedUser(user);
+                    setShowUserModal(true);
+                  }}
+                  onStatusToggle={handleUserAction}
+                  actionLoading={actionLoading}
+                  getRoleConfig={getRoleConfig}
+                />
               ))}
             </div>
 
             {/* Desktop Table View */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Joined</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">User</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Role</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Contact</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Joined</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -489,7 +681,7 @@ const AdminUserManagement = () => {
 
                     return (
                       <tr key={user._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                               <RoleIcon className="w-5 h-5 text-white" />
@@ -500,18 +692,18 @@ const AdminUserManagement = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}>
                             {roleConfig.label}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="text-sm">
                             <p className="text-gray-900">{user.phone || 'N/A'}</p>
-                            <p className="text-gray-500 truncate">{user.address?.city || 'N/A'}</p>
+                            <p className="text-gray-500 truncate max-w-[150px]">{user.address?.city || 'N/A'}</p>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center space-x-2">
                             {user.isActive ? (
                               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -523,10 +715,10 @@ const AdminUserManagement = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
                           {formatDate(user.createdAt)}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => {
@@ -537,7 +729,7 @@ const AdminUserManagement = () => {
                               aria-label={`View ${user.name}'s details`}
                             >
                               <Eye className="w-4 h-4" />
-                              <span>View</span>
+                              <span className="hidden md:inline">View</span>
                             </button>
                             <button
                               onClick={() => handleUserAction(user._id, 'toggleStatus')}
@@ -570,9 +762,9 @@ const AdminUserManagement = () => {
 
         {/* Pagination */}
         {users.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 gap-3">
-            <p className="text-xs text-gray-700">
-              Showing page {currentPage} of {totalPages}
+          <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 bg-gray-50 border-t border-gray-200 gap-3">
+            <p className="text-xs sm:text-sm text-gray-700">
+              Showing page {currentPage} of {totalPages} • {users.length} users
             </p>
             <div className="flex items-center space-x-2">
               <button
@@ -581,25 +773,51 @@ const AdminUserManagement = () => {
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 aria-label="Previous page"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-              <span className="text-sm text-gray-700 px-2 min-w-[20px] text-center">
-                {currentPage}
-              </span>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                {totalPages > 5 && (
+                  <span className="px-2 text-gray-500">...</span>
+                )}
+              </div>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 aria-label="Next page"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {showUserModal && <UserModal />}
+      {/* User Modal */}
+      {showUserModal && (
+        <UserModal
+          user={selectedUser}
+          onClose={() => setShowUserModal(false)}
+          onStatusToggle={handleUserAction}
+          actionLoading={actionLoading}
+          getRoleConfig={getRoleConfig}
+        />
+      )}
     </div>
   );
 };

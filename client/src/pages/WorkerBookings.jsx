@@ -23,7 +23,6 @@ import {
     Play,
     Square,
     CreditCard,
-    DollarSign,
     Edit,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";

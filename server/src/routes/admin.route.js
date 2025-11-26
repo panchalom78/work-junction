@@ -13,7 +13,14 @@ import {
     getServiceAgents,
     updateUserStatus,
     updateWorkerVerification,
-    getAnalytics
+    
+    getUserRoleStats,
+    getWorkerStats,
+    getWorkers,
+    updateWorkerStatus,
+    getAllSkills,
+    getAllSkillsWithServices,
+    getServicesBySkill
 } from "../controllers/admin.controller.js";
 import {
     getAvailableAreas,
@@ -24,9 +31,10 @@ import {
     updateServiceAgent,
     deleteServiceAgent,
     hardDeleteServiceAgent,
-    reactivateServiceAgent
+    reactivateServiceAgent,
 } from '../controllers/adminManage.controller.js';
 import { protect, authorize } from "../middlewares/auth.middleware.js";
+import { getAdminAnalytics } from '../controllers/analytics.controller.js';
 
 // Apply admin protection to all routes
 router.use(protect, authorize("ADMIN"));
@@ -34,7 +42,7 @@ router.use(protect, authorize("ADMIN"));
 // Dashboard routes
 router.get("/dashboard/stats", getDashboardStats);
 router.get("/dashboard/activities", getRecentActivities);
-router.get("/dashboard/analytics", getAnalytics);
+router.get("/stats", getUserRoleStats);
 
 // User management routes
 router.get("/users", getAllUsers);
@@ -51,6 +59,11 @@ router.get("/bookings", getAllBookings);
 // Payment management routes
 router.get("/payments", getAllPayments);
 
+// Worker management routes
+router.get("/workers/stats", getWorkerStats);
+router.get("/workers", getWorkers);
+router.put("/workers/:workerId/status", updateWorkerStatus);
+
 // Service agent routes
 router.get("/service-agents", getServiceAgents);
 router.get("/service-agents/:agentId", getServiceAgentById);
@@ -62,5 +75,13 @@ router.put("/service-agents/:agentId", updateServiceAgent);
 router.delete("/service-agents/:agentId", deleteServiceAgent);
 router.delete("/service-agents/:agentId/hard", hardDeleteServiceAgent);
 router.patch("/service-agents/:agentId/reactivate", reactivateServiceAgent);
+
+router.get('/skills-services', getAllSkillsWithServices);
+router.get('/skills', getAllSkills);
+router.get('/:skillId/services', getServicesBySkill);
+
+
+
+router.get('/analytics', getAdminAnalytics);
 
 export default router;

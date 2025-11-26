@@ -7,7 +7,7 @@ import {
     Phone,
     Mail,
     User,
-    DollarSign,
+    IndianRupee ,
     MessageSquare,
     XCircle,
     CheckCircle,

@@ -8,7 +8,7 @@ import {
     Clock,
     Award,
     Calendar,
-    DollarSign,
+    IndianRupee ,
     CheckCircle,
     X,
     ChevronLeft,
@@ -234,7 +234,7 @@ const WorkerProfile = () => {
 
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
-                                        <DollarSign className="w-5 h-5 text-green-500" />
+                                        <IndianRupee  className="w-5 h-5 text-green-500" />
                                         <span className="font-semibold">
                                             Total Earned
                                         </span>
@@ -398,7 +398,7 @@ const WorkerProfile = () => {
                                                                 </span>
                                                             </span>
                                                             <span className="flex items-center space-x-1">
-                                                                <DollarSign className="w-4 h-4" />
+                                                                <IndianRupee  className="w-4 h-4" />
                                                                 <span>
                                                                     {formatPrice(
                                                                         service.price,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
     TrendingUp,
-    DollarSign,
+    IndianRupee ,
     CheckCircle,
     Star,
     Clock,
@@ -128,7 +128,7 @@ const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatsCard
-                    icon={DollarSign}
+                    icon={IndianRupee }
                     label="Total Earnings"
                     value={`₹${workerData.earnings?.toLocaleString() || 0}`}
                     color="green"
@@ -218,7 +218,7 @@ const Overview = ({ onShowServiceModal, onSetActiveTab }) => {
 
                         {workerData.earningsData.length === 0 ? (
                             <div className="text-center py-12">
-                                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <IndianRupee  className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                 <p className="text-gray-500">
                                     No earnings data available yet
                                 </p>

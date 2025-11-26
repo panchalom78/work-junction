@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Users, CheckCircle, Clock, AlertCircle,
-  Settings, DollarSign, MapPin, Filter, Search,
+  Settings, IndianRupee , MapPin, Filter, Search,
   Menu, X, ChevronDown, Bell, User, LogOut,
   TrendingUp, Shield, FileText, Calendar
 } from 'lucide-react';
@@ -13,12 +13,13 @@ import { useAuthStore } from '../store/auth.store';
 // Import admin components
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminUserManagement from '../components/admin/AdminUserManagement';
-import AdminVerification from '../components/admin/AdminVerification';
+// import AdminVerification from '../components/admin/AdminVerification';
 import AdminBookings from '../components/admin/AdminBookings';
 import AdminPayments from '../components/admin/AdminPayments';
 import AdminServiceAgents from '../components/admin/AdminServiceAgents';
 import AdminReports from '../components/admin/AdminReports';
-import AdminSettings from '../components/admin/AdminSettings'
+import AdminSettings from '../components/admin/AdminSettings';
+import AreaWiseWorkerManagement from '../components/admin/AreaWiseWorkerManagement';
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -32,7 +33,7 @@ const AdminDashboard = () => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      
+
       if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
       } else {
@@ -93,6 +94,8 @@ const AdminDashboard = () => {
         return <AdminPayments />;
       case 'agents':
         return <AdminServiceAgents />;
+      case 'area-workers':
+        return <AreaWiseWorkerManagement />;
       case 'reports':
         return <AdminReports />;
       case 'settings':
@@ -106,10 +109,10 @@ const AdminDashboard = () => {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'verification', label: 'Verification', icon: Shield },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
-    { id: 'payments', label: 'Payments', icon: DollarSign },
+    { id: 'payments', label: 'Payments', icon: IndianRupee  },
     { id: 'agents', label: 'Service Agents', icon: MapPin },
+    { id: 'area-workers', label: 'Area Workers', icon: Users },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -156,7 +159,7 @@ const AdminDashboard = () => {
           },
         }}
       />
-      
+
       {/* Top Navigation */}
       <nav className="fixed w-full z-50 bg-white/95 backdrop-blur-lg border-b border-gray-200">
         <div className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
@@ -188,7 +191,7 @@ const AdminDashboard = () => {
             <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
               {/* Notifications */}
               <div className="relative">
-                <button 
+                <button
                   className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
                   aria-label="Notifications"
                 >
@@ -200,7 +203,7 @@ const AdminDashboard = () => {
               {/* User Menu */}
               <div className="relative">
                 <div className="relative group">
-                  <button 
+                  <button
                     className="flex items-center space-x-1 sm:space-x-2 p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-colors"
                     aria-label="User menu"
                   >
@@ -260,29 +263,24 @@ const AdminDashboard = () => {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id)}
-                    className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 text-sm sm:text-base ${
-                      activeTab === item.id
+                    className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 text-sm sm:text-base ${activeTab === item.id
                         ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600 border border-blue-100 shadow-sm'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <item.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
                     <span className="font-medium text-left">{item.label}</span>
                   </button>
                 ))}
               </div>
-
-              {/* Quick Stats Section - Hidden on mobile for better space utilization */}
-             
             </div>
           </div>
         )}
 
         {/* Main Content */}
-        <div 
-          className={` transition-all duration-300 min-h-screen ${
-            sidebarOpen ? '' : 'ml-0'
-          }`}
+        <div
+          className={` transition-all duration-300 min-h-screen ${sidebarOpen ? '' : 'ml-0'
+            }`}
         >
           <div className="p-3 sm:p-4 lg:p-6">
             {/* Mobile Header for Current Section */}
@@ -293,7 +291,7 @@ const AdminDashboard = () => {
                 </h1>
               </div>
             )}
-            
+
             {/* Active Component */}
             <div className={isMobile ? 'space-y-4' : 'space-y-6'}>
               {renderActiveComponent()}
@@ -310,7 +308,7 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* Mobile Bottom Navigation - Alternative for better mobile experience */}
+      {/* Mobile Bottom Navigation */}
       {isMobile && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 lg:hidden">
           <div className="flex overflow-x-auto py-2 px-1">
@@ -318,11 +316,10 @@ const AdminDashboard = () => {
               <button
                 key={item.id}
                 onClick={() => handleTabChange(item.id)}
-                className={`flex flex-col items-center p-2 min-w-16 rounded-lg transition-colors flex-1 mx-1 ${
-                  activeTab === item.id
+                className={`flex flex-col items-center p-2 min-w-16 rounded-lg transition-colors flex-1 mx-1 ${activeTab === item.id
                     ? 'text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <item.icon className="w-4 h-4 mb-1" />
                 <span className="text-xs font-medium truncate max-w-full">

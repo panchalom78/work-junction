@@ -12,7 +12,7 @@ import {
 
 const router = express.Router();
 router.use(protect);
-// Dashboard stats
+// Dashboard stat
 router.get('/stats', getAgentDashboardStats);
 
 // Agent profile

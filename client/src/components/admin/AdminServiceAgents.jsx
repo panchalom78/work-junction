@@ -132,73 +132,92 @@ const AdminServiceAgents = () => {
   const getStatusBadge = (agent) => {
     if (!agent.serviceAgentProfile?.assignedArea) {
       return (
-        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full border border-yellow-200">
+        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full border border-yellow-200 whitespace-nowrap">
           Unassigned
         </span>
       );
     }
     if (agent.serviceAgentProfile?.isSuspended) {
       return (
-        <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full border border-red-200">
+        <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full border border-red-200 whitespace-nowrap">
           Suspended
         </span>
       );
     }
     return (
-      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
+      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full border border-green-200 whitespace-nowrap">
         Active
       </span>
     );
   };
 
-  // Mobile Actions Menu Component
+  // Enhanced Mobile Actions Menu Component
   const MobileActionsMenu = ({ agent, onClose }) => {
+    useEffect(() => {
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = 'unset';
+      };
+    }, []);
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-4 sm:hidden">
-        <div className="bg-white rounded-t-2xl w-full max-w-md mx-auto animate-slide-up">
-          <div className="p-4 border-b border-gray-200">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 p-2 sm:hidden">
+        <div className="bg-white rounded-t-2xl w-full max-w-md mx-auto animate-slide-up max-h-[80vh] overflow-hidden">
+          <div className="p-4 border-b border-gray-200 sticky top-0 bg-white">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Actions</h3>
-              <button onClick={onClose} className="p-1">
-                <X className="w-5 h-5" />
+              <h3 className="font-semibold text-gray-900 text-base">Actions</h3>
+              <button 
+                onClick={onClose} 
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
           </div>
-          <div className="p-2">
+          <div className="p-2 overflow-y-auto">
             <button
               onClick={() => {
                 setSelectedAgent(agent);
                 setShowAgentModal(true);
                 onClose();
               }}
-              className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
             >
-              <Eye className="w-5 h-5 text-blue-600" />
-              <span>View Details</span>
+              <Eye className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <span className="text-left">View Details</span>
             </button>
             <button
               onClick={() => handleEditAgent(agent)}
-              className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
             >
-              <Edit className="w-5 h-5 text-green-600" />
-              <span>Edit Agent</span>
+              <Edit className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <span className="text-left">Edit Agent</span>
             </button>
             {!agent.serviceAgentProfile?.assignedArea && (
               <button
                 onClick={() => handleAssignArea(agent)}
-                className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                className="w-full flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm"
               >
-                <MapPin className="w-5 h-5 text-purple-600" />
-                <span>Assign Area</span>
+                <MapPin className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                <span className="text-left">Assign Area</span>
               </button>
             )}
+          </div>
+          <div className="p-3 border-t border-gray-200 sticky bottom-0 bg-white">
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm font-medium"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </div>
     );
   };
 
-  // Edit Agent Modal Component
+  // Enhanced Edit Agent Modal Component
   const EditAgentModal = ({ agent, onClose, onUpdate }) => {
     const [formData, setFormData] = useState({
       name: '',
@@ -329,14 +348,14 @@ const AdminServiceAgents = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
         <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-4xl w-full max-h-[95vh] overflow-y-auto mx-2">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Edit Service Agent</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Update agent details and settings</p>
+          <div className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white pb-4 border-b border-gray-200">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">Edit Service Agent</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">Update agent details and settings</p>
             </div>
             <button
               onClick={onClose}
-              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
             >
               <X className="w-5 h-5" />
             </button>
@@ -346,8 +365,8 @@ const AdminServiceAgents = () => {
             {/* Basic Information */}
             <div className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center space-x-2">
-                <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Basic Information</span>
+                <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="truncate">Basic Information</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -438,8 +457,8 @@ const AdminServiceAgents = () => {
             {/* Address Information */}
             <div className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center space-x-2">
-                <Building className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Address Information</span>
+                <Building className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="truncate">Address Information</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -526,8 +545,8 @@ const AdminServiceAgents = () => {
             {/* Service Agent Settings */}
             <div className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center space-x-2">
-                <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Service Agent Settings</span>
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="truncate">Service Agent Settings</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -643,11 +662,11 @@ const AdminServiceAgents = () => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
               <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 max-w-md w-full mx-4">
                 <div className="flex items-center space-x-3 mb-3 sm:mb-4">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                   </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">Delete Service Agent</h3>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">Delete Service Agent</h3>
                     <p className="text-xs sm:text-sm text-gray-600">This action cannot be undone</p>
                   </div>
                 </div>
@@ -685,17 +704,17 @@ const AdminServiceAgents = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
         <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-2xl w-full max-h-[95vh] overflow-y-auto mx-2">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Assign Service Area</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Select an area for {selectedAgent.name}</p>
+          <div className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white pb-4 border-b border-gray-200">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">Assign Service Area</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">Select an area for {selectedAgent.name}</p>
             </div>
             <button
               onClick={() => {
                 setShowAreaAssignment(false);
                 setSelectedArea('');
               }}
-              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
             >
               <X className="w-5 h-5" />
             </button>
@@ -703,23 +722,23 @@ const AdminServiceAgents = () => {
 
           <div className="bg-blue-50 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                 <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{selectedAgent.name}</h3>
                 <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2">
                   <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                    <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <Phone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="truncate">{selectedAgent.phone}</span>
                   </div>
                   <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                    <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="truncate">{selectedAgent.email}</span>
                   </div>
                   {selectedAgent.address && (
                     <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="truncate">{selectedAgent.address.city}, {selectedAgent.address.pincode}</span>
                     </div>
                   )}
@@ -731,8 +750,8 @@ const AdminServiceAgents = () => {
           {selectedAgent.address && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
               <div className="flex items-start space-x-2 sm:space-x-3">
-                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mt-0.5" />
-                <div className="flex-1">
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-yellow-800 text-sm sm:text-base">Location-based Suggestion</h4>
                   <p className="text-xs sm:text-sm text-yellow-700 mt-1">
                     Based on agent's address in {selectedAgent.address.city}, we recommend areas near pincode {selectedAgent.address.pincode}
@@ -772,15 +791,15 @@ const AdminServiceAgents = () => {
                           ) : (
                             <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-gray-300 rounded-full flex-shrink-0" />
                           )}
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <h4 className="font-medium text-gray-900 text-sm sm:text-base truncate">{area.name}</h4>
                             <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 sm:space-x-4 mt-1">
                               <span className="text-xs sm:text-sm text-gray-600">Pincode: {area.pincode}</span>
                               <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                                <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <Users className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                                 <span>{area.agentCount} agents</span>
                               </div>
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${area.status === 'active'
+                              <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${area.status === 'active'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
                                 }`}>
@@ -797,7 +816,7 @@ const AdminServiceAgents = () => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6 sticky bottom-0 bg-white">
             <button
               onClick={() => {
                 setShowAreaAssignment(false);
@@ -836,14 +855,14 @@ const AdminServiceAgents = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
         <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-6 max-w-2xl w-full max-h-[95vh] overflow-y-auto mx-2">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Service Agent Details</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Complete profile information</p>
+          <div className="flex items-center justify-between mb-4 sm:mb-6 sticky top-0 bg-white pb-4 border-b border-gray-200">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">Service Agent Details</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 truncate">Complete profile information</p>
             </div>
             <button
               onClick={() => setShowAgentModal(false)}
-              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
             >
               <X className="w-5 h-5" />
             </button>
@@ -852,23 +871,23 @@ const AdminServiceAgents = () => {
           <div className="space-y-4 sm:space-y-6">
             <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4">
               <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{selectedAgent.name}</h3>
                   <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2">
                     <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                      <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <Phone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="truncate">{selectedAgent.phone}</span>
                     </div>
                     <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
-                      <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                       <span className="truncate">{selectedAgent.email}</span>
                     </div>
                   </div>
                 </div>
-                <div className="px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                <div className="px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
                   <div className="flex items-center space-x-1">
                     <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>SERVICE_AGENT</span>
@@ -886,7 +905,7 @@ const AdminServiceAgents = () => {
                       setShowAgentModal(false);
                       handleAssignArea(selectedAgent);
                     }}
-                    className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-600 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                    className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-600 text-white text-xs sm:text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 whitespace-nowrap"
                   >
                     <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>Assign Area</span>
@@ -894,7 +913,7 @@ const AdminServiceAgents = () => {
                 )}
               </div>
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
                     {selectedAgent.serviceAgentProfile?.assignedArea || 'Not Assigned'}
@@ -911,9 +930,9 @@ const AdminServiceAgents = () => {
                   <p className="text-xs sm:text-sm text-gray-600">Account Status</p>
                   <div className="flex items-center space-x-2 mt-1">
                     {selectedAgent.isActive ? (
-                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
                     ) : (
-                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
                     )}
                     <span className={`font-medium text-sm sm:text-base ${selectedAgent.isActive ? 'text-green-600' : 'text-red-600'}`}>
                       {selectedAgent.isActive ? 'Active' : 'Inactive'}
@@ -925,12 +944,12 @@ const AdminServiceAgents = () => {
                   <div className="flex items-center space-x-2 mt-1">
                     {selectedAgent.serviceAgentProfile?.isSuspended ? (
                       <>
-                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
                         <span className="font-medium text-sm sm:text-base text-red-600">Suspended</span>
                       </>
                     ) : (
                       <>
-                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
                         <span className="font-medium text-sm sm:text-base text-green-600">Active</span>
                       </>
                     )}
@@ -943,7 +962,7 @@ const AdminServiceAgents = () => {
               <div className="border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4">
                 <h4 className="font-semibold text-gray-900 text-sm sm:text-base mb-2 sm:mb-3">Registered Address</h4>
                 <div className="flex items-start space-x-2 sm:space-x-3">
-                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-1" />
+                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 text-sm sm:text-base">
                       {selectedAgent.address.houseNo} {selectedAgent.address.street}, {selectedAgent.address.area}
@@ -967,9 +986,9 @@ const AdminServiceAgents = () => {
                   <p className="text-xs sm:text-sm text-gray-600">Email Verified</p>
                   <div className="flex items-center space-x-2 mt-1">
                     {selectedAgent.isVerified ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                     ) : (
-                      <XCircle className="w-4 h-4 text-red-500" />
+                      <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
                     )}
                     <span className={`font-medium text-sm sm:text-base ${selectedAgent.isVerified ? 'text-green-600' : 'text-red-600'}`}>
                       {selectedAgent.isVerified ? 'Verified' : 'Not Verified'}
@@ -1007,61 +1026,61 @@ const AdminServiceAgents = () => {
     <div className="space-y-4 sm:space-y-6 p-2 sm:p-4">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Service Agents</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage service agents and their assigned areas</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Service Agents</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage service agents and their assigned areas</p>
         </div>
       </div>
 
-      {/* Stats - Improved mobile layout */}
+      {/* Stats - Enhanced mobile layout */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 p-3 sm:p-4">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-100 rounded-lg sm:rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <Users className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
             </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900">{agents.length}</p>
-              <p className="text-xs sm:text-sm text-gray-600">Total Agents</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{agents.length}</p>
+              <p className="text-xs sm:text-sm text-gray-600 truncate">Total Agents</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 p-3 sm:p-4">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 rounded-lg sm:rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <CheckCircle className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />
             </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                 {agents.filter(a => a.serviceAgentProfile?.assignedArea).length}
               </p>
-              <p className="text-xs sm:text-sm text-gray-600">Assigned</p>
+              <p className="text-xs sm:text-sm text-gray-600 truncate">Assigned</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 p-3 sm:p-4">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg sm:rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <MapPin className="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" />
             </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                 {agents.filter(a => !a.serviceAgentProfile?.assignedArea).length}
               </p>
-              <p className="text-xs sm:text-sm text-gray-600">Unassigned</p>
+              <p className="text-xs sm:text-sm text-gray-600 truncate">Unassigned</p>
             </div>
           </div>
         </div>
         <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 p-3 sm:p-4">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-red-100 rounded-lg sm:rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-red-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <AlertCircle className="w-4 h-4 sm:w-6 sm:h-6 text-red-600" />
             </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
                 {agents.filter(a => a.serviceAgentProfile?.isSuspended).length}
               </p>
-              <p className="text-xs sm:text-sm text-gray-600">Suspended</p>
+              <p className="text-xs sm:text-sm text-gray-600 truncate">Suspended</p>
             </div>
           </div>
         </div>
@@ -1071,7 +1090,7 @@ const AdminServiceAgents = () => {
       <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 p-3 sm:p-6">
         <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
           {/* Search */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="relative">
               <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -1099,12 +1118,12 @@ const AdminServiceAgents = () => {
               <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Agent</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Contact</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Assigned Area</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Joined</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Agent</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Contact</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Assigned Area</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Joined</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1123,7 +1142,7 @@ const AdminServiceAgents = () => {
                       <tr key={agent._id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                               <User className="w-5 h-5 text-white" />
                             </div>
                             <div className="min-w-0">
@@ -1134,13 +1153,13 @@ const AdminServiceAgents = () => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm">
-                            <p className="text-gray-900">{agent.phone}</p>
+                            <p className="text-gray-900 truncate">{agent.phone}</p>
                             <p className="text-gray-500 truncate">{agent.address?.city || 'N/A'}</p>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
-                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                             <span className="text-sm text-gray-900 truncate">
                               {agent.serviceAgentProfile?.assignedArea || 'Not Assigned'}
                             </span>
@@ -1149,7 +1168,7 @@ const AdminServiceAgents = () => {
                         <td className="px-6 py-4">
                           {getStatusBadge(agent)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                           {formatDate(agent.createdAt)}
                         </td>
                         <td className="px-6 py-4">
@@ -1201,46 +1220,46 @@ const AdminServiceAgents = () => {
                 agents.map((agent) => (
                   <div key={agent._id} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
                           <User className="w-5 h-5 text-white" />
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{agent.name}</p>
-                          <p className="text-sm text-gray-500">{agent.email}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 truncate">{agent.name}</p>
+                          <p className="text-sm text-gray-500 truncate">{agent.email}</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setMobileMenuOpen(agent._id)}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0 ml-2"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-400" />
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-gray-600">Phone</p>
-                        <p className="font-medium text-gray-900">{agent.phone}</p>
+                        <p className="font-medium text-gray-900 truncate">{agent.phone}</p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-gray-600">City</p>
-                        <p className="font-medium text-gray-900">{agent.address?.city || 'N/A'}</p>
+                        <p className="font-medium text-gray-900 truncate">{agent.address?.city || 'N/A'}</p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-gray-600">Area</p>
                         <p className="font-medium text-gray-900 truncate">
                           {agent.serviceAgentProfile?.assignedArea || 'Not Assigned'}
                         </p>
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-gray-600">Status</p>
                         {getStatusBadge(agent)}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 truncate">
                         Joined {formatDate(agent.createdAt)}
                       </p>
                     </div>
@@ -1251,7 +1270,7 @@ const AdminServiceAgents = () => {
 
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row items-center justify-between px-3 py-3 sm:px-6 sm:py-4 bg-gray-50 border-t border-gray-200 gap-3">
-              <p className="text-xs sm:text-sm text-gray-700">
+              <p className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">
                 Showing page {currentPage} of {totalPages}
               </p>
               <div className="flex items-center space-x-2">

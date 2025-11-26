@@ -1,4 +1,5 @@
 import User from "../models/user.model.js";
+import { Skill } from "../models/skill.model.js";
 import { Booking } from "../models/booking.model.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { Parser } from "json2csv";
@@ -591,242 +592,545 @@ export const getAnalytics = async (req, res) => {
         return errorResponse(res, 500, "Failed to fetch analytics");
     }
 };
+
+// Get aggregated role statistics for admin dashboard
+export const getUserRoleStats = async (req, res) => {
+    try {
+        const result = await User.aggregate([
+            {
+                $group: {
+                    _id: "$role",
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        const stats = result.reduce((acc, curr) => {
+            acc[curr._id] = curr.count;
+            return acc;
+        }, {});
+
+        return successResponse(res, 200, "User role stats retrieved successfully", stats);
+    } catch (error) {
+        console.error("Error fetching user role stats:", error);
+        return errorResponse(res, 500, "Failed to fetch user role stats");
+    }
+};
+
+// Area-wise worker stats
+export const getWorkerStats = async (req, res) => {
+    try {
+        const [totalWorkers, availableWorkers, uniqueCities, uniqueSkills] = await Promise.all([
+            User.countDocuments({ role: "WORKER" }),
+            User.countDocuments({
+                role: "WORKER",
+                isActive: true,
+                "workerProfile.availabilityStatus": "available"
+            }),
+            User.distinct("address.city", {
+                role: "WORKER",
+                "address.city": { $exists: true, $ne: null, $ne: "" }
+            }),
+            User.aggregate([
+                {
+                    $match: {
+                        role: "WORKER",
+                        "workerProfile.skills": { $exists: true, $ne: [] }
+                    }
+                },
+                { $unwind: "$workerProfile.skills" },
+                {
+                    $group: {
+                        _id: "$workerProfile.skills.skillId"
+                    }
+                }
+            ])
+        ]);
+
+        const totalSkills = uniqueSkills.filter((skill) => skill?._id).length;
+
+        const stats = {
+            totalWorkers,
+            availableWorkers,
+            totalAreas: uniqueCities.length,
+            totalSkills
+        };
+
+        return successResponse(res, 200, "Worker stats retrieved successfully", stats);
+    } catch (error) {
+        console.error("Error fetching worker stats:", error);
+        return errorResponse(res, 500, "Failed to fetch worker stats");
+    }
+};
+
+// List workers with filters for admin area-wise management
+export const getWorkers = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            area,
+            skill,
+            availability = "all",
+            verification = "all",
+            search
+        } = req.query;
+
+        const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+        const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+        const skip = (pageNumber - 1) * limitNumber;
+
+        const filter = { role: "WORKER" };
+        const andConditions = [];
+
+        if (availability && availability !== "all") {
+            filter["workerProfile.availabilityStatus"] = availability.toLowerCase();
+        }
+
+        if (verification && verification !== "all") {
+            filter["workerProfile.verification.status"] = verification.toUpperCase();
+        }
+
+        if (area) {
+            const areaRegex = new RegExp(area, "i");
+            andConditions.push({
+                $or: [
+                    { "address.city": areaRegex },
+                    { "address.area": areaRegex }
+                ]
+            });
+        }
+
+        if (search) {
+            const searchRegex = new RegExp(search.trim(), "i");
+            andConditions.push({
+                $or: [
+                    { name: searchRegex },
+                    { email: searchRegex },
+                    { phone: searchRegex },
+                    { "address.city": searchRegex },
+                    { "address.area": searchRegex }
+                ]
+            });
+        }
+
+        if (skill) {
+            const skillDoc = await Skill.findOne({ name: new RegExp(`^${skill}$`, "i") }).select("_id");
+            if (!skillDoc?._id) {
+                return successResponse(res, 200, "Workers retrieved successfully", {
+                    workers: [],
+                    pagination: {
+                        current: pageNumber,
+                        pages: 0,
+                        total: 0
+                    }
+                });
+            }
+            filter["workerProfile.skills.skillId"] = skillDoc._id;
+        }
+
+        if (andConditions.length) {
+            filter.$and = andConditions;
+        }
+
+        const [workers, total] = await Promise.all([
+            User.find(filter)
+                .select("-password -otp")
+                .populate("workerProfile.skills.skillId", "name")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNumber),
+            User.countDocuments(filter)
+        ]);
+
+        const formattedWorkers = workers.map((workerDoc) => {
+            const worker = workerDoc.toObject();
+            const skills = worker.workerProfile?.skills || [];
+            worker.workerProfile = worker.workerProfile || {};
+            worker.workerProfile.skills = skills.map((skillItem) => {
+                if (skillItem?.skillId && typeof skillItem.skillId === "object") {
+                    return {
+                        _id: skillItem.skillId._id,
+                        name: skillItem.skillId.name
+                    };
+                }
+                return skillItem;
+            });
+            return worker;
+        });
+
+        return successResponse(res, 200, "Workers retrieved successfully", {
+            workers: formattedWorkers,
+            pagination: {
+                current: pageNumber,
+                pages: Math.ceil(total / limitNumber),
+                total
+            }
+        });
+    } catch (error) {
+        console.error("Error fetching workers:", error);
+        return errorResponse(res, 500, "Failed to fetch workers");
+    }
+};
+
+// Activate/Deactivate worker account
+export const updateWorkerStatus = async (req, res) => {
+    try {
+        const { workerId } = req.params;
+        const { action } = req.body;
+
+        if (!["activate", "deactivate"].includes(action)) {
+            return errorResponse(res, 400, "Invalid action provided");
+        }
+
+        const worker = await User.findOneAndUpdate(
+            { _id: workerId, role: "WORKER" },
+            { $set: { isActive: action === "activate" } },
+            { new: true }
+        ).select("-password -otp");
+
+        if (!worker) {
+            return errorResponse(res, 404, "Worker not found");
+        }
+
+        return successResponse(res, 200, "Worker status updated successfully", worker);
+    } catch (error) {
+        console.error("Error updating worker status:", error);
+        return errorResponse(res, 500, "Failed to update worker status");
+    }
+};
 // controllers/adminManage.controller.js
 
 // Get single service agent details
 export const getServiceAgentById = async (req, res) => {
-  try {
-    const { agentId } = req.params;
+    try {
+        const { agentId } = req.params;
 
-    const agent = await User.findOne({ 
-      _id: agentId, 
-      role: 'SERVICE_AGENT' 
-    }).select('-password -otp');
+        const agent = await User.findOne({
+            _id: agentId,
+            role: 'SERVICE_AGENT'
+        }).select('-password -otp');
 
-    if (!agent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service agent not found'
-      });
+        if (!agent) {
+            return res.status(404).json({
+                success: false,
+                message: 'Service agent not found'
+            });
+        }
+
+        // Get additional service agent data
+        const serviceAgentData = await ServiceAgent.findOne({ userId: agentId });
+
+        res.json({
+            success: true,
+            data: {
+                ...agent.toObject(),
+                serviceAgentData: serviceAgentData || null
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching service agent:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching service agent details'
+        });
     }
-
-    // Get additional service agent data
-    const serviceAgentData = await ServiceAgent.findOne({ userId: agentId });
-
-    res.json({
-      success: true,
-      data: {
-        ...agent.toObject(),
-        serviceAgentData: serviceAgentData || null
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching service agent:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching service agent details'
-    });
-  }
 };
 
 // Update service agent
 export const updateServiceAgent = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const { agentId } = req.params;
-    const updateData = req.body;
-    const adminId = req.user._id;
+    try {
+        const { agentId } = req.params;
+        const updateData = req.body;
+        const adminId = req.user._id;
 
-    // Find the agent
-    const agent = await User.findOne({ 
-      _id: agentId, 
-      role: 'SERVICE_AGENT' 
-    }).session(session);
+        // Find the agent
+        const agent = await User.findOne({
+            _id: agentId,
+            role: 'SERVICE_AGENT'
+        }).session(session);
 
-    if (!agent) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        message: 'Service agent not found'
-      });
-    }
+        if (!agent) {
+            await session.abortTransaction();
+            return res.status(404).json({
+                success: false,
+                message: 'Service agent not found'
+            });
+        }
 
-    // Fields that can be updated
-    const allowedUserFields = [
-      'name', 'phone', 'email', 'isActive', 'address', 
-      'serviceAgentProfile.assignedArea', 'serviceAgentProfile.isSuspended'
-    ];
+        // Fields that can be updated
+        const allowedUserFields = [
+            'name', 'phone', 'email', 'isActive', 'address',
+            'serviceAgentProfile.assignedArea', 'serviceAgentProfile.isSuspended'
+        ];
 
-    // Filter update data to only allowed fields
-    const filteredUpdateData = {};
-    Object.keys(updateData).forEach(key => {
-      if (allowedUserFields.includes(key) || key.startsWith('address.')) {
-        filteredUpdateData[key] = updateData[key];
-      }
-    });
-
-    // Update user data
-    const updatedUser = await User.findByIdAndUpdate(
-      agentId,
-      { $set: filteredUpdateData },
-      { new: true, session, runValidators: true }
-    ).select('-password -otp');
-
-    // Update ServiceAgent collection if needed
-    if (updateData.areasAssigned || updateData.status || updateData.serviceRadius) {
-      const serviceAgentUpdate = {};
-      
-      if (updateData.areasAssigned) {
-        serviceAgentUpdate.areasAssigned = updateData.areasAssigned;
-      }
-      
-      if (updateData.status) {
-        serviceAgentUpdate.status = updateData.status;
-        serviceAgentUpdate.reviewedByAdmin = adminId;
-        serviceAgentUpdate.reviewedAt = new Date();
-      }
-      
-      if (updateData.serviceRadius) {
-        serviceAgentUpdate.serviceRadius = updateData.serviceRadius;
-      }
-
-      if (updateData.contactEmail || updateData.contactPhone) {
-        serviceAgentUpdate.contactEmail = updateData.contactEmail || agent.email;
-        serviceAgentUpdate.contactPhone = updateData.contactPhone || agent.phone;
-      }
-
-      await ServiceAgent.findOneAndUpdate(
-        { userId: agentId },
-        { $set: serviceAgentUpdate },
-        { upsert: true, session, new: true }
-      );
-    }
-
-    // Handle suspension
-    if (updateData.serviceAgentProfile?.isSuspended !== undefined) {
-      if (updateData.serviceAgentProfile.isSuspended) {
-        await ServiceAgent.findOneAndUpdate(
-          { userId: agentId },
-          { 
-            $set: { 
-              isSuspended: true,
-              suspendedUntil: updateData.serviceAgentProfile.suspendedUntil || null,
-              suspensionReason: updateData.serviceAgentProfile.suspensionReason || 'Admin action'
+        // Filter update data to only allowed fields
+        const filteredUpdateData = {};
+        Object.keys(updateData).forEach(key => {
+            if (allowedUserFields.includes(key) || key.startsWith('address.')) {
+                filteredUpdateData[key] = updateData[key];
             }
-          },
-          { upsert: true, session }
-        );
-      } else {
-        await ServiceAgent.findOneAndUpdate(
-          { userId: agentId },
-          { 
-            $set: { 
-              isSuspended: false,
-              suspendedUntil: null,
-              suspensionReason: null
+        });
+
+        // Update user data
+        const updatedUser = await User.findByIdAndUpdate(
+            agentId,
+            { $set: filteredUpdateData },
+            { new: true, session, runValidators: true }
+        ).select('-password -otp');
+
+        // Update ServiceAgent collection if needed
+        if (updateData.areasAssigned || updateData.status || updateData.serviceRadius) {
+            const serviceAgentUpdate = {};
+
+            if (updateData.areasAssigned) {
+                serviceAgentUpdate.areasAssigned = updateData.areasAssigned;
             }
-          },
-          { upsert: true, session }
-        );
-      }
+
+            if (updateData.status) {
+                serviceAgentUpdate.status = updateData.status;
+                serviceAgentUpdate.reviewedByAdmin = adminId;
+                serviceAgentUpdate.reviewedAt = new Date();
+            }
+
+            if (updateData.serviceRadius) {
+                serviceAgentUpdate.serviceRadius = updateData.serviceRadius;
+            }
+
+            if (updateData.contactEmail || updateData.contactPhone) {
+                serviceAgentUpdate.contactEmail = updateData.contactEmail || agent.email;
+                serviceAgentUpdate.contactPhone = updateData.contactPhone || agent.phone;
+            }
+
+            await ServiceAgent.findOneAndUpdate(
+                { userId: agentId },
+                { $set: serviceAgentUpdate },
+                { upsert: true, session, new: true }
+            );
+        }
+
+        // Handle suspension
+        if (updateData.serviceAgentProfile?.isSuspended !== undefined) {
+            if (updateData.serviceAgentProfile.isSuspended) {
+                await ServiceAgent.findOneAndUpdate(
+                    { userId: agentId },
+                    {
+                        $set: {
+                            isSuspended: true,
+                            suspendedUntil: updateData.serviceAgentProfile.suspendedUntil || null,
+                            suspensionReason: updateData.serviceAgentProfile.suspensionReason || 'Admin action'
+                        }
+                    },
+                    { upsert: true, session }
+                );
+            } else {
+                await ServiceAgent.findOneAndUpdate(
+                    { userId: agentId },
+                    {
+                        $set: {
+                            isSuspended: false,
+                            suspendedUntil: null,
+                            suspensionReason: null
+                        }
+                    },
+                    { upsert: true, session }
+                );
+            }
+        }
+
+        await session.commitTransaction();
+
+        // Fetch updated data
+        const updatedAgent = await User.findById(agentId).select('-password -otp');
+        const updatedServiceAgent = await ServiceAgent.findOne({ userId: agentId });
+
+        res.json({
+            success: true,
+            message: 'Service agent updated successfully',
+            data: {
+                user: updatedAgent,
+                serviceAgent: updatedServiceAgent
+            }
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error updating service agent:', error);
+
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: Object.values(error.errors).map(err => err.message)
+            });
+        }
+
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email or phone already exists'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Error updating service agent'
+        });
+    } finally {
+        session.endSession();
     }
-
-    await session.commitTransaction();
-
-    // Fetch updated data
-    const updatedAgent = await User.findById(agentId).select('-password -otp');
-    const updatedServiceAgent = await ServiceAgent.findOne({ userId: agentId });
-
-    res.json({
-      success: true,
-      message: 'Service agent updated successfully',
-      data: {
-        user: updatedAgent,
-        serviceAgent: updatedServiceAgent
-      }
-    });
-
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Error updating service agent:', error);
-    
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: Object.values(error.errors).map(err => err.message)
-      });
-    }
-
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email or phone already exists'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error updating service agent'
-    });
-  } finally {
-    session.endSession();
-  }
 };
 
 // Delete service agent
 export const deleteServiceAgent = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const { agentId } = req.params;
+    try {
+        const { agentId } = req.params;
 
-    // Check if agent exists
-    const agent = await User.findOne({ 
-      _id: agentId, 
-      role: 'SERVICE_AGENT' 
-    }).session(session);
+        // Check if agent exists
+        const agent = await User.findOne({
+            _id: agentId,
+            role: 'SERVICE_AGENT'
+        }).session(session);
 
-    if (!agent) {
-      await session.abortTransaction();
-      return res.status(404).json({
-        success: false,
-        message: 'Service agent not found'
-      });
+        if (!agent) {
+            await session.abortTransaction();
+            return res.status(404).json({
+                success: false,
+                message: 'Service agent not found'
+            });
+        }
+
+        // Delete from User collection (soft delete by setting isActive to false)
+        await User.findByIdAndUpdate(
+            agentId,
+            { $set: { isActive: false } },
+            { session }
+        );
+
+        // Delete from ServiceAgent collection
+        await ServiceAgent.findOneAndUpdate(
+            { userId: agentId },
+            { $set: { status: 'SUSPENDED', isSuspended: true } },
+            { session }
+        );
+
+        await session.commitTransaction();
+
+        res.json({
+            success: true,
+            message: 'Service agent deleted successfully'
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error deleting service agent:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting service agent'
+        });
+    } finally {
+        session.endSession();
     }
+};
 
-    // Delete from User collection (soft delete by setting isActive to false)
-    await User.findByIdAndUpdate(
-      agentId,
-      { $set: { isActive: false } },
-      { session }
-    );
 
-    // Delete from ServiceAgent collection
-    await ServiceAgent.findOneAndUpdate(
-      { userId: agentId },
-      { $set: { status: 'SUSPENDED', isSuspended: true } },
-      { session }
-    );
+// Get all skills with their services
+export const getAllSkillsWithServices = async (req, res) => {
+    try {
+        const skills = await Skill.find({})
+            .select('name services')
+            .sort({ name: 1 });
 
-    await session.commitTransaction();
+        // Transform data to get all unique services
+        const allServices = [];
+        const skillsData = skills.map(skill => {
+            // Add services from this skill to allServices array
+            if (skill.services && skill.services.length > 0) {
+                skill.services.forEach(service => {
+                    if (!allServices.find(s => s.name === service.name)) {
+                        allServices.push({
+                            _id: service.serviceId,
+                            name: service.name
+                        });
+                    }
+                });
+            }
 
-    res.json({
-      success: true,
-      message: 'Service agent deleted successfully'
-    });
+            return {
+                _id: skill._id,
+                name: skill.name,
+                services: skill.services || []
+            };
+        });
 
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Error deleting service agent:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting service agent'
-    });
-  } finally {
-    session.endSession();
-  }
+        res.status(200).json({
+            success: true,
+            data: {
+                skills: skillsData,
+                services: allServices.sort((a, b) => a.name.localeCompare(b.name))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching skills and services:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch skills and services',
+            error: error.message
+        });
+    }
+};
+
+// Get only skills
+export const getAllSkills = async (req, res) => {
+    try {
+        const skills = await Skill.find({})
+            .select('name')
+            .sort({ name: 1 });
+
+        res.status(200).json({
+            success: true,
+            data: skills
+        });
+    } catch (error) {
+        console.error('Error fetching skills:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch skills',
+            error: error.message
+        });
+    }
+};
+
+// Get services by skill
+export const getServicesBySkill = async (req, res) => {
+    try {
+        const { skillId } = req.params;
+        
+        const skill = await Skill.findById(skillId).select('services');
+        
+        if (!skill) {
+            return res.status(404).json({
+                success: false,
+                message: 'Skill not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: skill.services || []
+        });
+    } catch (error) {
+        console.error('Error fetching services by skill:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch services',
+            error: error.message
+        });
+    }
 };

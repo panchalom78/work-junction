@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Calendar, Search, Filter, Eye, CheckCircle, XCircle,
-  Clock, AlertCircle, DollarSign, User, Phone, Mail,
+  Clock, AlertCircle, IndianRupee , User, Phone, Mail,
   ChevronLeft, ChevronRight, Download, MapPin,
   MoreVertical, ArrowUpDown
 } from 'lucide-react';
@@ -42,6 +42,7 @@ const AdminBookings = () => {
       });
 
       const response = await axiosInstance.get(`/api/admin/bookings?${params}`);
+      console.log(response)
 
       if (response.data.success) {
         setBookings(response.data.data.bookings);
@@ -357,220 +358,222 @@ const AdminBookings = () => {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Booking Management</h1>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">Monitor and manage all platform bookings</p>
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Booking Management</h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">Monitor and manage all platform bookings</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button className="hidden sm:flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button className="hidden sm:flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-            <Download className="w-4 h-4" />
-            <span>Export</span>
+
+        {/* Mobile Filter Toggle */}
+        <div className="sm:hidden">
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+          >
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">Filters</span>
+            </div>
+            <ArrowUpDown className={`w-4 h-4 text-gray-400 transition-transform ${showMobileFilters ? 'rotate-180' : ''}`} />
           </button>
         </div>
-      </div>
 
-      {/* Mobile Filter Toggle */}
-      <div className="sm:hidden">
-        <button
-          onClick={() => setShowMobileFilters(!showMobileFilters)}
-          className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
-        >
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <span className="text-sm font-medium text-gray-700">Filters</span>
-          </div>
-          <ArrowUpDown className={`w-4 h-4 text-gray-400 transition-transform ${showMobileFilters ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className={`bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 ${showMobileFilters ? 'block' : 'hidden sm:block'}`}>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search bookings, customers, workers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
+        {/* Filters */}
+        <div className={`bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-3 sm:p-4 ${showMobileFilters ? 'block' : 'hidden sm:block'}`}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search bookings, customers, workers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400 hidden sm:block" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-48 px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            >
-              {statuses.map(status => (
-                <option key={status.value} value={status.value}>{status.label}</option>
-              ))}
-            </select>
+            {/* Status Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-400 hidden sm:block" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full sm:w-48 px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                {statuses.map(status => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bookings Content */}
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-32 sm:h-64">
-            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <>
-            {/* Mobile View */}
-            <div className="sm:hidden">
-              <div className="p-3 space-y-3">
-                {bookings.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <Calendar className="w-12 h-12 text-gray-400 mb-3" />
-                    <p className="text-sm text-gray-600 font-medium">No bookings found</p>
-                    <p className="text-xs text-gray-500 mt-1 text-center">Try adjusting your filters or search term</p>
-                  </div>
-                ) : (
-                  bookings.map((booking) => (
-                    <MobileBookingCard key={booking._id} booking={booking} />
-                  ))
-                )}
-              </div>
+        {/* Bookings Content */}
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center h-32 sm:h-64">
+              <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
             </div>
-
-            {/* Desktop View */}
-            <div className="hidden sm:block">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px]">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Booking</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Customer</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Worker</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Date & Time</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {bookings.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="px-4 py-8 text-center">
-                          <div className="flex flex-col items-center justify-center">
-                            <Calendar className="w-12 h-12 text-gray-400 mb-3" />
-                            <p className="text-sm text-gray-600 font-medium">No bookings found</p>
-                            <p className="text-xs text-gray-500 mt-1">Try adjusting your filters or search term</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      bookings.map((booking) => (
-                        <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="font-mono text-sm text-gray-900 font-medium">#{booking._id.slice(-8)}</p>
-                            <p className="text-xs text-gray-500">{formatDate(booking.createdAt)}</p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                <User className="w-4 h-4 text-white" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 text-sm truncate">{booking.customerId?.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{booking.customerId?.phone}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                <User className="w-4 h-4 text-white" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 text-sm truncate">{booking.workerId?.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{booking.workerId?.phone}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-sm">
-                              <p className="text-gray-900 font-medium">{formatDate(booking.bookingDate)}</p>
-                              <p className="text-gray-500 text-xs">{formatTime(booking.bookingTime)}</p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-green-600 text-sm">{formatCurrency(booking.price)}</p>
-                            <p className="text-xs text-gray-500">
-                              {booking.payment?.status === 'COMPLETED' ? 'Paid' : 'Pending'}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                              <div className="flex items-center space-x-1">
-                                {getStatusIcon(booking.status)}
-                                <span>{booking.status}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => {
-                                setSelectedBooking(booking);
-                                setShowBookingModal(true);
-                              }}
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Pagination */}
-            {(bookings.length > 0) && (
-              <div className="flex flex-col sm:flex-row items-center justify-between px-3 sm:px-4 py-3 bg-gray-50 border-t border-gray-200 gap-3">
-                <p className="text-xs sm:text-sm text-gray-700">
-                  Showing page {currentPage} of {totalPages}
-                </p>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+          ) : (
+            <>
+              {/* Mobile View */}
+              <div className="sm:hidden">
+                <div className="p-3 space-y-3">
+                  {bookings.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <Calendar className="w-12 h-12 text-gray-400 mb-3" />
+                      <p className="text-sm text-gray-600 font-medium">No bookings found</p>
+                      <p className="text-xs text-gray-500 mt-1 text-center">Try adjusting your filters or search term</p>
+                    </div>
+                  ) : (
+                    bookings.map((booking) => (
+                      <MobileBookingCard key={booking._id} booking={booking} />
+                    ))
+                  )}
                 </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      {showBookingModal && <BookingModal />}
+              {/* Tablet and Desktop View */}
+              <div className="hidden sm:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Booking</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Customer</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Worker</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Date & Time</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {bookings.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="px-4 py-8 text-center">
+                            <div className="flex flex-col items-center justify-center">
+                              <Calendar className="w-12 h-12 text-gray-400 mb-3" />
+                              <p className="text-sm text-gray-600 font-medium">No bookings found</p>
+                              <p className="text-xs text-gray-500 mt-1">Try adjusting your filters or search term</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        bookings.map((booking) => (
+                          <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-mono text-sm text-gray-900 font-medium">#{booking._id.slice(-8)}</p>
+                              <p className="text-xs text-gray-500">{formatDate(booking.createdAt)}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm truncate">{booking.customerId?.name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{booking.customerId?.phone}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm truncate">{booking.workerId?.name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{booking.workerId?.phone}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm">
+                                <p className="text-gray-900 font-medium">{formatDate(booking.bookingDate)}</p>
+                                <p className="text-gray-500 text-xs">{formatTime(booking.bookingTime)}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-green-600 text-sm">{formatCurrency(booking.price)}</p>
+                              <p className="text-xs text-gray-500">
+                                {booking.payment?.status === 'COMPLETED' ? 'Paid' : 'Pending'}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                                <div className="flex items-center space-x-1">
+                                  {getStatusIcon(booking.status)}
+                                  <span>{booking.status}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => {
+                                  setSelectedBooking(booking);
+                                  setShowBookingModal(true);
+                                }}
+                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="View Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Pagination */}
+              {(bookings.length > 0) && (
+                <div className="flex flex-col sm:flex-row items-center justify-between px-3 sm:px-4 py-3 bg-gray-50 border-t border-gray-200 gap-3">
+                  <p className="text-xs sm:text-sm text-gray-700">
+                    Showing page {currentPage} of {totalPages}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {showBookingModal && <BookingModal />}
+      </div>
     </div>
   );
 };

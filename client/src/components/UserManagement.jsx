@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   BarChart3, Users, CheckCircle, Clock, AlertCircle, 
-  Settings, DollarSign, MapPin, Filter, Search,
+  Settings, IndianRupee , MapPin, Filter, Search,
   Menu, X, ChevronDown, Bell, User, LogOut,
   TrendingUp, Shield, FileText, Calendar
 } from 'lucide-react';
@@ -27,7 +27,7 @@ const AdminDashboard = () => {
     { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
     { id: 'verification', label: 'Verification', icon: Shield, path: '/admin/verification' },
     { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/admin/bookings' },
-    { id: 'payments', label: 'Payments', icon: DollarSign, path: '/admin/payments' },
+    { id: 'payments', label: 'Payments', icon: IndianRupee , path: '/admin/payments' },
     { id: 'agents', label: 'Service Agents', icon: MapPin, path: '/admin/agents' },
     { id: 'reports', label: 'Reports', icon: FileText, path: '/admin/reports' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' }
