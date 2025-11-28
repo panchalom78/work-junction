@@ -1,15 +1,17 @@
 import React from 'react';
 import { MapPin, Eye, PhoneCall, MailIcon, Star, CheckCircle, XCircle, Loader, BadgeCheck } from 'lucide-react';
 
-const WorkerCard = ({ worker, onWorkerAction, actionLoading }) => {
+const WorkerCard = ({ worker, onWorkerAction, actionLoading, onViewDetails }) => {
     const workerSkills = worker.workerProfile?.skills || [];
     const workerServices =
         (worker.workerProfile?.services && worker.workerProfile.services.length
             ? worker.workerProfile.services
             : worker.services) || [];
     const verification = worker.workerProfile?.verification;
-    const rating = worker.rating ?? 0;
-    const experience = worker.workerProfile?.experience || 'Not specified';
+    const rating = typeof worker.workerProfile?.rating === 'number'
+        ? worker.workerProfile.rating
+        : (typeof worker.rating === 'number' ? worker.rating : null);
+    const experience = worker.workerProfile?.experience || '';
     
     return (
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-300 group">
@@ -22,7 +24,7 @@ const WorkerCard = ({ worker, onWorkerAction, actionLoading }) => {
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center space-x-2">
-                            <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">{worker.name}</h3>
+                            <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate max-w-[180px] sm:max-w-[220px]">{worker.name}</h3>
                             {verification?.status === 'APPROVED' && (
                                 <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
                             )}
@@ -55,11 +57,17 @@ const WorkerCard = ({ worker, onWorkerAction, actionLoading }) => {
             <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center space-x-1">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{rating}</span>
-                    <span className="text-gray-500 text-xs sm:text-sm">rating</span>
+                    {typeof rating === 'number' && rating > 0 ? (
+                        <>
+                            <span className="font-semibold text-gray-900 text-sm sm:text-base">{Math.round(rating * 10) / 10}</span>
+                            <span className="text-gray-500 text-xs sm:text-sm">rating</span>
+                        </>
+                    ) : (
+                        <span className="text-gray-500 text-xs sm:text-sm">No ratings</span>
+                    )}
                 </div>
                 <div className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
-                    {experience} exp
+                    {experience ? experience : 'N/A'}
                 </div>
             </div>
 

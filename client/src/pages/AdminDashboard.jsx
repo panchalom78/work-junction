@@ -177,7 +177,7 @@ const AdminDashboard = () => {
   const mobileNavItems = NAV_ITEMS.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 overflow-x-hidden">
       <Toaster
         position={isMobile ? "top-center" : "top-right"}
         toastOptions={{
@@ -286,7 +286,7 @@ const AdminDashboard = () => {
       </nav>
 
       {/* Main Layout */}
-      <div className="flex pt-10 xs:pt-12 sm:pt-14 md:pt-16">
+      <div className="flex pt-10 xs:pt-12 sm:pt-14 md:pt-16 overflow-x-hidden">
         {/* Sidebar */}
         {sidebarOpen && (
           <div 
@@ -355,7 +355,7 @@ const AdminDashboard = () => {
             ${sidebarOpen && (isLaptop || isDesktop || isXL) ? 'lg:ml-0' : ''}
           `}
         >
-          <div className="p-2 xs:p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
+          <div className="p-2 xs:p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 overflow-x-hidden">
             {/* Mobile Header for Current Section */}
             {isMobile && (
               <div className="mb-3 xs:mb-4 p-3 xs:p-4 bg-white rounded-lg shadow-sm border border-gray-200">

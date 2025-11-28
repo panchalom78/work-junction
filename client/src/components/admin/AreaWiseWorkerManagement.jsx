@@ -123,6 +123,8 @@ const ProfessionalWorkerManagement = () => {
         }
     }, []);
 
+    
+
     // Apply filters to workers (frontend only)
     const applyFilters = useCallback((workers, currentFilters) => {
         let filtered = [...workers];
@@ -137,14 +139,23 @@ const ProfessionalWorkerManagement = () => {
             });
         }
 
-        // Apply search filter (name, email, phone)
         if (currentFilters.search && currentFilters.search.trim() !== '') {
-            const searchQuery = currentFilters.search.trim().toLowerCase();
+            const q = currentFilters.search.trim().toLowerCase();
             filtered = filtered.filter(worker => {
                 const name = (worker.name || '').toLowerCase();
                 const email = (worker.email || '').toLowerCase();
                 const phone = (worker.phone || '').toLowerCase();
-                return name.includes(searchQuery) || email.includes(searchQuery) || phone.includes(searchQuery);
+                const skillNames = (worker.workerProfile?.skills || []).map(s => (s.name || s.skillId?.name || '').toLowerCase());
+                const serviceNames = (worker.workerProfile?.services || []).map(sv => (sv.serviceName || sv.name || '').toLowerCase());
+                const fallbackServiceNames = (worker.services || []).map(sv => (sv.serviceName || sv.name || '').toLowerCase());
+                return (
+                    name.includes(q) ||
+                    email.includes(q) ||
+                    phone.includes(q) ||
+                    skillNames.some(n => n.includes(q)) ||
+                    serviceNames.some(n => n.includes(q)) ||
+                    fallbackServiceNames.some(n => n.includes(q))
+                );
             });
         }
 
@@ -154,7 +165,7 @@ const ProfessionalWorkerManagement = () => {
                 const workerSkills = worker.workerProfile?.skills || [];
                 return workerSkills.some(skill => {
                     const skillId = skill?._id || skill.skillId;
-                    return skillId === currentFilters.skill;
+                    return String(skillId) === String(currentFilters.skill);
                 });
             });
         }
@@ -165,13 +176,64 @@ const ProfessionalWorkerManagement = () => {
                 const workerServices = worker.workerProfile?.services || [];
                 return workerServices.some(service => {
                     const serviceId = service?._id || service.serviceId;
-                    return serviceId === currentFilters.service;
+                    return String(serviceId) === String(currentFilters.service);
                 });
             });
         }
 
         return filtered;
     }, []);
+
+    // Fetch workers from server using current filters (Search button)
+    const fetchWorkersWithFilters = useCallback(async () => {
+        try {
+            setSearchLoading(true);
+            const params = new URLSearchParams();
+            if (filters.area && filters.area.trim()) params.append('area', filters.area.trim());
+            if (filters.search && filters.search.trim()) params.append('search', filters.search.trim());
+            if (filters.skill) params.append('skill', filters.skill);
+            if (filters.service) params.append('service', filters.service);
+
+            const response = await axiosInstance.get(`/api/admin/workers?${params.toString()}`);
+            if (response.data?.success) {
+                const rawWorkers = response.data.data.workers || [];
+                const transformedWorkers = rawWorkers.map(worker => ({
+                    ...worker,
+                    rating: worker.rating ?? 0,
+                    workerProfile: {
+                        ...worker.workerProfile,
+                        skills: Array.isArray(worker.workerProfile?.skills)
+                            ? worker.workerProfile.skills.map(skill => ({
+                                ...skill,
+                                name: skill.name || skill.skillId?.name || 'Unknown Skill',
+                                skillId: skill.skillId?._id || skill.skillId
+                            }))
+                            : [],
+                        services: Array.isArray(worker.workerProfile?.services)
+                            ? worker.workerProfile.services.map(service => ({
+                                ...service,
+                                serviceName: service.serviceName || service.name || 'Unknown Service',
+                                serviceId: service.serviceId?._id || service.serviceId
+                            }))
+                            : []
+                    }
+                }));
+
+                setAllWorkers(transformedWorkers);
+                const filtered = applyFilters(transformedWorkers, filters);
+                setFilteredWorkers(filtered);
+            } else {
+                throw new Error('Invalid response format');
+            }
+        } catch (error) {
+            console.error('Error searching workers:', error);
+            toast.error(error.response?.data?.message || 'Search failed');
+            setFilteredWorkers([]);
+        } finally {
+            setSearchLoading(false);
+            setLoading(false);
+        }
+    }, [filters, applyFilters]);
 
     // Update filters and apply them locally
     const updateFilter = (key, value) => {
@@ -272,6 +334,11 @@ const ProfessionalWorkerManagement = () => {
         await fetchWorkerStats();
     };
 
+    // Search button handler (server-side search)
+    const handleSearchClick = async () => {
+        await fetchWorkersWithFilters();
+    };
+
     // Clear all filters
     const clearAllFilters = () => {
         const emptyFilters = {
@@ -341,6 +408,7 @@ const ProfessionalWorkerManagement = () => {
                     <StatsCards 
                         stats={stats} 
                         skills={skills} 
+                        services={services}
                     />
                 </div>
 
@@ -359,6 +427,7 @@ const ProfessionalWorkerManagement = () => {
                                             placeholder="Search workers by name, email, or phone..."
                                             value={filters.search}
                                             onChange={(e) => updateFilter('search', e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleSearchClick(); }}
                                             className="w-full pl-4 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50/50"
                                         />
                                         <User className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -382,6 +451,13 @@ const ProfessionalWorkerManagement = () => {
                                         )}
                                     </button>
 
+                                    <button
+                                        onClick={handleSearchClick}
+                                        disabled={searchLoading}
+                                        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+                                    >
+                                        Search
+                                    </button>
                                     <button
                                         onClick={handleRefresh}
                                         disabled={searchLoading}

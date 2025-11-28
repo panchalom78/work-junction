@@ -54,9 +54,36 @@ const WorkerDetailModal = ({ selectedWorker, onClose, onWorkerAction, actionLoad
                 </div>
 
                 <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                    {/* ... (rest of the modal content remains the same) ... */}
-                    {/* I've kept the modal content structure the same for brevity */}
-                    {/* You can copy the exact modal content from your original code */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900 mb-3 text-sm">Skills</h4>
+                            {skills.length === 0 ? (
+                                <p className="text-xs text-gray-600">No skills listed</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {skills.map((sk, idx) => (
+                                        <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                                            {sk.name || sk.skillId?.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                            <h4 className="font-semibold text-gray-900 mb-3 text-sm">Services</h4>
+                            {services.length === 0 ? (
+                                <p className="text-xs text-gray-600">No services listed</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {services.map((sv, idx) => (
+                                        <span key={idx} className="px-2 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-medium">
+                                            {sv.serviceName || sv.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

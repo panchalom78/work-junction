@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import { Skill } from "../models/skill.model.js";
 import { Booking } from "../models/booking.model.js";
+import mongoose from "mongoose";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { Parser } from "json2csv";
 import { hashPassword, verifyPassword } from "../utils/password.js";
@@ -842,6 +843,37 @@ export const getWorkers = async (req, res) => {
 
         // Get worker services
         const workerIds = workers.map((w) => w._id);
+
+        // Collect all skill ids across workers and build a name map (ensures names even if not populated)
+        const allSkillIdsSet = new Set();
+        workers.forEach((w) => {
+            const skillsArr = w.workerProfile?.skills || [];
+            skillsArr.forEach((s) => {
+                const sid = (s?.skillId && typeof s.skillId === "object") ? s.skillId._id : s?.skillId;
+                if (sid) allSkillIdsSet.add(sid.toString());
+            });
+        });
+        const allSkillIds = Array.from(allSkillIdsSet).map((id) => new mongoose.Types.ObjectId(id));
+        const skillsDocs = allSkillIds.length
+            ? await Skill.find({ _id: { $in: allSkillIds } }).select("name")
+            : [];
+        const skillNameMap = {};
+        skillsDocs.forEach((s) => {
+            skillNameMap[s._id.toString()] = s.name;
+        });
+
+        // Compute ratings from completed bookings with reviews
+        const ratingsAgg = await Booking.aggregate([
+            { $match: { workerId: { $in: workerIds }, status: "COMPLETED", "review.rating": { $exists: true } } },
+            { $group: { _id: "$workerId", avgRating: { $avg: "$review.rating" }, totalRatings: { $sum: 1 } } },
+        ]);
+        const ratingByWorker = {};
+        ratingsAgg.forEach((r) => {
+            ratingByWorker[r._id.toString()] = {
+                avgRating: r.avgRating || 0,
+                totalRatings: r.totalRatings || 0,
+            };
+        });
         
         const { WorkerService } = await import("../models/workerService.model.js");
         let workerServices = await WorkerService.find({
@@ -925,14 +957,29 @@ export const getWorkers = async (req, res) => {
                     return {
                         _id: skillItem.skillId._id,
                         name: skillItem.skillId.name,
-                        description: skillItem.skillId.description
+                        description: skillItem.skillId.description,
                     };
                 }
-                return skillItem;
+                const sid = skillItem?.skillId || skillItem?._id || skillItem;
+                const name = sid ? skillNameMap[sid.toString()] : undefined;
+                return {
+                    _id: sid,
+                    name: name || "Unknown Skill",
+                };
             });
             
             // Add services
             worker.workerProfile.services = servicesByWorker[widStr] || [];
+
+            // Attach rating info
+            const r = ratingByWorker[widStr];
+            if (r) {
+                worker.workerProfile.rating = Number(r.avgRating.toFixed(2));
+                worker.workerProfile.totalRatings = r.totalRatings;
+            } else {
+                worker.workerProfile.rating = 0;
+                worker.workerProfile.totalRatings = 0;
+            }
 
             return worker;
         });
