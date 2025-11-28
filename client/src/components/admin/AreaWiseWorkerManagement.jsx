@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader, User, Filter, X, RefreshCw } from 'lucide-react';
+import { Loader, User, Filter, X, RefreshCw, Search } from 'lucide-react';
 import axiosInstance from '../../utils/axiosInstance';
 import toast from 'react-hot-toast';
 
@@ -422,15 +422,15 @@ const ProfessionalWorkerManagement = () => {
                             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                                 <div className="flex-1">
                                     <div className="relative">
+                                        <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                                         <input
                                             type="text"
-                                            placeholder="Search workers by name, email, or phone..."
+                                            placeholder="Search workers by name, email, phone, skills, or services..."
                                             value={filters.search}
                                             onChange={(e) => updateFilter('search', e.target.value)}
                                             onKeyDown={(e) => { if (e.key === 'Enter') handleSearchClick(); }}
-                                            className="w-full pl-4 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50/50"
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50/50"
                                         />
-                                        <User className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                     </div>
                                 </div>
                                 
@@ -454,9 +454,10 @@ const ProfessionalWorkerManagement = () => {
                                     <button
                                         onClick={handleSearchClick}
                                         disabled={searchLoading}
-                                        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+                                        className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50 font-medium"
                                     >
-                                        Search
+                                        <Search className="w-4 h-4" />
+                                        <span>Search</span>
                                     </button>
                                     <button
                                         onClick={handleRefresh}
