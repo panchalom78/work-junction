@@ -3,6 +3,8 @@ import { Skill } from "../models/skill.model.js";
 import { Booking } from "../models/booking.model.js";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { Parser } from "json2csv";
+import { hashPassword, verifyPassword } from "../utils/password.js";
+import { clearAuthCookie } from "../utils/jwt.js";
 
 // Admin Dashboard Stats
 export const getDashboardStats = async (req, res) => {
@@ -273,12 +275,20 @@ export const exportVerificationCSV = async (req, res) => {
 // Get All Users with Pagination and Filters
 export const getAllUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10, role, search } = req.query;
+        const { page = 1, limit = 10, role, search, status } = req.query;
 
         let filter = {};
 
         if (role && role !== "ALL") {
             filter.role = role;
+        }
+
+        if (typeof status !== "undefined" && status !== "ALL") {
+            if (status === "true") {
+                filter.isActive = true;
+            } else if (status === "false") {
+                filter.isActive = false;
+            }
         }
 
         if (search) {
@@ -314,7 +324,10 @@ export const getAllUsers = async (req, res) => {
 // Get All Bookings with Pagination and Filters
 export const getAllBookings = async (req, res) => {
     try {
-        const { page = 1, limit = 10, status, search } = req.query;
+        const { page = 1, limit = 10, status, search, sortBy = "createdAt", sortOrder = "desc" } = req.query;
+
+        const pageNumber = Math.max(parseInt(page) || 1, 1);
+        const limitNumber = Math.max(parseInt(limit) || 10, 1);
 
         let filter = {};
 
@@ -322,29 +335,60 @@ export const getAllBookings = async (req, res) => {
             filter.status = status;
         }
 
-        if (search) {
-            // This would require populating customer and worker names
+        if (search && typeof search === "string" && search.trim()) {
+            const trimmed = search.trim();
+
+            // Find matching users by name/phone/email
+            const searchRegex = new RegExp(trimmed, "i");
+            const [matchingUsers, matchingServices] = await Promise.all([
+                User.find({
+                    $or: [
+                        { name: searchRegex },
+                        { phone: searchRegex },
+                        { email: searchRegex },
+                    ],
+                }).select("_id"),
+                // Find serviceIds whose service name matches search
+                Skill.aggregate([
+                    { $unwind: "$services" },
+                    { $match: { "services.name": { $regex: trimmed, $options: "i" } } },
+                    { $project: { serviceId: "$services.serviceId" } },
+                ]),
+            ]);
+
+            const userIds = matchingUsers.map((u) => u._id);
+            const serviceIds = matchingServices.map((s) => s.serviceId);
+
             filter.$or = [
-                { _id: { $regex: search, $options: "i" } }
+                // Partial Booking ID match using $expr + $toString
+                { $expr: { $regexMatch: { input: { $toString: "$_id" }, regex: trimmed, options: "i" } } },
+                { customerId: { $in: userIds } },
+                { workerId: { $in: userIds } },
+                { serviceId: { $in: serviceIds } },
             ];
         }
+
+        // Validate sortBy
+        const allowedSortKeys = new Set(["createdAt", "bookingDate", "price", "status"]);
+        const sortKey = allowedSortKeys.has(sortBy) ? sortBy : "createdAt";
+        const sortDirection = String(sortOrder).toLowerCase() === "asc" ? 1 : -1;
 
         const bookings = await Booking.find(filter)
             .populate("customerId", "name email phone")
             .populate("workerId", "name email phone")
-            .sort({ createdAt: -1 })
-            .limit(limit * 1)
-            .skip((page - 1) * limit);
+            .sort({ [sortKey]: sortDirection })
+            .limit(limitNumber)
+            .skip((pageNumber - 1) * limitNumber);
 
         const total = await Booking.countDocuments(filter);
 
         return successResponse(res, 200, "Bookings retrieved successfully", {
             bookings,
             pagination: {
-                current: parseInt(page),
-                pages: Math.ceil(total / limit),
-                total
-            }
+                current: pageNumber,
+                pages: Math.ceil(total / limitNumber),
+                total,
+            },
         });
     } catch (error) {
         console.error("Error fetching bookings:", error);
@@ -452,9 +496,21 @@ export const getAllPayments = async (req, res) => {
         }
 
         if (search) {
+            const searchRegex = new RegExp(search, "i");
+            const matchingUsers = await User.find({
+                $or: [
+                    { name: searchRegex },
+                    { phone: searchRegex },
+                    { email: searchRegex },
+                ],
+            }).select("_id");
+            const userIds = matchingUsers.map((u) => u._id);
+
             filter.$or = [
-                { _id: { $regex: search, $options: "i" } },
-                { "payment.paymentId": { $regex: search, $options: "i" } }
+                { "payment.paymentId": { $regex: search, $options: "i" } },
+                { "payment.transactionId": { $regex: search, $options: "i" } },
+                { customerId: { $in: userIds } },
+                { workerId: { $in: userIds } },
             ];
         }
 
@@ -620,30 +676,32 @@ export const getUserRoleStats = async (req, res) => {
 // Area-wise worker stats
 export const getWorkerStats = async (req, res) => {
     try {
-        const [totalWorkers, availableWorkers, uniqueCities, uniqueSkills] = await Promise.all([
+        const [
+            totalWorkers,
+            activeWorkers,
+            availableWorkers,
+            verifiedWorkers,
+            uniqueCities,
+            uniqueSkills
+        ] = await Promise.all([
             User.countDocuments({ role: "WORKER" }),
+            User.countDocuments({ role: "WORKER", isActive: true }),
             User.countDocuments({
                 role: "WORKER",
-                isActive: true,
                 "workerProfile.availabilityStatus": "available"
+            }),
+            User.countDocuments({
+                role: "WORKER",
+                "workerProfile.verification.status": "APPROVED"
             }),
             User.distinct("address.city", {
                 role: "WORKER",
                 "address.city": { $exists: true, $ne: null, $ne: "" }
             }),
             User.aggregate([
-                {
-                    $match: {
-                        role: "WORKER",
-                        "workerProfile.skills": { $exists: true, $ne: [] }
-                    }
-                },
+                { $match: { role: "WORKER", "workerProfile.skills": { $exists: true, $ne: [] } } },
                 { $unwind: "$workerProfile.skills" },
-                {
-                    $group: {
-                        _id: "$workerProfile.skills.skillId"
-                    }
-                }
+                { $group: { _id: "$workerProfile.skills.skillId" } }
             ])
         ]);
 
@@ -651,7 +709,9 @@ export const getWorkerStats = async (req, res) => {
 
         const stats = {
             totalWorkers,
+            activeWorkers,
             availableWorkers,
+            verifiedWorkers,
             totalAreas: uniqueCities.length,
             totalSkills
         };
@@ -671,26 +731,30 @@ export const getWorkers = async (req, res) => {
             limit = 10,
             area,
             skill,
+            service,
             availability = "all",
             verification = "all",
             search
         } = req.query;
 
         const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
-        const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+        const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100); // Increased limit to 100 for frontend filtering
         const skip = (pageNumber - 1) * limitNumber;
 
         const filter = { role: "WORKER" };
         const andConditions = [];
 
+        // Availability filter
         if (availability && availability !== "all") {
             filter["workerProfile.availabilityStatus"] = availability.toLowerCase();
         }
 
+        // Verification filter
         if (verification && verification !== "all") {
             filter["workerProfile.verification.status"] = verification.toUpperCase();
         }
 
+        // Area filter
         if (area) {
             const areaRegex = new RegExp(area, "i");
             andConditions.push({
@@ -701,6 +765,7 @@ export const getWorkers = async (req, res) => {
             });
         }
 
+        // Search filter
         if (search) {
             const searchRegex = new RegExp(search.trim(), "i");
             andConditions.push({
@@ -714,48 +779,161 @@ export const getWorkers = async (req, res) => {
             });
         }
 
+        // Skill filter
         if (skill) {
-            const skillDoc = await Skill.findOne({ name: new RegExp(`^${skill}$`, "i") }).select("_id");
-            if (!skillDoc?._id) {
-                return successResponse(res, 200, "Workers retrieved successfully", {
-                    workers: [],
-                    pagination: {
-                        current: pageNumber,
-                        pages: 0,
-                        total: 0
-                    }
-                });
+            let skillId = skill;
+            
+            // If skill is not a valid ObjectId, try to find by name
+            if (!mongoose.Types.ObjectId.isValid(skill)) {
+                const skillDoc = await Skill.findOne({ 
+                    name: new RegExp(`^${skill}$`, "i") 
+                }).select("_id");
+                skillId = skillDoc?._id;
             }
-            filter["workerProfile.skills.skillId"] = skillDoc._id;
+            
+            if (skillId) {
+                filter["workerProfile.skills.skillId"] = new mongoose.Types.ObjectId(skillId);
+            }
+        }
+
+        // Service filter - NEW: Add service filtering
+        if (service) {
+            let serviceId = service;
+            
+            // If service is not a valid ObjectId, try to find by name
+            if (!mongoose.Types.ObjectId.isValid(service)) {
+                // Look for service in any skill
+                const skillWithService = await Skill.findOne({
+                    "services.name": new RegExp(`^${service}$`, "i")
+                });
+                
+                if (skillWithService) {
+                    const foundService = skillWithService.services.find(
+                        s => s.name.toLowerCase() === service.toLowerCase()
+                    );
+                    serviceId = foundService?.serviceId;
+                }
+            }
+            
+            if (serviceId) {
+                // We'll filter by service later after fetching worker services
+                // For now, we'll store the service filter to apply later
+                filter._serviceFilter = new mongoose.Types.ObjectId(serviceId);
+            }
         }
 
         if (andConditions.length) {
             filter.$and = andConditions;
         }
 
+        // Remove temporary filter property for the main query
+        const serviceFilter = filter._serviceFilter;
+        delete filter._serviceFilter;
+
         const [workers, total] = await Promise.all([
             User.find(filter)
                 .select("-password -otp")
-                .populate("workerProfile.skills.skillId", "name")
+                .populate("workerProfile.skills.skillId", "name description")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limitNumber),
             User.countDocuments(filter)
         ]);
 
+        // Get worker services
+        const workerIds = workers.map((w) => w._id);
+        
+        const { WorkerService } = await import("../models/workerService.model.js");
+        let workerServices = await WorkerService.find({
+            workerId: { $in: workerIds },
+            isActive: true
+        })
+        .populate({ path: "skillId", select: "name" })
+        .lean();
+
+        // Apply service filter if provided
+        if (serviceFilter) {
+            workerServices = workerServices.filter(service => 
+                service.serviceId && service.serviceId.equals(serviceFilter)
+            );
+            
+            // Also filter workers to only those who have the specified service
+            const workersWithService = new Set(
+                workerServices.map(ws => ws.workerId.toString())
+            );
+            
+            // Remove workers that don't have the requested service
+            const filteredWorkers = workers.filter(worker => 
+                workersWithService.has(worker._id.toString())
+            );
+            
+            // Update workers and total count
+            workers.splice(0, workers.length, ...filteredWorkers);
+        }
+
+        // Get service names
+        const serviceIds = [...new Set(workerServices.map((ws) => ws.serviceId))];
+        const servicesData = await Skill.aggregate([
+            { $unwind: "$services" },
+            { $match: { "services.serviceId": { $in: serviceIds } } },
+            { $project: { 
+                serviceId: "$services.serviceId", 
+                serviceName: "$services.name",
+                skillId: "$_id"
+            } },
+        ]);
+
+        const serviceNameMap = {};
+        servicesData.forEach((s) => {
+            serviceNameMap[s.serviceId.toString()] = {
+                name: s.serviceName,
+                skillId: s.skillId
+            };
+        });
+
+        // Group services by worker
+        const servicesByWorker = {};
+        workerServices.forEach((s) => {
+            const wid = s.workerId.toString();
+            if (!servicesByWorker[wid]) servicesByWorker[wid] = [];
+            
+            const serviceInfo = serviceNameMap[s.serviceId.toString()];
+            servicesByWorker[wid].push({
+                _id: s._id,
+                serviceId: s.serviceId,
+                skillId: s.skillId?._id || serviceInfo?.skillId,
+                name: s.skillId?.name || "Unknown Service",
+                serviceName: serviceInfo?.name || "Unknown Service",
+                details: s.details,
+                pricingType: s.pricingType,
+                price: s.price,
+                estimatedDuration: s.estimatedDuration,
+            });
+        });
+
+        // Format final worker data
         const formattedWorkers = workers.map((workerDoc) => {
             const worker = workerDoc.toObject();
             const skills = worker.workerProfile?.skills || [];
+            const widStr = worker._id.toString();
+
             worker.workerProfile = worker.workerProfile || {};
+            
+            // Format skills
             worker.workerProfile.skills = skills.map((skillItem) => {
                 if (skillItem?.skillId && typeof skillItem.skillId === "object") {
                     return {
                         _id: skillItem.skillId._id,
-                        name: skillItem.skillId.name
+                        name: skillItem.skillId.name,
+                        description: skillItem.skillId.description
                     };
                 }
                 return skillItem;
             });
+            
+            // Add services
+            worker.workerProfile.services = servicesByWorker[widStr] || [];
+
             return worker;
         });
 
@@ -770,6 +948,33 @@ export const getWorkers = async (req, res) => {
     } catch (error) {
         console.error("Error fetching workers:", error);
         return errorResponse(res, 500, "Failed to fetch workers");
+    }
+};
+
+// Booking statistics for admin dashboard
+export const getBookingStats = async (req, res) => {
+    try {
+        const [totalCount, pendingCount, completedCount, revenueAgg] = await Promise.all([
+            Booking.countDocuments({}),
+            Booking.countDocuments({ status: "PENDING" }),
+            Booking.countDocuments({ status: "COMPLETED" }),
+            Booking.aggregate([
+                { $match: { "payment.status": "COMPLETED" } },
+                { $group: { _id: null, total: { $sum: "$payment.amount" } } },
+            ]),
+        ]);
+
+        const stats = {
+            total: totalCount,
+            pending: pendingCount,
+            completed: completedCount,
+            revenue: (revenueAgg[0]?.total) || 0,
+        };
+
+        return successResponse(res, 200, "Booking stats retrieved successfully", stats);
+    } catch (error) {
+        console.error("Error fetching booking stats:", error);
+        return errorResponse(res, 500, "Failed to fetch booking stats");
     }
 };
 
@@ -1132,5 +1337,98 @@ export const getServicesBySkill = async (req, res) => {
             message: 'Failed to fetch services',
             error: error.message
         });
+    }
+};
+
+export const updateAdminProfile = async (req, res) => {
+    try {
+        const { name, phone, address } = req.body;
+        const userId = req.user._id;
+
+        const updateFields = {};
+
+        if (name !== undefined) {
+            updateFields.name = typeof name === "string" ? name.trim() : "";
+        }
+
+        if (phone !== undefined) {
+            const phoneRegex = /^[0-9]{10}$/;
+            if (!phoneRegex.test(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please enter a valid 10-digit phone number"
+                });
+            }
+            updateFields.phone = phone;
+        }
+
+        if (address !== undefined && typeof address === "object" && address !== null) {
+            const addressFields = {};
+            if (address.houseNo !== undefined) {
+                addressFields.houseNo = typeof address.houseNo === "string" ? address.houseNo.trim() : "";
+            }
+            if (address.street !== undefined) {
+                addressFields.street = typeof address.street === "string" ? address.street.trim() : "";
+            }
+            if (address.area !== undefined) {
+                addressFields.area = typeof address.area === "string" ? address.area.trim() : "";
+            }
+            if (address.city !== undefined) {
+                addressFields.city = typeof address.city === "string" ? address.city.trim() : "";
+            }
+            if (address.state !== undefined) {
+                addressFields.state = typeof address.state === "string" ? address.state.trim() : "";
+            }
+            if (address.pincode !== undefined) {
+                addressFields.pincode = typeof address.pincode === "string" ? address.pincode.trim() : "";
+            }
+            updateFields.address = addressFields;
+        }
+
+        const updated = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateFields },
+            { new: true }
+        );
+
+        if (!updated) {
+            return errorResponse(res, 404, "User not found");
+        }
+
+        return successResponse(res, 200, "Profile updated successfully", {
+            name: updated.name,
+            phone: updated.phone,
+            address: updated.address
+        });
+    } catch (error) {
+        console.error("Admin profile update error:", error);
+        return errorResponse(res, 500, "Failed to update profile");
+    }
+};
+
+export const changeAdminPassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return errorResponse(res, 404, "User not found");
+        }
+
+        const isPasswordValid = await verifyPassword(user.password, currentPassword);
+        if (!isPasswordValid) {
+            return errorResponse(res, 401, "Current password is incorrect");
+        }
+
+        const hashedPassword = await hashPassword(newPassword);
+        user.password = hashedPassword;
+        await user.save();
+
+        clearAuthCookie(res);
+
+        return successResponse(res, 200, "Password changed successfully. Please login again.");
+    } catch (error) {
+        console.error("Admin change password error:", error);
+        return errorResponse(res, 500, "Server error during password change");
     }
 };

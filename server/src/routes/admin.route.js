@@ -9,6 +9,7 @@ import {
     exportVerificationCSV,
     getAllUsers,
     getAllBookings,
+    getBookingStats,
     getAllPayments,
     getServiceAgents,
     updateUserStatus,
@@ -35,7 +36,9 @@ import {
 } from '../controllers/adminManage.controller.js';
 import { protect, authorize } from "../middlewares/auth.middleware.js";
 import { getAdminAnalytics } from '../controllers/analytics.controller.js';
-
+import { getUserDistribution, getBookingAnalytics, getVerificationStats, getAgentPerformance , generateExcelReport , generatePDFReport} from '../controllers/adminReport.controller.js';
+import { fetchWorkers } from '../controllers/admin.fetchworker.controller.js';
+import { updateAdminProfile, changeAdminPassword } from "../controllers/admin.controller.js";
 // Apply admin protection to all routes
 router.use(protect, authorize("ADMIN"));
 
@@ -55,6 +58,7 @@ router.get("/verification/export", exportVerificationCSV);
 
 // Booking management routes
 router.get("/bookings", getAllBookings);
+router.get("/bookings/stats", getBookingStats);
 
 // Payment management routes
 router.get("/payments", getAllPayments);
@@ -84,4 +88,18 @@ router.get('/:skillId/services', getServicesBySkill);
 
 router.get('/analytics', getAdminAnalytics);
 
+router.put('/profile', updateAdminProfile);
+router.put('/change-password', changeAdminPassword);
+
+// Reports routes
+router.get('/dashboard/stats', getDashboardStats);
+router.get('/dashboard/user-distribution', getUserDistribution);
+router.get('/dashboard/bookings', getBookingAnalytics);
+router.get('/dashboard/verifications', getVerificationStats);
+router.get('/dashboard/agent-performance', getAgentPerformance);
+router.get('/dashboard/recent-activities', getRecentActivities);
+router.get('/reports/generate-pdf', generatePDFReport);
+
+// For Excel reports (if you fix the 500 error)
+router.get('/reports/generate-excel', generateExcelReport);
 export default router;

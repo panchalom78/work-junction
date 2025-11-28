@@ -1,19 +1,22 @@
 import React from 'react';
 import { MapPin, Eye, PhoneCall, MailIcon, Star, CheckCircle, XCircle, Loader, BadgeCheck } from 'lucide-react';
 
-const WorkerCard = ({ worker, onViewDetails, onWorkerAction, actionLoading }) => {
+const WorkerCard = ({ worker, onWorkerAction, actionLoading }) => {
     const workerSkills = worker.workerProfile?.skills || [];
-    const workerServices = worker.workerProfile?.services || [];
+    const workerServices =
+        (worker.workerProfile?.services && worker.workerProfile.services.length
+            ? worker.workerProfile.services
+            : worker.services) || [];
     const verification = worker.workerProfile?.verification;
-    const rating = worker.workerProfile?.rating || 0;
+    const rating = worker.rating ?? 0;
     const experience = worker.workerProfile?.experience || 'Not specified';
-
+    
     return (
         <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-300 group">
-            <div className="flex items-start justify-between mb-3 sm:mb-4">
+            <div className="flex flex-col items-start justify-between mb-3 sm:mb-4">
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                        <span className="text-white font-bold text-sm sm:text-base">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform line-clamp-1 turncate">
+                        <span className="text-white font-bold text-sm sm:text-base overflow-hidden line-clamp-1 turncate">
                             {worker.name?.charAt(0)?.toUpperCase() || 'W'}
                         </span>
                     </div>
@@ -69,7 +72,7 @@ const WorkerCard = ({ worker, onViewDetails, onWorkerAction, actionLoading }) =>
                                 key={index}
                                 className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-medium"
                             >
-                                {skill.name}
+                                {skill.name || skill.skillId?.name}
                             </span>
                         ))}
                         {workerSkills.length > 2 && (
@@ -87,7 +90,7 @@ const WorkerCard = ({ worker, onViewDetails, onWorkerAction, actionLoading }) =>
                                 key={index}
                                 className="bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-medium"
                             >
-                                {service.name}
+                                {service.serviceName || service.name || service.serviceId?.name}
                             </span>
                         ))}
                         {workerServices.length > 2 && (

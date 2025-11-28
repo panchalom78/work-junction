@@ -154,7 +154,6 @@ const AdminServiceAgents = () => {
   // Enhanced Mobile Actions Menu Component
   const MobileActionsMenu = ({ agent, onClose }) => {
     useEffect(() => {
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = 'unset';
