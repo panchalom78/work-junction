@@ -56,6 +56,8 @@ const FeaturedWorkers = () => {
 
     useEffect(() => {
         if (workers && workers.length > 0) {
+            console.log("Feautered Workers:", workers);
+
             const transformedWorkers = workers.map((worker, index) => ({
                 id: worker._id || worker.workerId || `worker-${index}`,
                 name: worker.workerName || worker.name || "Unknown Worker",
@@ -81,7 +83,9 @@ const FeaturedWorkers = () => {
                 badge: getWorkerBadge(worker, index),
                 experience: Math.floor(Math.random() * 8) + 2,
                 responseTime: Math.floor(Math.random() * 30) + 5,
+                profile: worker.profile,
             }));
+
             setFeaturedWorkers(transformedWorkers);
         }
     }, [workers]);
@@ -250,15 +254,22 @@ const FeaturedWorkers = () => {
                                 <div className="flex items-start justify-between mb-6">
                                     <div className="flex items-center space-x-4">
                                         <div className="relative">
-                                            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                                                {worker.name
-                                                    .split(" ")
-                                                    .map((n) => n[0])
-                                                    .join("")}
+                                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-md group-hover:shadow-xl group-hover:scale-110 transition-all duration-300 overflow-hidden border border-gray-200 bg-white">
+                                                <img
+                                                    src={`${worker.profile}`}
+                                                    alt={`${worker.name}'s profile`}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.style.display =
+                                                            "none";
+                                                        e.target.nextSibling.style.display =
+                                                            "flex";
+                                                    }}
+                                                />
                                             </div>
                                             {worker.verified && (
-                                                <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1.5 shadow-lg border-2 border-white">
-                                                    <Shield className="w-3 h-3 text-white" />
+                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-lg border border-gray-200">
+                                                    <Shield className="w-3 h-3 text-green-500" />
                                                 </div>
                                             )}
                                         </div>
@@ -293,7 +304,7 @@ const FeaturedWorkers = () => {
                                             </span>
                                         </div>
                                         <div className="text-xs text-gray-600">
-                                            {worker.totalRatings} reviews
+                                            Average Rating
                                         </div>
                                     </div>
 

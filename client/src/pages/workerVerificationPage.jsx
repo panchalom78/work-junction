@@ -13,6 +13,7 @@ import {
     Upload,
     FileText,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const WorkerVerificationPage = () => {
     const navigate = useNavigate();
@@ -62,6 +63,38 @@ const WorkerVerificationPage = () => {
         fetchStatus();
     }, [fetchStatus]);
 
+    useEffect(() => {
+        const navigateUser = async () => {
+            const response = await getUser();
+            console.log(response);
+            if (response.success) {
+                if (!response.user.isVerified) {
+                    navigate("/otpVerification");
+                } else {
+                    if (response.user.role == "WORKER") {
+                        if (
+                            response.user?.workerProfile?.verification
+                                ?.status == "APPROVED"
+                        ) {
+                            navigate("/worker");
+                        } else {
+                            navigate("/worker/verification");
+                        }
+                    } else if (response.user.role == "CUSTOMER") {
+                        navigate("/customer");
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentDashboard");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                navigate("/login");
+            }
+        };
+        navigateUser();
+    }, []);
+
     // Check if user already has address
     useEffect(() => {
         if (user?.address) {
@@ -82,10 +115,6 @@ const WorkerVerificationPage = () => {
             }
         }
     }, [user]);
-
-    useEffect(() => {
-        getUser();
-    }, []);
 
     // Navigate to worker landing page when verified
     useEffect(() => {
@@ -250,33 +279,39 @@ const WorkerVerificationPage = () => {
     };
 
     const handleSubmitDocuments = async () => {
-        const allDocumentsUploaded =
-            uploadedDocuments.aadhar && uploadedDocuments.selfie;
+        try {
+            const allDocumentsUploaded =
+                uploadedDocuments.aadhar && uploadedDocuments.selfie;
 
-        if (!allDocumentsUploaded) {
-            alert("Please upload both Aadhaar Card and Live Selfie documents");
-            return;
-        }
+            if (!allDocumentsUploaded) {
+                alert(
+                    "Please upload both Aadhaar Card and Live Selfie documents"
+                );
+                return;
+            }
 
-        const formData = new FormData();
-        formData.append("selfie", uploadedDocuments.selfie);
-        formData.append("aadhar", uploadedDocuments.aadhar);
-        if (uploadedDocuments.policeVerification) {
-            formData.append(
-                "policeVerification",
-                uploadedDocuments.policeVerification
-            );
-        }
+            const formData = new FormData();
+            formData.append("selfie", uploadedDocuments.selfie);
+            formData.append("aadhar", uploadedDocuments.aadhar);
+            if (uploadedDocuments.policeVerification) {
+                formData.append(
+                    "policeVerification",
+                    uploadedDocuments.policeVerification
+                );
+            }
 
-        const result = await uploadAllDocuments(formData);
+            const result = await uploadAllDocuments(formData);
 
-        if (result.success) {
-            setShowUploadModal(false);
-            setUploadedDocuments({
-                aadhar: null,
-                selfie: null,
-                policeVerification: null,
-            });
+            if (result.success) {
+                setShowUploadModal(false);
+                setUploadedDocuments({
+                    aadhar: null,
+                    selfie: null,
+                    policeVerification: null,
+                });
+            }
+        } catch (error) {
+            toast.error(error.message || "Failed to upload documents");
         }
     };
 
@@ -714,12 +749,12 @@ const WorkerVerificationPage = () => {
                                     <span>Resubmit Documents</span>
                                 </button>
                             )}
-                        {statusData.actions.includes("view_details") && (
+                        {/* {statusData.actions.includes("view_details") && (
                             <button className="bg-white text-purple-600 border-2 border-purple-200 px-8 py-3 rounded-lg hover:bg-purple-50 transition-colors font-semibold flex items-center space-x-2">
                                 <FileText className="w-4 h-4" />
                                 <span>View Details</span>
                             </button>
-                        )}
+                        )} */}
                         {statusData.actions.includes("view_certificate") && (
                             <button className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-transform flex items-center space-x-2">
                                 <FileText className="w-4 h-4" />
@@ -867,7 +902,7 @@ const WorkerVerificationPage = () => {
                 )}
 
                 {/* Activity Timeline */}
-                <div className="bg-white rounded-2xl shadow-lg border-0 p-8">
+                {/* <div className="bg-white rounded-2xl shadow-lg border-0 p-8">
                     <div className="flex items-center space-x-3 mb-6">
                         <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
                             <span className="text-purple-600">📋</span>
@@ -945,7 +980,7 @@ const WorkerVerificationPage = () => {
                             </div>
                         )}
                     </div>
-                </div>
+                </div> */}
             </div>
 
             {/* Address Collection Modal */}

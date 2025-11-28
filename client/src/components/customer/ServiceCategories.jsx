@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWorkerSearchStore } from "../../store/workerSearch.store";
 import { Loader2, Calculator, PieChart, Code, Settings } from "lucide-react";
+import { useAuthStore } from "../../store/auth.store";
+import toast from "react-hot-toast";
 
 const ServiceCategories = () => {
     const navigate = useNavigate();
     const { availableFilters, loadAvailableFilters, loading } =
         useWorkerSearchStore();
     const [categories, setCategories] = useState([]);
+    const { user } = useAuthStore();
 
     // Map skill names to technical icons and colors
     const getCategoryDetails = (skillName) => {
@@ -109,7 +112,14 @@ const ServiceCategories = () => {
     }, [availableFilters.skills]);
 
     const handleCategoryClick = (category) => {
-        navigate(`/customer/search?skill=${encodeURIComponent(category.name)}`);
+        if (!user.address) {
+            toast.error("First add your address to continue.");
+        }
+        navigate(
+            `/customer/search?skill=${encodeURIComponent(
+                category.name
+            )}&location=${encodeURIComponent(user?.address?.city)}`
+        );
     };
 
     if (loading) {

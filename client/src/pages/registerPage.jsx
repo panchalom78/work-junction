@@ -63,12 +63,6 @@ const RegisterPage = () => {
             icon: FiUsers,
             description: "Manage worker verifications",
         },
-        {
-            id: "ADMIN",
-            title: "Platform Admin",
-            icon: FiSettings,
-            description: "Platform administration",
-        },
     ];
 
     const validateField = (name, value) => {
@@ -234,19 +228,18 @@ const RegisterPage = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid  sm:grid-cols-1 gap-4">
                         {roles.map((role) => (
                             <motion.div
                                 key={role.id}
                                 whileHover={{ scale: 1.02, y: -2 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleRoleSelect(role.id)}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group
-                  ${
-                      formData.role === role.id
-                          ? "border-blue-500 bg-blue-50 shadow-md"
-                          : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
-                  }`}
+                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 group ${
+                                    formData.role === role.id
+                                        ? "border-blue-500 bg-blue-50 shadow-md"
+                                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                }`}
                             >
                                 <div className="flex items-start space-x-3">
                                     <div

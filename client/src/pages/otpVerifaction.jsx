@@ -105,34 +105,39 @@ const OTPVerificationPage = () => {
         e.preventDefault();
         const otpString = otp.join("");
 
-        if (otpString.length !== 6) {
-            return;
-        }
-
-        const result = await verifyOTP({
-            otp: otpString,
-            email: contactInfo.email,
-        });
-
-        setIsLoading(false);
-
-        if (result.success) {
-            toast.success("OTP verified successfully!");
-            setIsVerified(true);
-            const response = await getUser();
-            if (response.success) {
-                if (response.user.role == "WORKER") {
-                    navigate("/worker/verification");
-                } else if (response.user.role == "CUSTOMER") {
-                    navigate("/customer");
-                } else if (response.user.role == "SERVICE_AGENT") {
-                    navigate("/serviceAgentSetup");
-                } else if (response.user.role == "ADMIN") {
-                    navigate("/adminDashboard");
-                }
+        try {
+            if (otpString.length !== 6) {
+                return;
             }
-        } else {
-            toast.error("OTP verification failed");
+
+            setIsLoading(true);
+            const result = await verifyOTP({
+                otp: otpString,
+                email: contactInfo.email,
+            });
+
+            if (result.success) {
+                toast.success("OTP verified successfully!");
+                setIsVerified(true);
+                const response = await getUser();
+                if (response.success) {
+                    if (response.user.role == "WORKER") {
+                        navigate("/worker/verification");
+                    } else if (response.user.role == "CUSTOMER") {
+                        navigate("/customer");
+                    } else if (response.user.role == "SERVICE_AGENT") {
+                        navigate("/serviceAgentSetup");
+                    } else if (response.user.role == "ADMIN") {
+                        navigate("/adminDashboard");
+                    }
+                }
+            } else {
+                toast.error("OTP verification failed");
+            }
+        } catch (error) {
+            toast.error("Failed to verify OTP. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -267,8 +272,8 @@ const OTPVerificationPage = () => {
                                             <input
                                                 key={index}
                                                 ref={(el) =>
-                                                (inputRefs.current[index] =
-                                                    el)
+                                                    (inputRefs.current[index] =
+                                                        el)
                                                 }
                                                 type="text"
                                                 inputMode="numeric"

@@ -9,6 +9,8 @@ import {
     Download,
     Upload,
     Smartphone,
+    StarIcon,
+    MessageCircleCodeIcon,
 } from "lucide-react";
 
 // Import your component views for each sidebar tab
@@ -20,7 +22,7 @@ const tabComponents = {
     verification: VerificationTab,
 };
 
-const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
+const Sidebar = ({ sidebarOpen, activeTab, setActiveTab, setSidebarOpen }) => {
     if (!sidebarOpen) return null;
 
     const menuItems = [
@@ -33,20 +35,33 @@ const Sidebar = ({ sidebarOpen, activeTab, setActiveTab }) => {
             label: "Non Smartphone Workers",
             icon: Smartphone,
         },
+        {
+            id: "reviews",
+            label: "Reviews And Ratings",
+            icon: StarIcon,
+        },
+        {
+            id: "chat",
+            label: "Chat",
+            icon: MessageCircleCodeIcon,
+        },
     ];
 
     // Find the component for the currently active tab
     const ActiveComponent = tabComponents[activeTab];
 
     return (
-        <div className="w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 min-h-screen fixed h-full overflow-y-auto flex flex-col">
+        <div className="w-64 bg-white/80 backdrop-blur-lg border-r border-gray-200 min-h-screen fixed h-full overflow-y-auto flex flex-col z-50">
             <div className="p-4 sm:p-6 space-y-8 flex-1">
                 {/* Navigation Menu */}
                 <div className="space-y-2">
                     {menuItems.map((item) => (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id)}
+                            onClick={() => {
+                                setActiveTab(item.id);
+                                setSidebarOpen(false);
+                            }}
                             className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
                                 activeTab === item.id
                                     ? "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-600 border border-blue-100 shadow-sm"

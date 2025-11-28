@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     User,
@@ -24,7 +24,9 @@ import {
 
 import { useAuthStore } from "../store/auth.store";
 import toast from "react-hot-toast";
-import RobustGujaratTranslator from "./GujaratTranslator";
+import RobustGujaratTranslator, {
+    applyPreferredLanguageAsync,
+} from "./GujaratTranslator";
 
 const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
     const location = useLocation();
@@ -136,6 +138,12 @@ const WorkerNavbar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
             </div>
         </div>
     );
+    useEffect(() => {
+        // attempt to apply saved language; await is optional
+        applyPreferredLanguageAsync(5000).then((applied) => {
+            console.log("preferred language applied:", applied);
+        });
+    }, []);
 
     return (
         <>

@@ -659,6 +659,7 @@ export const updateSkillsAndServices = async (req, res) => {
             details: s.details,
             pricingType: s.pricingType,
             price: parseFloat(s.price) || 0,
+            estimatedDuration: 1,
         }));
 
         insertedServices = await WorkerService.insertMany(newServices);

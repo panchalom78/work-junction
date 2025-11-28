@@ -58,6 +58,18 @@ import {
     updateSkillsAndServices,
     getSkills,
 } from "../controllers/workerManagement.controller.js";
+import {
+    getWorkerReviews,
+    getAllAgentWorkerReviews,
+    handleReviewAction,
+} from "../controllers/reviewServiceAgent.controller.js";
+import {
+    getAgentChats,
+    sendMessageAsAgent,
+    getAgentChat,
+    getAgentChatMessages,
+    getAgentDashboardStats,
+} from "../controllers/agentChat.controller.js";
 
 const router = express.Router();
 router.use(protect);
@@ -151,5 +163,45 @@ router.get("/workers-with-pending-bookings", getWorkersWithPendingBookings);
 router.get("/agent-workers-with-stats", getAgentWorkersWithStats);
 router.get("/worker/:workerId/pending-bookings", getWorkerPendingBookings);
 router.get("/worker-counts", getWorkerCounts);
+
+router.get("/worker-reviews/:workerId", getWorkerReviews);
+router.get("/all-worker-reviews", getAllAgentWorkerReviews);
+// router.patch("/worker-status/:workerId", updateWorkerStatus);
+router.post("/review-action/:reviewId", handleReviewAction);
+
+/**
+ * @route   GET /api/agent/chats
+ * @desc    Get all chats for service agent
+ * @access  Private (SERVICE_AGENT)
+ */
+router.get("/chats", getAgentChats);
+
+/**
+ * @route   GET /api/agent/chats/:chatId
+ * @desc    Get specific chat details
+ * @access  Private (SERVICE_AGENT)
+ */
+router.get("/chats/:chatId", getAgentChat);
+
+/**
+ * @route   GET /api/agent/chats/:chatId/messages
+ * @desc    Get chat messages with pagination
+ * @access  Private (SERVICE_AGENT)
+ */
+router.get("/chats/:chatId/messages", getAgentChatMessages);
+
+/**
+ * @route   POST /api/agent/chats/:chatId/messages
+ * @desc    Send message as agent on behalf of worker
+ * @access  Private (SERVICE_AGENT)
+ */
+router.post("/chats/:chatId/messages", sendMessageAsAgent);
+
+/**
+ * @route   GET /api/agent/dashboard/stats
+ * @desc    Get agent dashboard statistics
+ * @access  Private (SERVICE_AGENT)
+ */
+router.get("/dashboard/stats", getAgentDashboardStats);
 
 export default router;

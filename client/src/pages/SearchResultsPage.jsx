@@ -46,6 +46,7 @@ const SearchResultsPage = () => {
             searchWorkers(urlFilters).finally(() => {
                 setIsInitialLoad(false);
             });
+            console.log(workers);
         } else {
             // If no query parameters, set initial load to false
             setIsInitialLoad(false);
@@ -197,10 +198,11 @@ const SearchResultsPage = () => {
                                     <div className="flex items-start justify-between mb-4">
                                         <div className="flex items-center space-x-4">
                                             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg">
-                                                {worker.workerName
-                                                    ?.split(" ")
-                                                    .map((n) => n[0])
-                                                    .join("") || "W"}
+                                                <img
+                                                    src={`${worker.profile}`}
+                                                    alt="profile"
+                                                    className="w-full h-full object-cover rounded-2xl"
+                                                />
                                             </div>
                                             <div>
                                                 <div className="font-semibold text-gray-900 text-lg">
@@ -290,12 +292,12 @@ const SearchResultsPage = () => {
                                                         : "New"}
                                                 </span>
                                             </div>
-                                            {worker.totalRatings > 0 && (
+                                            {/* {worker.totalRatings > 0 && (
                                                 <span className="text-gray-500 text-sm">
-                                                    ({worker.totalRatings}{" "}
+                                                    ({worker.totalRatings - 1}{" "}
                                                     reviews)
                                                 </span>
-                                            )}
+                                            )} */}
                                         </div>
                                         {worker.availabilityStatus ===
                                             "off-duty" && (

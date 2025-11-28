@@ -1187,7 +1187,7 @@ const WorkerManagement = () => {
                                     Rating
                                 </th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Jobs
+                                    Services
                                 </th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     Actions
@@ -1213,15 +1213,6 @@ const WorkerManagement = () => {
                                                     <div className="text-sm text-gray-500">
                                                         {worker.phone}
                                                     </div>
-                                                    <div className="text-xs text-gray-400 mt-1">
-                                                        {worker.workerProfile
-                                                            ?.services?.[0]
-                                                            ?.serviceId?.name ||
-                                                            worker.services?.[0]
-                                                                ?.serviceId
-                                                                ?.name ||
-                                                            "No services"}
-                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -1239,9 +1230,6 @@ const WorkerManagement = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-semibold text-gray-900">
                                                 {worker.completedJobs || 0}
-                                            </div>
-                                            <div className="text-xs text-gray-500">
-                                                completed
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -2215,9 +2203,9 @@ const WorkerManagement = () => {
                                     Availability Information
                                 </h4>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
                                     {/* Current Status */}
-                                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                                    {/* <div className="bg-white p-4 rounded-xl border border-gray-200">
                                         <h5 className="font-semibold text-gray-800 mb-3 flex items-center">
                                             <svg
                                                 className="w-4 h-4 mr-2 text-blue-600"
@@ -2264,7 +2252,7 @@ const WorkerManagement = () => {
                                                     : "NOT SET"}
                                             </span>
                                         </div>
-                                    </div>
+                                    </div> */}
 
                                     {/* Weekly Schedule */}
                                     <div className="bg-white p-4 rounded-xl border border-gray-200">
@@ -3282,7 +3270,7 @@ const WorkerManagement = () => {
 
                             {editTab === "availability" && (
                                 <div className="space-y-6">
-                                    {/* Availability Status */}
+                                    {/* Availability Status
                                     <div className="bg-white p-6 rounded-xl border border-gray-200">
                                         <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                             Availability Status
@@ -3364,7 +3352,7 @@ const WorkerManagement = () => {
                                                 </label>
                                             ))}
                                         </div>
-                                    </div>
+                                    </div> */}
 
                                     {/* Weekly Timetable */}
                                     <div className="bg-white p-6 rounded-xl border border-gray-200">
@@ -4056,8 +4044,6 @@ const WorkerManagement = () => {
                                     </button>
                                 )}
                                 {/* Availability Tab */}
-                                // Add this button in the action buttons section
-                                for the availability tab
                                 {editTab === "availability" && (
                                     <button
                                         type="button"

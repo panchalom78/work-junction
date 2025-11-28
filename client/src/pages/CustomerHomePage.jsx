@@ -222,11 +222,6 @@ const CustomerHomePage = () => {
                                                 label: "My Bookings",
                                                 path: "/customer/bookings",
                                             },
-                                            {
-                                                icon: Settings,
-                                                label: "Preferences",
-                                                path: "/customer/settings",
-                                            },
                                         ].map((item) => (
                                             <button
                                                 key={item.label}

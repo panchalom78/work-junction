@@ -155,7 +155,10 @@ export const getCustomerBookings = async (req, res) => {
         }
 
         const bookings = await Booking.find(query)
-            .populate("workerId", "name phone email address")
+            .populate(
+                "workerId",
+                "name phone email address workerProfile.verification.selfieUrl"
+            )
             .populate("workerServiceId")
             .sort({ createdAt: -1 })
             .limit(limit * 1)
@@ -849,7 +852,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             });
         }
 
-        // Validate ObjectId
         if (!mongoose.Types.ObjectId.isValid(workerId)) {
             return res.status(400).json({
                 success: false,
@@ -857,7 +859,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             });
         }
 
-        // Fetch worker details including timetable
         const worker = await User.findOne({
             _id: workerId,
             role: "WORKER",
@@ -870,7 +871,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             });
         }
 
-        // Check if worker is suspended
         if (worker.workerProfile?.isSuspended) {
             return res.status(400).json({
                 success: false,
@@ -878,11 +878,9 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             });
         }
 
-        // Get worker's timetable
         const timetable = worker.workerProfile?.timetable || {};
         const nonAvailability = worker.workerProfile?.nonAvailability || [];
 
-        // Generate dates for the next 7 days
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -893,20 +891,17 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             weekDates.push(date);
         }
 
-        // Generate time slots based on duration - IMPROVED
         const generateTimeSlots = (durationMinutes) => {
             const slots = [];
             const startHour = 9; // 9 AM
             const endHour = 20; // 8 PM
 
-            // Calculate number of slots per hour based on duration
             const slotsPerHour = 60 / durationMinutes;
 
             for (let hour = startHour; hour < endHour; hour++) {
                 for (let slotIndex = 0; slotIndex < slotsPerHour; slotIndex++) {
-                    const minute = slotIndex * durationMinutes;
+                    const minute = Math.round(slotIndex * durationMinutes);
 
-                    // Only add slots that don't exceed the hour boundary
                     if (minute < 60) {
                         const timeString = `${hour
                             .toString()
@@ -915,7 +910,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
                             .padStart(2, "0")}`;
                         const displayTime = formatTimeForDisplay(hour, minute);
 
-                        // Calculate end time for display
                         const endTime = calculateEndTime(
                             hour,
                             minute,
@@ -928,19 +922,16 @@ export const getAvailableSlotsForWeek = async (req, res) => {
 
                         slots.push({
                             time: timeString,
-                            displayTime: displayTime,
+                            displayTime,
                             endTime: endDisplayTime,
-                            value: `${hour.toString().padStart(2, "0")}:${minute
-                                .toString()
-                                .padStart(2, "0")}`,
+                            value: timeString,
                             duration: durationMinutes,
                         });
                     }
                 }
             }
 
-            // Handle the case where duration doesn't evenly divide into hours
-            // Add the last slot if it fits within endHour
+            // Add last slot at endHour if it fits entirely
             const lastSlotHour = endHour;
             const lastSlotMinute = 0;
             const lastSlotEndTime = calculateEndTime(
@@ -950,7 +941,7 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             );
 
             if (
-                lastSlotEndTime.hour <= endHour ||
+                lastSlotEndTime.hour < endHour ||
                 (lastSlotEndTime.hour === endHour &&
                     lastSlotEndTime.minute === 0)
             ) {
@@ -970,13 +961,9 @@ export const getAvailableSlotsForWeek = async (req, res) => {
 
                 slots.push({
                     time: timeString,
-                    displayTime: displayTime,
+                    displayTime,
                     endTime: endDisplayTime,
-                    value: `${lastSlotHour
-                        .toString()
-                        .padStart(2, "0")}:${lastSlotMinute
-                        .toString()
-                        .padStart(2, "0")}`,
+                    value: timeString,
                     duration: durationMinutes,
                 });
             }
@@ -984,30 +971,25 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             return slots;
         };
 
-        // Calculate end time for a slot
         const calculateEndTime = (startHour, startMinute, duration) => {
             const totalStartMinutes = startHour * 60 + startMinute;
             const totalEndMinutes = totalStartMinutes + duration;
-
             const endHour = Math.floor(totalEndMinutes / 60);
             const endMinute = totalEndMinutes % 60;
-
             return { hour: endHour, minute: endMinute };
         };
 
         const formatTimeForDisplay = (hour, minute) => {
             const period = hour >= 12 ? "PM" : "AM";
             const displayHour = hour > 12 ? hour - 12 : hour;
-            if (displayHour === 0) displayHour = 12;
-            return `${displayHour}:${minute
+            const finalHour = displayHour === 0 ? 12 : displayHour;
+            return `${finalHour}:${minute
                 .toString()
                 .padStart(2, "0")} ${period}`;
         };
 
-        // Generate slots based on the requested duration
         const allTimeSlots = generateTimeSlots(durationMinutes);
 
-        // Get day name from date
         const getDayName = (date) => {
             const days = [
                 "Sunday",
@@ -1021,7 +1003,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             return days[date.getDay()];
         };
 
-        // Get formatted date without timezone issues
         const getFormattedDate = (date) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -1029,7 +1010,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             return `${year}-${month}-${day}`;
         };
 
-        // Check if a time slot is within worker's working hours
         const isWithinWorkingHours = (
             dayName,
             startTime,
@@ -1037,16 +1017,12 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             workerTimetable
         ) => {
             const daySchedule = workerTimetable[dayName];
-            if (!daySchedule || daySchedule.length === 0) {
-                return false;
-            }
+            if (!daySchedule || daySchedule.length === 0) return false;
 
-            // Parse start time
             const [startHour, startMinute] = startTime.split(":").map(Number);
             const startTotalMinutes = startHour * 60 + startMinute;
             const endTotalMinutes = startTotalMinutes + durationMinutes;
 
-            // Check if slot falls within any working period for the day
             for (const period of daySchedule) {
                 if (period.start && period.end) {
                     const [periodStartHour, periodStartMinute] = period.start
@@ -1061,7 +1037,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
                     const periodEndMinutes =
                         periodEndHour * 60 + periodEndMinute;
 
-                    // Check if the entire service duration fits within this working period
                     if (
                         startTotalMinutes >= periodStartMinutes &&
                         endTotalMinutes <= periodEndMinutes
@@ -1073,28 +1048,25 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             return false;
         };
 
-        // Check if slot conflicts with non-availability period
         const isNonAvailable = (
             date,
             startTime,
             durationMinutes,
             nonAvailabilityPeriods
         ) => {
-            const startDateTime = new Date(date);
+            const slotStart = new Date(date);
             const [startHour, startMinute] = startTime.split(":").map(Number);
-            startDateTime.setHours(startHour, startMinute, 0, 0);
+            slotStart.setHours(startHour, startMinute, 0, 0);
 
-            const endDateTime = new Date(startDateTime);
-            endDateTime.setMinutes(endDateTime.getMinutes() + durationMinutes);
+            const slotEnd = new Date(slotStart);
+            slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
 
             for (const period of nonAvailabilityPeriods) {
+                if (!period.startDateTime || !period.endDateTime) continue;
+                // overlap test
                 if (
-                    (startDateTime >= period.startDateTime &&
-                        startDateTime < period.endDateTime) ||
-                    (endDateTime > period.startDateTime &&
-                        endDateTime <= period.endDateTime) ||
-                    (startDateTime <= period.startDateTime &&
-                        endDateTime >= period.endDateTime)
+                    slotStart < period.endDateTime &&
+                    slotEnd > period.startDateTime
                 ) {
                     return true;
                 }
@@ -1102,76 +1074,104 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             return false;
         };
 
-        // Get booked slots for a specific date
-        const getBookedSlotsForDate = async (workerId, date) => {
+        // --- NEW / IMPROVED: getBookingsForWeek and overlap logic ---
+        const getBookingsForWeek = async (workerId, weekStartDate) => {
+            const weekEndDate = new Date(weekStartDate);
+            weekEndDate.setDate(weekEndDate.getDate() + 7);
+
+            // Only consider bookings that block worker time (modify statuses if needed)
             const bookings = await Booking.find({
                 workerId: workerId,
-                bookingDate: date,
+                bookingDate: {
+                    $gte: weekStartDate,
+                    $lt: weekEndDate,
+                },
+                // these are statuses that should block time; adjust if your app requires different statuses
                 status: { $in: ["PENDING", "ACCEPTED", "PAYMENT_PENDING"] },
-            }).select("bookingTime bookingDate");
+            })
+                .populate({
+                    path: "workerServiceId",
+                    select: "estimatedDuration",
+                })
+                .select("bookingDate bookingTime workerServiceId status");
 
-            // Convert to a more searchable format
-            const bookedSlots = [];
-            bookings.forEach((booking) => {
-                const bookingDateTime = new Date(booking.bookingDate);
-                const [hours, minutes] = booking.bookingTime
+            // Map into standardized start/end Date objects using actual estimatedDuration when available
+            const bookingsWithDuration = bookings.map((b) => {
+                const bookingDateOnly = new Date(b.bookingDate);
+                bookingDateOnly.setHours(0, 0, 0, 0);
+
+                // Build full start datetime using bookingTime
+                const [bhours, bminutes] = (b.bookingTime || "00:00")
                     .split(":")
                     .map(Number);
-                bookingDateTime.setHours(hours, minutes, 0, 0);
-                bookedSlots.push(bookingDateTime.getTime());
+                const start = new Date(bookingDateOnly);
+                start.setHours(bhours, bminutes, 0, 0);
+
+                // Use the service's estimatedDuration if present, otherwise fallback to requested durationMinutes
+                const actualDuration =
+                    b.workerServiceId?.estimatedDuration || durationMinutes;
+
+                const end = new Date(start);
+                end.setMinutes(end.getMinutes() + actualDuration);
+
+                return {
+                    start,
+                    end,
+                    duration: actualDuration,
+                    rawStatus: b.status,
+                };
             });
 
-            return bookedSlots;
+            return bookingsWithDuration;
         };
 
-        // Check if slot conflicts with existing bookings
+        // Overlap check (canonical): two intervals overlap if slotStart < bookingEnd && slotEnd > bookingStart
         const isSlotBooked = (
             date,
             startTime,
             durationMinutes,
-            bookedSlots
+            allBookings
         ) => {
-            const slotStartDateTime = new Date(date);
+            const slotStart = new Date(date);
             const [startHour, startMinute] = startTime.split(":").map(Number);
-            slotStartDateTime.setHours(startHour, startMinute, 0, 0);
+            slotStart.setHours(startHour, startMinute, 0, 0);
 
-            const slotEndDateTime = new Date(slotStartDateTime);
-            slotEndDateTime.setMinutes(
-                slotEndDateTime.getMinutes() + durationMinutes
-            );
+            const slotEnd = new Date(slotStart);
+            slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
 
-            for (const bookedSlot of bookedSlots) {
-                const bookedDateTime = new Date(bookedSlot);
-                // Assume each booking has the same duration (or handle accordingly)
-                const bookedEndDateTime = new Date(bookedDateTime);
-                bookedEndDateTime.setMinutes(
-                    bookedEndDateTime.getMinutes() + durationMinutes
-                );
+            // Filter bookings to same day (quick filter) and then do canonical overlap
+            const targetDayStart = new Date(date);
+            targetDayStart.setHours(0, 0, 0, 0);
+            const targetDayEnd = new Date(targetDayStart);
+            targetDayEnd.setDate(targetDayEnd.getDate() + 1);
 
+            for (const booking of allBookings) {
+                // quick day filter
                 if (
-                    (slotStartDateTime >= bookedDateTime &&
-                        slotStartDateTime < bookedEndDateTime) ||
-                    (slotEndDateTime > bookedDateTime &&
-                        slotEndDateTime <= bookedEndDateTime) ||
-                    (slotStartDateTime <= bookedDateTime &&
-                        slotEndDateTime >= bookedEndDateTime)
+                    booking.start >= targetDayEnd ||
+                    booking.end <= targetDayStart
                 ) {
+                    continue;
+                }
+
+                // canonical overlap test
+                if (slotStart < booking.end && slotEnd > booking.start) {
                     return true;
                 }
             }
             return false;
         };
+        // --- END improvements ---
 
-        // Process each day of the week
+        const allBookingsForWeek = await getBookingsForWeek(workerId, today);
+
         const availableSlotsByDay = [];
 
         for (const date of weekDates) {
             const dayName = getDayName(date);
             const formattedDate = getFormattedDate(date);
-            const bookedSlots = await getBookedSlotsForDate(workerId, date);
 
             const daySlots = allTimeSlots.filter((slot) => {
-                // Check if the entire service duration fits within working hours
                 if (
                     !isWithinWorkingHours(
                         dayName,
@@ -1183,7 +1183,6 @@ export const getAvailableSlotsForWeek = async (req, res) => {
                     return false;
                 }
 
-                // Check if slot conflicts with non-availability
                 if (
                     isNonAvailable(
                         date,
@@ -1195,9 +1194,13 @@ export const getAvailableSlotsForWeek = async (req, res) => {
                     return false;
                 }
 
-                // Check if slot is already booked
                 if (
-                    isSlotBooked(date, slot.time, durationMinutes, bookedSlots)
+                    isSlotBooked(
+                        date,
+                        slot.time,
+                        durationMinutes,
+                        allBookingsForWeek
+                    )
                 ) {
                     return false;
                 }
@@ -1223,9 +1226,11 @@ export const getAvailableSlotsForWeek = async (req, res) => {
             durationMinutes,
             "minutes"
         );
-        console.log("Slot interval:", durationMinutes, "minutes");
         console.log("Total slots generated:", allTimeSlots.length);
-        console.log("Available slots by day:", availableSlotsByDay);
+        console.log(
+            "Total bookings found for the week:",
+            allBookingsForWeek.length
+        );
 
         res.status(200).json({
             success: true,
@@ -1235,6 +1240,7 @@ export const getAvailableSlotsForWeek = async (req, res) => {
                 availableSlots: availableSlotsByDay,
                 workerAvailability:
                     worker.workerProfile?.availabilityStatus || "available",
+                totalBookingsInWeek: allBookingsForWeek.length,
             },
         });
     } catch (error) {
@@ -1246,6 +1252,7 @@ export const getAvailableSlotsForWeek = async (req, res) => {
         });
     }
 };
+
 const getFormattedDate = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");

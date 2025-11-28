@@ -13,6 +13,7 @@ import {
     PlayCircle,
     CheckCircle,
     AlertCircle,
+    XCircle,
 } from "lucide-react";
 import { useBookingStore } from "../../store/booking.store";
 
@@ -32,54 +33,65 @@ const OngoingBookings = () => {
 
     const getStatusConfig = (status) => {
         const configs = {
-            Confirmed: {
-                color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-                icon: CheckCircle,
-                bg: "bg-emerald-500",
-            },
-            "In Progress": {
-                color: "bg-blue-50 text-blue-700 border-blue-200",
-                icon: PlayCircle,
-                bg: "bg-blue-500",
-            },
-            Pending: {
+            PENDING: {
                 color: "bg-amber-50 text-amber-700 border-amber-200",
                 icon: Clock,
                 bg: "bg-amber-500",
+                displayText: "Pending",
             },
-            Completed: {
+            ACCEPTED: {
+                color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                icon: CheckCircle,
+                bg: "bg-emerald-500",
+                displayText: "Confirmed",
+            },
+            PAYMENT_PENDING: {
+                color: "bg-blue-50 text-blue-700 border-blue-200",
+                icon: Clock,
+                bg: "bg-blue-500",
+                displayText: "Payment Pending",
+            },
+            COMPLETED: {
                 color: "bg-gray-50 text-gray-700 border-gray-200",
                 icon: CheckCircle,
                 bg: "bg-gray-500",
+                displayText: "Completed",
             },
-            Cancelled: {
+            CANCELLED: {
                 color: "bg-red-50 text-red-700 border-red-200",
-                icon: AlertCircle,
+                icon: XCircle,
                 bg: "bg-red-500",
+                displayText: "Cancelled",
+            },
+            DECLINED: {
+                color: "bg-red-50 text-red-700 border-red-200",
+                icon: XCircle,
+                bg: "bg-red-500",
+                displayText: "Declined",
             },
         };
-        return configs[status] || configs.Pending;
+        return configs[status] || configs.PENDING;
     };
 
     const getPaymentStatusConfig = (status) => {
         const configs = {
-            Paid: {
+            COMPLETED: {
                 color: "text-emerald-600",
                 bg: "bg-emerald-100",
                 label: "Paid",
             },
-            Pending: {
+            PENDING: {
                 color: "text-amber-600",
                 bg: "bg-amber-100",
                 label: "Pending",
             },
-            Failed: {
+            FAILED: {
                 color: "text-red-600",
                 bg: "bg-red-100",
                 label: "Failed",
             },
         };
-        return configs[status] || configs.Pending;
+        return configs[status] || configs.PENDING;
     };
 
     const formatServiceName = (details) => {
@@ -214,8 +226,6 @@ const OngoingBookings = () => {
                                                             {
                                                                 day: "numeric",
                                                                 month: "short",
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
                                                             }
                                                         )}
                                                     </span>
