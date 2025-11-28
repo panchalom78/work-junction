@@ -176,7 +176,7 @@ const AvailabilityManagement = () => {
                 </button>
             </div>
 
-            {/* Current Status */}
+            {/* Current Status
             <div
                 className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
                 style={{
@@ -264,7 +264,7 @@ const AvailabilityManagement = () => {
                         </button>
                     ))}
                 </div>
-            </div>
+            </div> */}
 
             {/* Quick Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

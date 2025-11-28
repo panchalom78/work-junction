@@ -3,311 +3,365 @@
 
 /* Define custom CSS variables (root) */
 :root {
-  /* 🎨 Core Color Palette */
-  --primary-color: linear-gradient(to right, #2563EB, #7C3AED);
-  --primary-hover: #5B1890;
-  --primary-light: #E9D5FF;
-  --primary-gradient: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
-  
-  --secondary-color: #10B981;
-  --secondary-hover: #059669;
-  --secondary-light: #D1FAE5;
-  
-  --danger-color: #EF4444;
-  --danger-hover: #DC2626;
-  --danger-light: #FEE2E2;
-  
-  --info-color: #3B82F6;
-  --info-hover: #2563EB;
-  --info-light: #DBEAFE;
+    /* 🎨 Core Color Palette */
+    --primary-color: linear-gradient(to right, #2563eb, #7c3aed);
+    --primary-hover: #5b1890;
+    --primary-light: #e9d5ff;
+    --primary-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
 
-  /* 🌑 Neutral Colors */
-  --text-color: #1E293B;
-  --text-muted: #64748B;
-  --text-light: #94A3B8;
-  
-  --border-color: #E2E8F0;
-  --border-hover: #CBD5E1;
-  
-  --bg-light: #F8FAFC;
-  --bg-white: #FFFFFF;
-  --bg-dark: #0F172A;
+    --secondary-color: #10b981;
+    --secondary-hover: #059669;
+    --secondary-light: #d1fae5;
 
-  /* 🎭 Surface Colors */
-  --surface-primary: #FFFFFF;
-  --surface-secondary: #F1F5F9;
-  --surface-tertiary: #E2E8F0;
-  --surface-dark: #1E293B;
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --danger-light: #fee2e2;
 
-  /* 📝 Typography */
-  --font-primary: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', monospace;
-  
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 0.9375rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-  
-  --font-weight-light: 300;
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
+    --info-color: #3b82f6;
+    --info-hover: #2563eb;
+    --info-light: #dbeafe;
 
-  /* 🌟 Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.02);
+    /* 🌑 Neutral Colors */
+    --text-color: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
 
-  /* 🔹 Border Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
 
-  /* ⚡ Transitions */
-  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --bg-light: #f8fafc;
+    --bg-white: #ffffff;
+    --bg-dark: #0f172a;
+
+    /* 🎭 Surface Colors */
+    --surface-primary: #ffffff;
+    --surface-secondary: #f1f5f9;
+    --surface-tertiary: #e2e8f0;
+    --surface-dark: #1e293b;
+
+    /* 📝 Typography */
+    --font-primary: "SF Pro Display", "Inter", -apple-system, BlinkMacSystemFont,
+        sans-serif;
+    --font-mono: "SF Mono", "Fira Code", monospace;
+
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 0.9375rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    --font-weight-light: 300;
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+
+    /* 🌟 Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.02);
+
+    /* 🔹 Border Radius */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+
+    /* ⚡ Transitions */
+    --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ✨ Global Reset & Base Styles */
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 body {
-  font-family: var(--font-primary);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-regular);
-  color: var(--text-color);
-  background-color: var(--bg-light);
-  line-height: 1.6;
-  margin: 0;
-  padding: 0;
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-regular);
+    color: var(--text-color);
+    background-color: var(--bg-light);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
 }
 
 /* 🎯 Headings */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-color);
-  line-height: 1.25;
-  margin: 0 0 1rem 0;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-color);
+    line-height: 1.25;
+    margin: 0 0 1rem 0;
 }
 
-h1 { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); }
-h2 { font-size: var(--font-size-3xl); }
-h3 { font-size: var(--font-size-2xl); }
-h4 { font-size: var(--font-size-xl); }
+h1 {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+}
+h2 {
+    font-size: var(--font-size-3xl);
+}
+h3 {
+    font-size: var(--font-size-2xl);
+}
+h4 {
+    font-size: var(--font-size-xl);
+}
 
 /* 📊 Dashboard Header */
 .dashboard-header {
-  background-color: var(--surface-primary);
-  padding: 2rem;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 1.5rem;
-  border: 1px solid var(--border-color);
+    background-color: var(--surface-primary);
+    padding: 2rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
 }
 
 .dashboard-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
 }
 
 .dashboard-subtitle {
-  font-size: var(--font-size-lg);
-  color: var(--text-muted);
-  font-weight: var(--font-weight-regular);
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    font-weight: var(--font-weight-regular);
 }
 
 /* 🎫 Stats Cards */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 .stat-card {
-  background-color: var(--surface-primary);
-  padding: 1.75rem;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
-  transition: all var(--transition-normal);
+    background-color: var(--surface-primary);
+    padding: 1.75rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-normal);
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-0.5rem);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-0.5rem);
 }
 
 .stat-value {
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-color);
-  margin-bottom: 0.5rem;
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .stat-change {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  margin-top: 0.5rem;
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    margin-top: 0.5rem;
 }
 
 .stat-change.positive {
-  color: var(--secondary-color);
-  background-color: var(--secondary-light);
+    color: var(--secondary-color);
+    background-color: var(--secondary-light);
 }
 
 .stat-change.negative {
-  color: var(--danger-color);
-  background-color: var(--danger-light);
+    color: var(--danger-color);
+    background-color: var(--danger-light);
 }
 
 /* 📈 Chart Container */
 .chart-container {
-  background-color: var(--surface-primary);
-  padding: 2rem;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+    background-color: var(--surface-primary);
+    padding: 2rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
 }
 
 .chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
 }
 
 .chart-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-color);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-color);
 }
 
 .chart-period {
-  display: flex;
-  gap: 0.5rem;
-  background-color: var(--surface-secondary);
-  padding: 0.25rem;
-  border-radius: var(--radius-md);
+    display: flex;
+    gap: 0.5rem;
+    background-color: var(--surface-secondary);
+    padding: 0.25rem;
+    border-radius: var(--radius-md);
 }
 
 .period-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition-normal);
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-normal);
 }
 
 .period-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .period-btn.active {
-  color: var(--info-color);
-  background-color: var(--surface-primary);
-  font-weight: var(--font-weight-medium);
+    color: var(--info-color);
+    background-color: var(--surface-primary);
+    font-weight: var(--font-weight-medium);
 }
 
 /* 🎯 Percentage Display */
 .percentage-display {
-  text-align: center;
-  padding: 2rem;
+    text-align: center;
+    padding: 2rem;
 }
 
 .percentage-value {
-  font-size: 3rem;
-  font-weight: var(--font-weight-bold);
-  color: var(--info-color);
-  margin-bottom: 0.5rem;
+    font-size: 3rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--info-color);
+    margin-bottom: 0.5rem;
 }
 
 .percentage-label {
-  font-size: var(--font-size-lg);
-  color: var(--text-muted);
-  font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
 }
 
 /* 📅 Months Grid */
 .months-grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 0.75rem;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0.75rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .month-label {
-  text-align: center;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  font-weight: var(--font-weight-medium);
+    text-align: center;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-weight: var(--font-weight-medium);
 }
 
 /* ✅ Buttons */
 .btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-medium);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  transition: all var(--transition-normal);
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-normal);
 }
 
 .btn-primary {
-  background: var(--primary-gradient);
-  color: white;
-  font-weight: var(--font-weight-semibold);
+    background: var(--primary-gradient);
+    color: white;
+    font-weight: var(--font-weight-semibold);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #1D4ED8 0%, #6D28D9 100%);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 /* 📱 Responsive Design */
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .chart-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .percentage-value {
-    font-size: 2.5rem;
-  }
-  
-  .months-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .percentage-value {
+        font-size: 2.5rem;
+    }
+
+    .months-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+/* Google Translate Banner Hiding */
+.goog-te-banner-frame {
+    display: none !important;
+}
+
+.goog-te-banner-frame.skiptranslate {
+    display: none !important;
+}
+
+body {
+    top: 0px !important;
+}
+
+/* Hide Google Translate branding */
+.goog-te-gadget-icon,
+.goog-logo-link,
+.goog-te-gadget-simple .goog-te-menu-value span {
+    display: none !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value {
+    font-size: 0px !important;
+}
+
+.goog-te-gadget-simple .goog-te-menu-value:before {
+    content: "Language" !important;
+    font-size: 12px !important;
+}
+
+/* Fix for iframe issues */
+.goog-te-menu-frame {
+    z-index: 100000 !important; /* Ensure dropdown appears above other content */
+}
+
+/* Remove the top padding Google adds */
+body > .skiptranslate {
+    display: none !important;
 }

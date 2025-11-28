@@ -562,7 +562,21 @@ const BookingPage = () => {
                                                 <div className="flex justify-between items-start gap-3">
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="font-semibold text-gray-900 text-sm sm:text-base break-words">
-                                                            {service.details}
+                                                            {
+                                                                worker.skills
+                                                                    .find(
+                                                                        (
+                                                                            skill
+                                                                        ) =>
+                                                                            skill._id ===
+                                                                            service.skillId
+                                                                    )
+                                                                    .services.find(
+                                                                        (s) =>
+                                                                            s.serviceId ==
+                                                                            service.serviceId
+                                                                    ).name
+                                                            }
                                                         </h4>
                                                         <p className="text-gray-600 text-xs sm:text-sm mt-1">
                                                             {worker.skills?.find(
@@ -1071,10 +1085,10 @@ const BookingPage = () => {
                             {/* Worker Info */}
                             <div className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-6 pb-4 border-b border-gray-200">
                                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
-                                    {worker.name
-                                        ?.split(" ")
-                                        .map((n) => n[0])
-                                        .join("")}
+                                    <img
+                                        src={`${worker.workerProfile.verification.selfieUrl}`}
+                                        alt="profile"
+                                    />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="font-semibold text-gray-900 text-sm sm:text-base break-words">

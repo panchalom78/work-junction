@@ -10,11 +10,6 @@ const gujaratLanguages = [
     { code: "hi", name: "Hindi", nativeName: "हिन्दी" },
 ];
 
-const getFlagEmoji = (languageCode) => {
-    const flagEmojis = { en: "🇺🇸", gu: "🇮🇳", hi: "🇮🇳" };
-    return flagEmojis[languageCode] || "🌐";
-};
-
 /** Polls for the presence of the google translate select (.goog-te-combo).
  *  Resolves with the element if found within timeout, otherwise resolves null.
  */
@@ -48,25 +43,117 @@ const tryApplyLanguageToWidget = (languageCode) => {
 };
 
 /**
+ * Restore page to original English content
+ */
+const restoreToEnglish = () => {
+    try {
+        // Remove Google Translate iframe and elements
+        const googleFrames = document.querySelectorAll(
+            ".goog-te-banner-frame, .goog-te-menu-frame, .skiptranslate"
+        );
+        googleFrames.forEach((frame) => {
+            if (frame.parentNode) {
+                frame.parentNode.removeChild(frame);
+            }
+        });
+
+        // Remove Google Translate styles
+        const googleStyles = document.querySelectorAll("style[data-g-style]");
+        googleStyles.forEach((style) => {
+            if (style.parentNode) {
+                style.parentNode.removeChild(style);
+            }
+        });
+
+        // Restore original body class and style
+        document.body.classList.remove("translated-ltr", "translated-rtl");
+        document.body.style.top = "0px";
+        document.body.style.position = "static";
+
+        // Remove any Google Translate meta tags
+        const googleMeta = document.querySelector(
+            'meta[name="google-translate-customization"]'
+        );
+        if (googleMeta && googleMeta.parentNode) {
+            googleMeta.parentNode.removeChild(googleMeta);
+        }
+
+        console.log("Page restored to English");
+        return true;
+    } catch (error) {
+        console.warn("Error restoring to English:", error);
+        return false;
+    }
+};
+
+/**
  * Public helper: attempt to apply preferred language (from localStorage) to the Google widget.
  * Returns a promise that resolves true if applied, false otherwise.
  */
 export const applyPreferredLanguageAsync = async (timeoutMs = 5000) => {
-    const lang = localStorage.getItem(STORAGE_KEY);
-    if (!lang) return false;
+    try {
+        const lang = localStorage.getItem(STORAGE_KEY) || DEFAULT_LANG;
 
-    // If widget already present, try immediately
-    if (document.querySelector(".goog-te-combo")) {
-        return tryApplyLanguageToWidget(lang);
-    }
+        // If English, restore original content and return
+        if (lang === "en") {
+            restoreToEnglish();
+            return true;
+        }
 
-    // Otherwise wait for the widget to appear (script might still be loading)
-    const el = await waitForGoogleSelect(timeoutMs);
-    if (!el) {
-        console.warn("Google translate widget did not appear within timeout.");
+        console.log(`Applying preferred language: ${lang}`);
+
+        // Wait for widget to be ready with options populated
+        const widget = await waitForGoogleSelect(timeoutMs);
+        if (!widget) {
+            console.warn(
+                "Google translate widget did not appear within timeout."
+            );
+            return false;
+        }
+
+        // Additional wait for options to be populated
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (attempts < maxAttempts) {
+            // Check if the desired language option exists and is available
+            const optionExists = Array.from(widget.options).some(
+                (option) => option.value === lang
+            );
+
+            if (optionExists && widget.value !== lang) {
+                console.log(`Setting language to: ${lang}`);
+                widget.value = lang;
+
+                // Trigger multiple events to ensure Google Translate catches it
+                widget.dispatchEvent(new Event("change", { bubbles: true }));
+                widget.dispatchEvent(new Event("input", { bubbles: true }));
+
+                // Small delay to let Google process the change
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                // Verify the change was applied
+                if (widget.value === lang) {
+                    console.log(`Successfully applied language: ${lang}`);
+                    return true;
+                }
+            } else if (widget.value === lang) {
+                console.log(`Language already set to: ${lang}`);
+                return true;
+            }
+
+            attempts++;
+            await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+
+        console.warn(
+            `Failed to apply language ${lang} after ${maxAttempts} attempts`
+        );
+        return false;
+    } catch (error) {
+        console.error("Error applying preferred language:", error);
         return false;
     }
-    return tryApplyLanguageToWidget(lang);
 };
 
 // convenience global for callers who don't want to import
@@ -121,8 +208,61 @@ const RobustGujaratTranslator = () => {
 
     useEffect(() => {
         mountedRef.current = true;
+        const style = document.createElement("style");
+        style.textContent = `
+            /* Hide the Google Translate top bar */
+            .goog-te-banner-frame {
+                display: none !important;
+                visibility: hidden !important;
+                height: 0px !important;
+                width: 0px !important;
+                position: absolute !important;
+                top: -1000px !important;
+                left: -1000px !important;
+                z-index: -1000 !important;
+                opacity: 0 !important;
+            }
+            
+            /* Hide the language selector dropdown that appears at top */
+            .goog-te-menu-frame {
+                max-width: 100% !important; /* Prevent overflow issues */
+            }
+            
+            /* Remove the top spacing that Google Translate adds */
+            body {
+                top: 0px !important;
+            }
+            
+            /* Hide the "Powered by Google Translate" text */
+            .goog-logo-link {
+                display: none !important;
+            }
+            
+            .goog-te-gadget {
+                color: transparent !important;
+                font-size: 0px !important;
+            }
+            
+            .goog-te-gadget .goog-te-combo {
+                margin: 0px !important;
+            }
+            
+            /* Fix for any remaining banner elements */
+            .skiptranslate {
+                display: none !important;
+                visibility: hidden !important;
+            }
+        `;
+        document.head.appendChild(style);
+
         const init = async () => {
             setStatus("loading");
+
+            // If current language is English, no need to initialize Google Translate
+            if (currentLanguage === "en") {
+                setStatus("ready");
+                return;
+            }
 
             // establish global callback expected by the script
             window.googleTranslateElementInit = () => {
@@ -175,6 +315,9 @@ const RobustGujaratTranslator = () => {
             try {
                 if (window.googleTranslateElementInit)
                     window.googleTranslateElementInit = null;
+                if (style && style.parentNode) {
+                    style.parentNode.removeChild(style);
+                }
             } catch (e) {}
         };
         // run once
@@ -185,12 +328,29 @@ const RobustGujaratTranslator = () => {
         setCurrentLanguage(lang);
         localStorage.setItem(STORAGE_KEY, lang);
 
+        // If English, restore original content and don't use Google Translate
+        if (lang === "en") {
+            restoreToEnglish();
+            setStatus("ready");
+            return;
+        }
+
+        // For other languages, use Google Translate
+        setStatus("loading");
+
         // immediate attempt
         const ok = tryApplyLanguageToWidget(lang);
-        if (!ok) {
+        if (ok) {
+            setStatus("ready");
+        } else {
             // fallback: wait a bit for widget and try to apply
             const el = await waitForGoogleSelect(5000, 250);
-            if (el) tryApplyLanguageToWidget(lang);
+            if (el) {
+                const success = tryApplyLanguageToWidget(lang);
+                setStatus(success ? "ready" : "failed");
+            } else {
+                setStatus("failed");
+            }
         }
     };
 

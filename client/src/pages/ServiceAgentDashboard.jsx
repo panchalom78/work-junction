@@ -50,6 +50,7 @@ const ServiceAgentDashboard = () => {
                     sidebarOpen={sidebarOpen}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
+                    setSidebarOpen={setSidebarOpen}
                 />
                 <DashboardContent
                     sidebarOpen={sidebarOpen}

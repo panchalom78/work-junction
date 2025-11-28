@@ -97,7 +97,9 @@ const getPendingWorkerVerifications = async (req, res) => {
 
             "address.pincode": assignedPincode,
         })
-            .select("name phone address workerProfile.verification createdAt")
+            .select(
+                "name phone address workerProfile.verification email createdAt"
+            )
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -250,10 +252,9 @@ const rejectVerification = async (req, res) => {
                 );
             }
 
-            const workerArea = worker.address?.area;
-            const workerCity = worker.address?.city;
+            const workerPincode = worker.address?.pincode;
 
-            if (workerArea !== assignedArea && workerCity !== assignedArea) {
+            if (req.user.address.pincode != workerPincode) {
                 return errorResponse(
                     res,
                     403,

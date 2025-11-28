@@ -488,6 +488,7 @@ const CreateWorkerProfile = () => {
             navigate(-1);
         } catch (error) {
             toast.error(error.message || "Upload failed");
+            console.log(error);
         } finally {
             setDocumentLoading(false);
         }
@@ -688,7 +689,7 @@ const CreateWorkerProfile = () => {
                                         type: "tel",
                                     },
                                     {
-                                        label: "Email Address",
+                                        label: "Email Address (optional)",
                                         name: "email",
                                         type: "email",
                                     },

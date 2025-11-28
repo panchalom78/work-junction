@@ -372,67 +372,114 @@ const AgentDashboard = () => {
                     {/* Left Column - Profile & Performance */}
                     <div className="space-y-6">
                         {/* Agent Profile Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300">
-                            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white bg-opacity-10 rounded-full -translate-y-16 translate-x-16"></div>
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                            {/* Header Section - Clean Design */}
+                            <div className="p-6 relative overflow-hidden">
+                                {/* Background Elements - Subtle */}
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-purple-50 rounded-full -translate-y-16 translate-x-16 opacity-60 group-hover:opacity-80 transition-opacity duration-500"></div>
+
+                                {/* Profile Content - Clean Layout */}
                                 <div className="flex items-center space-x-4 relative z-10">
-                                    <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-2xl font-bold border-2 border-white border-opacity-30 hover:scale-105 transition-transform duration-200">
-                                        <User size={28} />
+                                    {/* Profile Avatar - Simple User Icon */}
+                                    <div className="relative">
+                                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-2 border-gray-300 hover:border-blue-400 hover:scale-105 transition-all duration-300 shadow-sm">
+                                            <User
+                                                size={32}
+                                                className="text-gray-600"
+                                            />
+                                        </div>
+                                        {/* Online Status Indicator */}
+                                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white shadow-sm"></div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold">
+
+                                    {/* Profile Info - Clean Text */}
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-gray-900 mb-1">
                                             {agentProfile.name}
                                         </h3>
-                                        <p className="text-blue-100 opacity-90 flex items-center">
+                                        <p className="text-gray-600 flex items-center text-sm font-medium mb-2">
                                             <MapPin
-                                                size={14}
-                                                className="mr-1"
+                                                size={16}
+                                                className="mr-2 text-gray-400"
                                             />
-                                            {agentProfile.area} • Service Agent
+                                            {agentProfile.area}
                                         </p>
+                                        <div className="flex items-center">
+                                            <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1 rounded-full font-medium border border-gray-200">
+                                                Service Agent
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="p-6">
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-4 text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors duration-200">
-                                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors">
-                                            <Mail size={16} />
+                            {/* Details Section */}
+                            <div className="p-6 pt-0">
+                                <div className="space-y-3">
+                                    {/* Email */}
+                                    <div className="flex items-center space-x-4 p-3 rounded-xl bg-gray-50 hover:bg-blue-50 hover:shadow-md transition-all duration-300 group/item">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-sm group-hover/item:scale-110 transition-transform duration-300">
+                                            <Mail size={18} />
                                         </div>
-                                        <span className="text-gray-700">
-                                            {agentProfile.email}
-                                        </span>
+                                        <div className="flex-1">
+                                            <p className="text-xs text-gray-500 font-medium">
+                                                Email
+                                            </p>
+                                            <p className="text-gray-800 font-medium truncate">
+                                                {agentProfile.email}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-4 text-sm hover:bg-green-50 p-2 rounded-lg transition-colors duration-200">
-                                        <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-green-600 hover:bg-green-100 transition-colors">
-                                            <Phone size={16} />
+
+                                    {/* Phone */}
+                                    <div className="flex items-center space-x-4 p-3 rounded-xl bg-gray-50 hover:bg-green-50 hover:shadow-md transition-all duration-300 group/item">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-sm group-hover/item:scale-110 transition-transform duration-300">
+                                            <Phone size={18} />
                                         </div>
-                                        <span className="text-gray-700">
-                                            {agentProfile.phone}
-                                        </span>
+                                        <div className="flex-1">
+                                            <p className="text-xs text-gray-500 font-medium">
+                                                Phone
+                                            </p>
+                                            <p className="text-gray-800 font-medium">
+                                                {agentProfile.phone}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-4 text-sm hover:bg-purple-50 p-2 rounded-lg transition-colors duration-200">
-                                        <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 hover:bg-purple-100 transition-colors">
-                                            <Calendar size={16} />
+
+                                    {/* Join Date */}
+                                    <div className="flex items-center space-x-4 p-3 rounded-xl bg-gray-50 hover:bg-purple-50 hover:shadow-md transition-all duration-300 group/item">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm group-hover/item:scale-110 transition-transform duration-300">
+                                            <Calendar size={18} />
                                         </div>
-                                        <span className="text-gray-700">
-                                            Joined{" "}
-                                            {new Date(
-                                                agentProfile.joinDate
-                                            ).toLocaleDateString()}
-                                        </span>
+                                        <div className="flex-1">
+                                            <p className="text-xs text-gray-500 font-medium">
+                                                Member Since
+                                            </p>
+                                            <p className="text-gray-800 font-medium">
+                                                {new Date(
+                                                    agentProfile.joinDate
+                                                ).toLocaleDateString("en-US", {
+                                                    year: "numeric",
+                                                    month: "long",
+                                                    day: "numeric",
+                                                })}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 mt-6">
+                                {/* Action Buttons */}
+                                <div className="flex gap-3 mt-8">
                                     <button
                                         onClick={() =>
                                             setShowProfileModal(true)
                                         }
-                                        className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:translate-y-[-1px] hover:shadow-blue-200 flex items-center justify-center"
+                                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-2xl transition-all duration-300 hover:translate-y-[-2px] hover:shadow-blue-300/50 flex items-center justify-center group/btn"
                                     >
-                                        <Edit3 size={16} className="mr-2" />
+                                        <Edit3
+                                            size={18}
+                                            className="mr-2 group-hover/btn:scale-110 transition-transform duration-300"
+                                        />
                                         Update Profile
                                     </button>
                                     <button
@@ -447,11 +494,16 @@ const AgentDashboard = () => {
                                                 toast.error("Logout failed");
                                             }
                                         }}
-                                        className="px-4 bg-red-50 text-red-600 border border-red-200 rounded-xl font-medium hover:bg-red-100 transition-all duration-300 hover:translate-y-[-1px] flex items-center justify-center"
+                                        className="px-5 bg-gradient-to-r from-red-50 to-red-100 text-red-600 border border-red-200 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:translate-y-[-2px] hover:bg-red-100 hover:border-red-300 flex items-center justify-center group/btn"
                                     >
-                                        <LogOut size={16} />
+                                        <LogOut
+                                            size={18}
+                                            className="group-hover/btn:scale-110 transition-transform duration-300"
+                                        />
                                     </button>
                                 </div>
+
+                                {/* Stats Bar (Optional) */}
                             </div>
                         </div>
                     </div>
@@ -713,7 +765,7 @@ const AgentDashboard = () => {
 
             {/* Profile Update Modal */}
             {showProfileModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
+                <div className="fixed inset-0 bg-black/80 bg-opacity-50 flex items-center justify-center p-4 z-50 animate-fadeIn">
                     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
                         <div className="flex justify-between items-center p-6 border-b border-gray-200">
                             <h3 className="text-xl font-semibold text-gray-800 flex items-center">

@@ -321,6 +321,7 @@ export const getWorkerSearchResults = async (req, res) => {
                 totalRatings: "$ratingInfo.totalRatings",
                 totalJobsDone: 1, // Include totalJobsDone in the final output
                 experience: "Available",
+                profile: "$workerProfile.verification.selfieUrl",
             },
         });
 
@@ -384,6 +385,7 @@ export const getWorkerSearchResults = async (req, res) => {
                 workerServices: 1,
                 createdAt: 1,
                 ratingInfo: 1,
+                profile: 1,
             },
         });
 
@@ -463,6 +465,50 @@ export const getWorkerProfile = async (req, res) => {
                     as: "skills",
                 },
             },
+            // Add customer lookup to get customer names
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "bookings.customerId",
+                    foreignField: "_id",
+                    as: "customers",
+                },
+            },
+            {
+                $addFields: {
+                    // Enrich bookings with customer data
+                    bookings: {
+                        $map: {
+                            input: "$bookings",
+                            as: "booking",
+                            in: {
+                                $mergeObjects: [
+                                    "$$booking",
+                                    {
+                                        customerData: {
+                                            $arrayElemAt: [
+                                                {
+                                                    $filter: {
+                                                        input: "$customers",
+                                                        as: "customer",
+                                                        cond: {
+                                                            $eq: [
+                                                                "$$customer._id",
+                                                                "$$booking.customerId",
+                                                            ],
+                                                        },
+                                                    },
+                                                },
+                                                0,
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
             {
                 $addFields: {
                     // Calculate ratings and stats
@@ -516,6 +562,12 @@ export const getWorkerProfile = async (req, res) => {
                                                 ],
                                             },
                                             { $ne: ["$$booking.review", null] },
+                                            {
+                                                $ne: [
+                                                    "$$booking.review.comment",
+                                                    null,
+                                                ],
+                                            },
                                         ],
                                     },
                                 },
@@ -554,6 +606,56 @@ export const getWorkerProfile = async (req, res) => {
                                                         },
                                                     ],
                                                 },
+                                            },
+                                        },
+                                    },
+                                    reviews: {
+                                        $map: {
+                                            input: {
+                                                $filter: {
+                                                    input: "$bookings",
+                                                    as: "booking",
+                                                    cond: {
+                                                        $and: [
+                                                            {
+                                                                $eq: [
+                                                                    "$$booking.status",
+                                                                    "COMPLETED",
+                                                                ],
+                                                            },
+                                                            {
+                                                                $ne: [
+                                                                    "$$booking.review",
+                                                                    null,
+                                                                ],
+                                                            },
+                                                            {
+                                                                $eq: [
+                                                                    "$$booking.review.rating",
+                                                                    "$$star",
+                                                                ],
+                                                            },
+                                                        ],
+                                                    },
+                                                },
+                                            },
+                                            as: "reviewedBooking",
+                                            in: {
+                                                customerName: {
+                                                    $ifNull: [
+                                                        "$$reviewedBooking.customerData.name",
+                                                        "Anonymous",
+                                                    ],
+                                                },
+                                                comment:
+                                                    "$$reviewedBooking.review.comment",
+                                                reviewedAt:
+                                                    "$$reviewedBooking.review.reviewedAt",
+                                                rating: "$$reviewedBooking.review.rating",
+                                                bookingId:
+                                                    "$$reviewedBooking._id",
+                                                bookingDate:
+                                                    "$$reviewedBooking.bookingDate",
                                             },
                                         },
                                     },
@@ -600,6 +702,7 @@ export const getWorkerProfile = async (req, res) => {
                     otp: 0,
                     "workerProfile.bankDetails": 0,
                     bookings: 0, // Remove full bookings array to reduce payload
+                    customers: 0, // Remove customers array
                 },
             },
         ]);

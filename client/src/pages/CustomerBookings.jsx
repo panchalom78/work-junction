@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Calendar,
-    Clock,
     MapPin,
-    User,
     Phone,
     Star,
     CheckCircle,
@@ -12,15 +10,10 @@ import {
     Clock as ClockIcon,
     AlertCircle,
     Search,
-    Filter,
-    ChevronDown,
-    MessageCircle,
     Loader2,
     Eye,
     ThumbsUp,
-    ThumbsDown,
     CreditCard,
-    IndianRupee ,
 } from "lucide-react";
 import { useBookingStore } from "../store/booking.store";
 import ChatInitiateButton from "../components/ChatInitiateButton";
@@ -90,6 +83,7 @@ const CustomerBookings = () => {
             await getCustomerBookings({
                 status: selectedStatus === "ALL" ? "" : selectedStatus,
             });
+            console.log(bookings);
         } catch (error) {
             console.error("Failed to fetch bookings:", error);
         }
@@ -307,10 +301,10 @@ const CustomerBookings = () => {
                                 <div className="flex items-start justify-between mb-4 gap-2">
                                     <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-white font-semibold text-sm sm:text-base flex-shrink-0">
-                                            {booking.workerId?.name
-                                                ?.split(" ")
-                                                .map((n) => n[0])
-                                                .join("") || "W"}
+                                            <img
+                                                src={`${booking.workerId?.workerProfile?.verification?.selfieUrl}`}
+                                                alt=""
+                                            />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-semibold text-gray-900 text-sm sm:text-base break-words">
