@@ -1,43 +1,31 @@
 {
-    "name": "server",
-    "version": "1.0.0",
-    "main": "index.js",
-    "type": "module",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "dev": "nodemon src/app.js",
-        "setup-env": "node setup-env.js"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "description": "",
-    "dependencies": {
-        "argon2": "^0.44.0",
-        "axios": "^1.13.2",
-        "axois": "^0.0.1-security",
-        "bcrypt": "^6.0.0",
-        "bcryptjs": "^3.0.2",
-        "cloudinary": "^1.41.3",
-        "cookie-parser": "^1.4.7",
-        "crypto": "^1.0.1",
-        "dotenv": "^17.2.3",
-        "express": "^5.1.0",
-        "express-validator": "^7.2.1",
-        "json2csv": "^5.0.7",
-        "jsonwebtoken": "^9.0.2",
-        "mongoose": "^8.19.0",
-        "multer": "^2.0.2",
-        "multer-storage-cloudinary": "^4.0.0",
-        "nodemailer": "^7.0.9",
-        "nodemon": "^3.1.10",
-        "razorpay": "^2.9.6",
-        "name": "backend",
-    "version": "1.0.0",
-    "scripts": {
-      "start": "node server.js"
-    }
-    }
+  "name": "work-junction-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "cloudinary": "^1.41.3",
+    "cookie-parser": "^1.4.7",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1",
+    "json2csv": "^5.0.7",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.0",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0",
+    "nodemailer": "^7.0.9",
+    "razorpay": "^2.9.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
 }
-
-  
